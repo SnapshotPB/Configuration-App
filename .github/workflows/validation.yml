@@ -94,9 +94,10 @@ jobs:
         # on separate machines, so they can never peak together. Wall-clock drops from the SUM of every
         # target (built single-threaded) to the MAX of the four jobs (built in parallel, full cores).
         #
-        # The standard runner of this private repository has 2 cores and 7.8 GiB of RAM
-        # (runner-specs.yml, report of 2026-09-19). Task times add up almost serially on it, so
-        # every task that a target does not need costs wall-clock time.
+        # The repository is public, so the standard Linux runner has 4 CPUs (2 cores with 2 threads
+        # each) and 15.6 GiB of RAM (runner-specs.yml, report of 2026-10-11). Gradle sets its
+        # worker count from the CPU count, so four tasks run at the same time. Each task that a
+        # target does not need still costs wall-clock time.
         #
         # The task lists cover what the old `./gradlew build` on a Linux runner checked:
         #   android  — :app:android + :app:wear debug and release APKs, a compile check of the
@@ -107,8 +108,8 @@ jobs:
         #   ios      — :app:ios klibs + native commonizer. The job only compiles. A Linux host cannot
         #              link an Apple framework or run an iOS test, so Gradle skips those tasks. The
         #              first link of the ComposeApp framework is the macOS job of build-release.yml.
-        #              The owner accepts this gap, because a macOS runner costs about ten times a
-        #              Linux minute in a private repository (#145).
+        #              This workflow has no macOS job. A standard macOS runner is free of charge
+        #              for a public repository, so a macOS job can close this gap.
         #
         # The android target does not run `:app:android:build`. The baseline profile plugin adds the
         # nonMinifiedRelease and benchmarkRelease variants to :app:android, and the build script adds
@@ -196,13 +197,13 @@ jobs:
       # of the two buildLogicVersion() copies, so run them on the cheapest target.
       # --no-daemon: the composite build has different org.gradle.jvmargs, so it cannot reuse
       # the daemon of the root build. Without this flag a second daemon stays in memory for the
-      # full desktop build on the 7.8 GiB runner.
+      # full desktop build.
       - name: Test build logic (composite)
         if: matrix.target == 'desktop'
         run: ./gradlew -p composite test --no-daemon --stacktrace -Dorg.gradle.console=plain
 
       # No --no-parallel / --no-daemon / build-split needed anymore: each runner builds a single target
       # family, so org.gradle.parallel (gradle.properties) and the setup-gradle-managed daemon are back
-      # on and peak RAM stays under the 7.8 GiB of the runner.
+      # on and peak RAM stays under the 15.6 GiB of the runner.
       - name: Build ${{ matrix.target }}
         run: ./gradlew ${{ matrix.tasks }} --stacktrace -Dorg.gradle.console=plain
