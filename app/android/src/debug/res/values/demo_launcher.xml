@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Debug-only values for the Demo launcher entry. The label is deliberately NOT a Compose
+      Resources string: it names a developer tool that no release build shows, so it needs no
+      translation, and core:resources holds only strings that ship.
+    -->
+    <string name="demo_launcher_label">Demo</string>
+
+    <!-- Green reads as "test" against the dark grey of the real icon, so the two entries differ. -->
+    <color name="demo_launcher_background">#2E7D32</color>
+</resources>

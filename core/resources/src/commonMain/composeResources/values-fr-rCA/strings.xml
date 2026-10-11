@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Snapshot PB</string>
+    <string name="navigation_back">Retour</string>
+    <!-- Shows the current vs. maximum character count for a length-limited text field, e.g. "7/10" -->
+    <string name="device_field_char_counter">%1$d/%2$d</string>
+    <!-- Add Device Screen -->
+    <string name="add_device_screen_title">Ajouter un appareil</string>
+    <string name="add_device_screen_image_picker">Prendre une photo</string>
+    <string name="add_device_screen_gallery_picker">Choisir dans la galerie</string>
+    <string name="add_device_screen_device_name_label">Nom de l’appareil</string>
+    <string name="add_device_screen_image_config_label">Photo de l’appareil</string>
+    <string name="add_device_screen_save_button">Enregistrer l’appareil</string>
+    <!-- Device Browse Screen -->
+    <string name="device_screen_title">Appareils</string>
+    <string name="device_screen_active_profile">Profil actif&#160;: %1$s</string>
+    <string name="device_screen_no_profiles">Aucun profil</string>
+    <string name="device_screen_list_discovered_devices">Appareils détectés</string>
+    <string name="device_screen_saved_configurations">Configurations enregistrées</string>
+    <string name="device_screen_no_saved_devices">Aucun appareil enregistré.</string>
+    <string name="device_screen_bluetooth_options">Options Bluetooth</string>
+    <string name="app_version_label">Version %1$s</string>
+    <string name="device_default_name">SnapshotPB</string>
+    <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->
+    <string name="device_tap_to_connect">Touchez pour connecter &#8226; [#%1$s]</string>
+    <!-- Fallback label for a board with no user-given name: name, bullet, short id -->
+    <string name="device_fallback_name">%1$s &#8226; [#%2$s]</string>
+    <!-- Shown in place of a firmware version the board has not reported. Never invent a number here. -->
+    <string name="firmware_version_unknown">Inconnue</string>
+    <!-- Profile Screen -->
+    <string name="profile_badge_description">Badge de profil</string>
+    <string name="profile_screen_title">Profils de l’appareil</string>
+    <string name="profile_settings_title">Paramètres du profil</string>
+    <string name="profile_screen_details_title">Détails du profil</string>
+    <string name="profile_section_basic_function">Fonction de base</string>
+    <string name="profile_section_eye">Œil</string>
+    <string name="profile_section_timing_overview">Aperçu du chronométrage</string>
+    <string name="profile_section_timing_overview_description">Visualise un cycle de tir à partir du front de la détente. La carte valide la pression après le temps d’anti-rebond à l’activation, puis déclenche l’impulsion du solénoïde de sear et la séquence du solénoïde d’armement (délai, marche, arrêt). Le temps d’anti-rebond à la désactivation suit le relâchement.</string>
+    <string name="profile_section_timing">Chronométrage</string>
+    <!-- Profile Timing Diagram -->
+    <string name="profile_timing_diagram_lane_trigger">Détente</string>
+    <string name="profile_timing_diagram_label_ton">Anti-rebond activé</string>
+    <string name="profile_timing_diagram_label_toff">Anti-rebond désactivé</string>
+    <string name="profile_timing_diagram_lane_sear">Sear</string>
+    <string name="profile_timing_diagram_lane_cocking">Armement</string>
+    <string name="profile_timing_diagram_label_son">Sear activé</string>
+    <string name="profile_timing_diagram_label_cdel">Délai</string>
+    <string name="profile_timing_diagram_label_con">Marche</string>
+    <string name="profile_timing_diagram_label_coff">Arrêt</string>
+    <string name="profile_timing_diagram_label_con_eye">Marche jusqu’à l’œil</string>
+    <string name="profile_timing_diagram_value_range">%1$s – %2$s</string>
+    <string name="profile_section_trigger">Détente</string>
+    <string name="profile_section_ramping">Ramping</string>
+    <string name="profile_label_name">Nom</string>
+    <string name="profile_label_name_details">Nom du profil, limité à 10 caractères ASCII.</string>
+    <string name="profile_label_fire_mode">Mode de tir</string>
+    <string name="profile_label_fire_mode_details">Mode de tir préféré par l’utilisateur</string>
+    <string name="profile_fire_mode_mechanical">Mécanique</string>
+    <string name="profile_fire_mode_semi">Semi</string>
+    <string name="profile_fire_mode_trigger_only">Détente seule</string>
+    <string name="profile_fire_mode_full_auto">Automatique</string>
+    <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
+    <string name="profile_fire_mode_custom_ramping">Ramping personnalisé</string>
+    <string name="profile_label_fire_rate_cap">Limite de cadence</string>
+    <string name="profile_label_fire_rate_cap_details">Cadence de tir maximale en billes par seconde. Le temps de maintien fermé du solénoïde d’armement augmente si la cadence est inférieure à ce que permet le cycle de chronométrage. Mettez 0 pour ne pas limiter.</string>
+    <string name="profile_label_eye_mode">Mode œil</string>
+    <string name="profile_label_eye_mode_details">Mode œil pris en charge par le marqueur, le cas échéant</string>
+    <!-- A fire mode or an eye mode that the board reports and this app does not know -->
+    <string name="profile_mode_unknown">Mode inconnu</string>
+    <string name="profile_mode_unknown_details">La carte signale un mode que cette app ne connaît pas. L’enregistrement conserve le mode de la carte jusqu’à ce que vous choisissiez un mode.</string>
+    <string name="profile_eye_mode_off">Désactivé</string>
+    <string name="profile_eye_mode_reflective">Réfléchissant</string>
+    <string name="profile_eye_mode_break_beam">Barrière lumineuse</string>
+    <string name="profile_label_eye_threshold">Seuil de l’œil</string>
+    <string name="profile_label_eye_threshold_details">Seuil de détection de l’œil de chambre, de 0 à 100 pour cent de la pleine échelle; l’œil voit une bille lorsque la lecture est inférieure au seuil. L’application n’envoie jamais 0 — le micrologiciel appliquerait sa valeur par défaut de 50 pour cent.</string>
+    <string name="profile_label_eye_debounce">Anti-rebond de l’œil</string>
+    <string name="profile_label_eye_debounce_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel l’œil doit rester sous le seuil pour confirmer qu’une bille est dans la chambre.</string>
+    <string name="profile_label_sear_solenoid_dwell">Maintien du solénoïde de sear</string>
+    <string name="profile_label_sear_solenoid_dwell_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde de sear est alimenté durant le cycle de tir.</string>
+    <string name="profile_label_cocking_solenoid_delay">Délai du solénoïde d’armement</string>
+    <string name="profile_label_cocking_solenoid_delay_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde d’armement attend après une pression sur la détente avant d’être alimenté.</string>
+    <string name="profile_label_cocking_solenoid_dwell_open">Maintien ouvert du solénoïde d’armement</string>
+    <string name="profile_label_cocking_solenoid_dwell_open_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde d’armement est alimenté pour ouvrir la chambre. Avec un capteur d’œil, ce réglage est ignoré.</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed">Maintien fermé du solénoïde d’armement</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde d’armement reste non alimenté pour fermer la chambre et empêcher le cycle de tir suivant.</string>
+    <string name="profile_label_cocking_solenoid_timeout">Délai maximal du solénoïde d’armement</string>
+    <string name="profile_label_cocking_solenoid_timeout_details">Limite anti-blocage en ouverture, en millisecondes (pas de 0,1 ms)&#160;: durée maximale pendant laquelle le solénoïde d’armement attend l’œil avant de fermer selon le chronométrage. La valeur par défaut de la carte est 500 ms; elle ne peut pas être désactivée (l’application envoie toujours une valeur concrète).</string>
+    <string name="profile_label_ramping_custom_multiplier">Multiplicateur de ramping personnalisé</string>
+    <string name="profile_label_ramping_custom_multiplier_details">La cadence en ramping, en multiple du rythme des pressions sur la détente, une fois le seuil de pressions du ramping atteint. Par exemple, 2,5× (250 pour cent) avec 3 pressions en une seconde donne 7,5 billes par seconde.</string>
+    <string name="profile_label_ramping_custom_trigger_pulls">Pressions sur la détente pour le ramping</string>
+    <string name="profile_label_ramping_custom_trigger_pulls_details">Le nombre de pressions sur la détente requis dans une fenêtre d’une seconde pour passer en ramping pendant la seconde suivante.</string>
+    <string name="profile_label_ramping_custom_rof_minimum">Cadence minimale en ramping</string>
+    <string name="profile_label_ramping_custom_rof_minimum_details">Une cadence de tir minimale en mode ramping, quel que soit le nombre de pressions sur la détente dans la fenêtre glissante.</string>
+    <string name="profile_label_trigger_debounce_on">Anti-rebond de détente à l’activation</string>
+    <string name="profile_label_trigger_debounce_on_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel la détente doit être pressée pour lancer un cycle de tir.</string>
+    <string name="profile_label_trigger_debounce_off">Anti-rebond de détente à la désactivation</string>
+    <string name="profile_label_trigger_debounce_off_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel la détente ne doit pas être détectée avant d’entrer dans le cycle d’anti-rebond à l’activation.</string>
+    <string name="profile_loading">Chargement du profil...</string>
+    <string name="profile_not_found">Ce profil n’est plus disponible.</string>
+    <string name="profile_button_decrement">-</string>
+    <string name="profile_button_increment">+</string>
+    <string name="profile_marker_profile_active">Actif&#160;: %1$s</string>
+    <string name="profile_marker_max_bps">BPS max&#160;: %1$s</string>
+    <string name="profile_marker_fire_mode">Mode de tir&#160;: %1$s</string>
+    <string name="profile_marker_eye_mode">Mode œil&#160;: %1$s</string>
+    <!-- Profile field editor shared by the phone and the watch -->
+    <string name="profile_tune_title">Régler le profil</string>
+    <string name="profile_step_fine">Fin</string>
+    <string name="profile_step_coarse">Grossier</string>
+    <!-- Value formats of a profile field: one-decimal milliseconds, a whole percent, one-decimal or whole balls per second, a one-decimal multiple -->
+    <string name="profile_value_ms">%1$s ms</string>
+    <string name="profile_value_percent">%1$d&#160;%</string>
+    <string name="profile_value_bps">%1$s BPS</string>
+    <string name="profile_value_multiple">%1$s×</string>
+    <string name="profile_value_uncapped">Sans limite</string>
+    <!-- Unit after the number in a profile field: milliseconds, percent, balls per second, a multiple -->
+    <string name="profile_unit_ms">ms</string>
+    <string name="profile_unit_percent">%</string>
+    <string name="profile_unit_bps">BPS</string>
+    <string name="profile_unit_multiple">×</string>
+    <!-- Profile Add Screen -->
+    <string name="profile_add_screen_title">Créer un profil</string>
+    <string name="profile_add_screen_create_button">Créer</string>
+    <!-- Configure Device Screen -->
+    <string name="profiles_device_configuration_title">Configuration de l’appareil</string>
+    <string name="profiles_device_configuration_body">Modifiez le nom de l’appareil, l’écran de démarrage et plus encore.</string>
+    <string name="profiles_device_configuration_button">Configurer</string>
+    <string name="configure_device_screen_title">Configurer l’appareil</string>
+    <string name="configure_device_screen_device_name_label">Nom de l’appareil</string>
+    <string name="configure_device_screen_boot_text_label">Texte de démarrage</string>
+    <string name="configure_device_screen_boot_text_details">Texte affiché brièvement à la mise sous tension de la carte.</string>
+    <string name="configure_device_screen_active_profile_label">Profil actif</string>
+    <string name="configure_device_screen_active_profile_details">Choisissez le profil enregistré que la carte doit utiliser au démarrage.</string>
+    <string name="configure_device_screen_active_profile_empty">Aucun profil n’a été ajouté à cet appareil.</string>
+    <string name="configure_device_screen_lockout_label">Verrouillage de tir</string>
+    <string name="configure_device_screen_lockout_details">Défini sur la carte elle-même; affiché ici à titre indicatif.</string>
+    <string name="configure_device_screen_lockout_locked">Verrouillé — le marqueur ne tirera pas</string>
+    <string name="configure_device_screen_lockout_unlocked">Déverrouillé</string>
+    <string name="configure_device_screen_language_label">Langue de la carte</string>
+    <string name="configure_device_screen_language_details">La langue du menu sur la carte. Le texte de démarrage et les noms de profil ne changent pas.</string>
+    <string name="configure_device_screen_language_unavailable">La carte n’a signalé aucune langue. Connectez-vous à la carte ou mettez à jour son micrologiciel.</string>
+    <string name="board_language_en">Anglais</string>
+    <string name="board_language_es">Espagnol</string>
+    <string name="board_language_de">Allemand</string>
+    <string name="board_language_fr">Français</string>
+    <string name="configure_device_screen_brightness_label">Luminosité de l’écran</string>
+    <string name="configure_device_screen_brightness_details">Intensité avec laquelle la carte éclaire son écran. Un seul écran sert tous les profils.</string>
+    <string name="configure_device_screen_brightness_unavailable">La carte n’a signalé aucune luminosité. Connectez-vous à la carte ou mettez à jour son micrologiciel.</string>
+    <string name="board_brightness_low">Faible</string>
+    <string name="board_brightness_default">Par défaut</string>
+    <string name="board_brightness_high">Élevée</string>
+    <string name="configure_device_screen_off_delay_label">Délai d’extinction de l’écran</string>
+    <string name="configure_device_screen_off_delay_details">Nombre de secondes pendant lesquelles la carte laisse l’écran allumé après le dernier appui sur un bouton. Plage de 1 à 999. Un tir ne garde pas l’écran allumé.</string>
+    <string name="configure_device_screen_off_delay_unavailable">La carte n’a signalé aucun délai. Connectez-vous à la carte ou mettez à jour son micrologiciel.</string>
+    <!-- A screen-off delay in seconds, e.g. "30 s" -->
+    <string name="board_screen_off_delay_seconds">%1$s s</string>
+    <!-- Display Area section on the Configure Device screen -->
+    <string name="configure_device_screen_display_window_label">Zone d’affichage</string>
+    <string name="configure_device_screen_display_window_details">La partie de l’écran de la carte que le cadre de poignée laisse voir. Sélectionnez un cadre, ou définissez votre propre zone.</string>
+    <string name="configure_device_screen_display_window_none">La carte n’a signalé aucune zone. Sélectionnez un cadre, ou sélectionnez une zone personnalisée.</string>
+    <string name="configure_device_screen_display_window_unset">Non défini</string>
+    <string name="configure_device_screen_display_window_custom">Zone personnalisée</string>
+    <string name="configure_device_screen_display_window_drawing">Dessin de l’écran de la carte avec la zone visible marquée</string>
+    <string name="configure_device_screen_display_window_hint">Faites glisser la zone marquée pour la déplacer.</string>
+    <string name="configure_device_screen_display_window_width_label">Largeur visible</string>
+    <string name="configure_device_screen_display_window_height_label">Hauteur visible</string>
+    <!-- Visible area readout: width, height, then the corner offsets -->
+    <string name="configure_device_screen_display_window_summary">Largeur %1$s, hauteur %2$s, à %3$s, %4$s</string>
+    <string name="grip_frame_full_panel">Panneau entier</string>
+    <string name="grip_frame_e1">Cadre E1</string>
+    <string name="grip_frame_e2">Cadre E2</string>
+    <string name="configure_device_screen_save_button">Enregistrer</string>
+    <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
+    <string name="bluetooth_needs_permission_icon">Icône Bluetooth</string>
+    <string name="bluetooth_needs_permission_title">Bluetooth</string>
+    <string name="bluetooth_needs_permission_paragraph">Pour trouver des appareils, cette application a besoin de l’autorisation d’utiliser le Bluetooth.</string>
+    <!-- Bluetooth -->
+    <string name="start_scanning_icon_explanation">Icône Bluetooth</string>
+    <string name="start_scanning_explanation">Démarrer la recherche de cartes Snapshot PB</string>
+    <string name="scanning_icon_explanation">Icône de recherche Bluetooth</string>
+    <string name="scanning_explanation">Recherche de cartes Snapshot PB</string>
+    <string name="scanning_title">Recherche</string>
+    <string name="connecting_icon_explanation">Icône de connexion Bluetooth</string>
+    <string name="connecting_explanation">Configuration de Snapshot PB - %1$s - %2$s</string>
+    <string name="connecting_title">Connexion</string>
+    <string name="bluetooth_disabled_icon_explanation">Icône Bluetooth désactivé</string>
+    <string name="bluetooth_disabled">Activez le Bluetooth pour démarrer la recherche</string>
+    <string name="bluetooth_disabled_explanation">Pour trouver des appareils, le Bluetooth doit être activé sur votre système.</string>
+    <string name="bluetooth_error_settings_menu">Impossible d’ouvrir les paramètres Bluetooth du système. Veuillez activer le Bluetooth manuellement.</string>
+    <!-- Permission denied (e.g. iOS: the user declined the system Bluetooth prompt) -->
+    <string name="bluetooth_permission_denied_title">Autorisation Bluetooth refusée</string>
+    <string name="bluetooth_permission_denied_paragraph">Cette application n’est pas autorisée à utiliser le Bluetooth. Ouvrez les paramètres pour autoriser l’accès au Bluetooth, puis revenez pour rechercher des appareils.</string>
+    <string name="bluetooth_permission_denied_action">Ouvrir les paramètres</string>
+    <!-- Location services off (Android API 30 and below: BLE scanning needs the system Location toggle on) -->
+    <string name="location_disabled_icon_explanation">Icône des services de localisation</string>
+    <string name="location_disabled_title">Activer la localisation</string>
+    <string name="location_disabled_paragraph">Sur cette version d’Android, la recherche d’appareils Bluetooth exige que les services de localisation soient activés. Activez la localisation, puis revenez pour rechercher des appareils.</string>
+    <string name="location_disabled_action">Ouvrir les paramètres de localisation</string>
+    <string name="location_error_settings_menu">Impossible d’ouvrir les paramètres de localisation du système. Veuillez activer la localisation manuellement.</string>
+    <!-- Gallery-->
+    <string name="gallery_error_mime_png_only">Seules les images JPG et PNG sont autorisées</string>
+    <!-- Buttons -->
+    <string name="button_accept">Accepter</string>
+    <string name="button_start_scanning">Démarrer la recherche</string>
+    <string name="button_stop_scanning">Arrêter la recherche</string>
+    <string name="pair_board_title">Nouvelle carte</string>
+    <string name="pair_board_explanation">Choisissez votre carte Snapshot PB dans la liste du navigateur</string>
+    <string name="button_pair_board">Jumeler une carte</string>
+    <string name="button_delete">Supprimer</string>
+    <string name="button_add_profile">Ajouter un profil</string>
+    <string name="button_cancel">Annuler</string>
+    <!-- Destructive-action confirmations -->
+    <string name="delete_device_dialog_title">Supprimer l’appareil?</string>
+    <string name="delete_device_dialog_message">%1$s et ses profils enregistrés sont retirés de cette application. La carte elle-même n’est pas modifiée.</string>
+    <string name="delete_profile_dialog_title">Supprimer le profil?</string>
+    <string name="delete_profile_dialog_message">%1$s est retiré localement. Enregistrez ensuite sur la carte pour y appliquer la modification.</string>
+    <!-- Common -->
+    <string name="common_yes">Oui</string>
+    <string name="logo_content_description">Logo Snapshot PB</string>
+    <!-- Connecting / new device flow -->
+    <string name="connecting_screen_failed_title">Impossible de lire l’appareil</string>
+    <string name="connecting_screen_failed_body">Aucune configuration n’a été reçue de %1$s. Assurez-vous que la carte est allumée et à portée, puis réessayez.</string>
+    <string name="connecting_screen_back_button">Retour</string>
+    <string name="connecting_step_connection">Se connecter à %1$s</string>
+    <string name="connecting_step_services">Vérification des fonctions de l’appareil</string>
+    <string name="connecting_attempt">Tentative %1$d sur %2$d</string>
+    <string name="connecting_step_device_info">Téléchargement de la configuration de l’appareil</string>
+    <string name="connecting_step_profiles">Téléchargement des profils de configuration</string>
+    <string name="connecting_button_finish">Terminer la configuration</string>
+    <string name="connecting_title_setup">Configuration de votre carte</string>
+    <string name="connecting_title_complete">Configuration récupérée!</string>
+    <string name="new_device_screen_cancel_button">Annuler</string>
+    <!-- Device sync conflict dialog -->
+    <string name="sync_conflict_dialog_title">Les réglages de l’appareil diffèrent</string>
+    <string name="sync_conflict_dialog_message">Les réglages de %1$s sur la carte ne correspondent pas à ceux que vous avez enregistrés localement. Quelles valeurs voulez-vous conserver?</string>
+    <string name="sync_conflict_dialog_take_device">Utiliser les valeurs de l’appareil</string>
+    <string name="sync_conflict_dialog_take_local">Conserver mes valeurs</string>
+    <!-- Divergence / Sync actions -->
+    <string name="device_pending_changes_banner_title">Modifications non enregistrées</string>
+    <string name="device_pending_changes_banner_message">Vous avez des modifications de configuration locales qui diffèrent des réglages de la carte.</string>
+    <string name="device_pending_changes_save_to_board">Enregistrer sur la carte</string>
+    <string name="device_pending_changes_discard">Abandonner les modifications</string>
+    <string name="device_pending_changes_connect_to_save">Connectez-vous en Bluetooth pour enregistrer les modifications</string>
+    <string name="device_pending_changes_lockout_to_save">La carte est verrouillée. Désactivez le verrouillage avec l’interrupteur de la carte, puis reconnectez-vous pour enregistrer les modifications.</string>
+    <string name="device_pending_changes_lockout_short">Carte verrouillée</string>
+    <string name="profile_badge_unsaved">Non enregistré</string>
+    <string name="device_discovered_card_info">Carte&#160;: %1$s • Version&#160;: %2$s</string>
+    <!-- Profiles screen connection card -->
+    <string name="connection_card_title">Connexion à la carte</string>
+    <string name="connection_card_connect">Connecter</string>
+    <string name="connection_card_disconnect">Déconnecter</string>
+    <string name="connection_card_retry">Réessayer</string>
+    <string name="connection_card_cancel">Annuler</string>
+    <string name="connection_card_status_connected">Connecté</string>
+    <string name="connection_card_status_disconnected">Non connecté</string>
+    <string name="connection_card_status_connecting">Connexion…</string>
+    <string name="connection_card_status_failed">Échec de la connexion</string>
+    <string name="connection_card_disconnected_hint">Connectez-vous pour lire la carte et enregistrer les modifications.</string>
+    <string name="connection_card_failed_hint">Assurez-vous que la carte est allumée et à portée, puis réessayez.</string>
+    <string name="connection_step_connect">Connexion à la carte</string>
+    <!-- Web/browser unsupported-Bluetooth block screen (Chromium-only Web Bluetooth) -->
+    <string name="unsupported_browser_title">Le Bluetooth n’est pas disponible dans ce navigateur</string>
+    <string name="unsupported_browser_message">Snapshot PB communique avec votre carte en Bluetooth, ce que l’application web ne peut faire que dans un navigateur basé sur Chromium — Chrome, Edge ou Opera. Ouvrez cette page dans l’un d’eux pour rechercher et configurer votre carte.</string>
+    <string name="unsupported_browser_details_show">Pourquoi pas ce navigateur?</string>
+    <string name="unsupported_browser_details_hide">Masquer les détails</string>
+    <string name="unsupported_browser_details_webkit">Web Bluetooth — l’interface de navigateur qu’utilise cette application — n’existe que dans les navigateurs Chromium. Safari et tous les navigateurs sur iPhone et iPad reposent sur WebKit d’Apple, qui ne l’a jamais implémentée; le Bluetooth n’y fonctionnera donc pas. Sur les appareils Apple, utilisez plutôt l’application native Snapshot PB.</string>
+    <string name="unsupported_browser_details_firefox">Firefox n’a pas non plus Web Bluetooth, mais pour une autre raison&#160;: Mozilla a refusé de l’implémenter pour des motifs de confidentialité.</string>
+    <string name="unsupported_browser_webkit_bug_link">Voir le bogue de suivi WebKit</string>
+    <!-- Wear OS (watch) UI -->
+    <string name="wear_section_synced_devices">Appareils synchronisés</string>
+    <string name="wear_no_synced_devices">Aucun appareil synchronisé</string>
+    <string name="wear_device_photo_description">Photo de l’appareil</string>
+    <string name="wear_no_profile">Aucun profil</string>
+    <string name="wear_profile_label">Profil&#160;: %1$s</string>
+    <string name="wear_action_grant_permissions">Accorder les autorisations</string>
+    <string name="wear_action_enable_bluetooth">Activer le Bluetooth</string>
+    <string name="wear_action_turn_on_location">Activer la localisation</string>
+    <string name="wear_action_stop_scanning">Arrêter la recherche</string>
+    <string name="wear_action_scan_for_boards">Rechercher des cartes</string>
+    <string name="wear_section_discovered_boards">Cartes détectées</string>
+    <string name="wear_searching">Recherche…</string>
+    <string name="wear_discovered_board_secondary">%1$s • [#%2$s]</string>
+    <string name="wear_bluetooth_settings_error">Impossible d’ouvrir les paramètres Bluetooth</string>
+    <string name="wear_location_settings_error">Impossible d’ouvrir les paramètres de localisation</string>
+    <string name="wear_select_profile">Choisir un profil</string>
+    <!-- Profile chip subtitle on the watch: fire mode and sear dwell, e.g. "Mode: SEMI / Dwell: 4.5 ms" -->
+    <string name="wear_profile_secondary">Mode&#160;: %1$s / Maintien&#160;: %2$s ms</string>
+    <string name="wear_connecting_title">Connexion...</string>
+    <string name="wear_connected_title">Connecté</string>
+    <string name="wear_connection_failed_title">Échec de la connexion</string>
+    <!-- Board label on the watch connect screen: board type then short id, e.g. "Snapshot PB [#A1B2]" -->
+    <string name="wear_board_with_id">%1$s [#%2$s]</string>
+    <string name="wear_step_connection">Connexion</string>
+    <string name="wear_step_services">Services</string>
+    <string name="wear_step_device_info">Infos appareil</string>
+    <string name="wear_step_profiles">Profils</string>
+    <string name="wear_all_data_loaded">Toutes les données ont été chargées.</string>
+    <string name="wear_unable_to_communicate">Impossible de communiquer avec la carte.</string>
+    <string name="wear_action_continue">Continuer</string>
+    <string name="wear_action_back_to_list">Retour à la liste</string>
+    <string name="wear_connected_via_ble">Connecté en BLE</string>
+    <string name="wear_ble_disconnected">BLE déconnecté</string>
+    <string name="wear_tap_to_disconnect">Touchez pour déconnecter</string>
+    <string name="wear_tap_to_connect_directly">Touchez pour connecter directement</string>
+    <string name="wear_save_succeeded">Enregistré sur la carte</string>
+    <string name="wear_save_failed">Échec de l’enregistrement</string>
+    <!-- Desktop auto-updater dialog -->
+    <string name="updater_dialog_title">Mise à jour disponible</string>
+    <string name="updater_message">Une nouvelle version (%1$s) est disponible. Voulez-vous mettre à jour maintenant?</string>
+    <string name="updater_downloading">Téléchargement de la mise à jour&#160;: %1$d%%</string>
+    <string name="updater_starting_download">Démarrage du téléchargement...</string>
+    <string name="updater_error">Erreur&#160;: %1$s</string>
+    <string name="updater_error_unknown">Erreur inconnue</string>
+    <string name="updater_action_update_now">Mettre à jour maintenant</string>
+    <string name="updater_action_later">Plus tard</string>
+    <string name="updater_action_close">Fermer</string>
+</resources>

@@ -1,0 +1,42 @@
+{
+  "skills": [".claude/skills"],
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "denyRead": [
+        "~/"
+      ],
+      "allowRead": [
+        ".",
+        ".claude/skills"
+      ],
+      "allowWrite": [
+        "/tmp/build",
+        ".claude"
+      ]
+    }
+  },
+  "spinnerVerbs": {
+    "verbs": [
+      "Working"
+    ],
+    "mode": "replace"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(printf '%s' \"$input\" | jq -r '.tool_input.file_path // empty'); case \"$f\" in *.kt|*.kts) jq -n --arg f \"$f\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:(\"Kotlin/Gradle change detected in \\($f). Consult the kmp-architect agent for architectural fit and the kotlin-code-quality-reviewer agent for code quality before treating this change as complete.\")}}' ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "input=$(cat); f=$(printf '%s' \"$input\" | jq -r '.tool_input.file_path // empty'); case \"$f\" in */app/zepp/*.js) case \"$f\" in */proto.js) ;; *) jq -n --arg f \"$f\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:(\"Zepp OS app change detected in \\($f). Consult the zepp-architecture-specialist agent for design fit and the zepp-js-code-quality-reviewer agent for code quality before treating this change as complete.\")}}' ;; esac ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}

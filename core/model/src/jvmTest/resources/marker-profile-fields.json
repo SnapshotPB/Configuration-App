@@ -1,0 +1,23 @@
+{
+  "required": ["id", "name"],
+  "defaults": {
+    "fireMode": "SEMI",
+    "fireRateCapTenths": 105,
+    "eyeMode": "OFF",
+    "eyeThreshold": 50,
+    "eyeDebounce": 20,
+    "searSolenoidDwell": 45,
+    "cockingSolenoidDelay": 60,
+    "cockingSolenoidDwellOpen": 50,
+    "cockingSolenoidDwellClosed": 300,
+    "rampingCustomMultiplier": 15,
+    "rampingCustomTriggerPulls": 3,
+    "rampingCustomROFMinimum": 3,
+    "triggerDebounceOn": 20,
+    "triggerDebounceOff": 20,
+    "cockingSolenoidTimeout": 5000
+  },
+  "appOnly": {
+    "sourceSlot": null
+  }
+}

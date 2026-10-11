@@ -1,0 +1,936 @@
+# Build Release. The SECOND half of the two-action chain
+# (docs/versioning-and-release-plan.md §5-§6): triggered by release.yml's explicit
+# `gh workflow run` against a freshly cut tag. It derives the version FROM the tag (§4,
+# via the composite `resolveProjectVersion()` git-describe resolver — no inputs to edit),
+# builds every target, and publishes:
+#   - desktop installers + electron-builder `latest*.yml` update manifests -> GitHub Release
+#     (the in-app Nucleus auto-update channel, §6.1 — the primary deliverable)
+#   - Android + Wear AAB -> Google Play internal track      (§6.2, gated on a keystore secret)
+#   - browser bundle and Zepp OS .zab -> GitHub Release      (§6.4, §6.5)
+#   - iOS archive -> App Store Connect                      (§6.3, gated on Apple secrets)
+#
+# The `push: tags` trigger is a SAFETY NET only, for a tag pushed out-of-band with a PAT;
+# the normal path is the workflow_dispatch from release.yml. A GITHUB_TOKEN-pushed tag
+# does NOT fire `push`, so the normal path never double-builds (§5).
+#
+# The JDK: gradle/gradle-daemon-jvm.properties makes the Gradle daemon run on a JetBrains
+# JDK 21, and Nucleus makes the runtime of the desktop installers from that JDK. Each job
+# that runs Gradle installs that JDK with setup-java. With a different JDK on the runner,
+# Gradle downloads the JetBrains JDK through the foojay API. A job with no Gradle cache
+# then depends on foojay, and the Windows job never has a cache, because only a run on
+# master writes one. On 2026-10-08 foojay had no JetBrains JDK 21, and the Windows job
+# stopped at the start of Gradle.
+name: Build Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v26.29.1). Defaults to the ref this run was dispatched against."
+        required: false
+        default: ""
+  push:
+    tags:
+      - 'v*'   # safety net; see header. GITHUB_TOKEN-pushed tags don't reach here.
+
+# Don't cancel a publish that's in flight; and don't run two publishes for one tag.
+concurrency:
+  group: build-release-${{ github.event.inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+# The workflow token is read-only. Only create-release gets contents: write, because a
+# build job runs third-party Gradle plugins and dependencies, and must not be able to push
+# a branch or a tag, or edit a Release.
+permissions:
+  contents: read
+
+# Signing secrets: every job that reads a signing or publish secret declares
+# `environment: release`. Today the secrets are repository secrets, and a job in an
+# environment can still read them, so nothing changes yet.
+# MAINTAINER ACTION: move these secrets from the repository into the `release` environment
+# (Settings > Environments > release). Then only a job in that environment can read them:
+#   PLAY_SERVICE_ACCOUNT_JSON, WEAR_PLAY_ENABLED,
+#   MACOS_CERTIFICATE_BASE64, MACOS_CERTIFICATE_PASSWORD, MACOS_SIGNING_IDENTITY,
+#   MACOS_KEYCHAIN_PASSWORD, MACOS_NOTARY_APPLE_ID, MACOS_NOTARY_PASSWORD, MACOS_NOTARY_TEAM_ID,
+#   MSI_SIGNING_PFX_BASE64, MSI_SIGNING_STORE_PASS,
+#   IOS_CERTIFICATE_BASE64, IOS_CERTIFICATE_PASSWORD, IOS_KEYCHAIN_PASSWORD,
+#   APP_STORE_CONNECT_API_KEY_BASE64, APP_STORE_CONNECT_API_KEY_ID,
+#   APP_STORE_CONNECT_API_ISSUER_ID
+# The old MSI_SIGNING_STORE_FILE secret is not used any more: the Windows job now writes the
+# .pfx file from MSI_SIGNING_PFX_BASE64 and sets MSI_SIGNING_STORE_FILE itself.
+# The Android upload keystore is not in that list. It is in the repository as a
+# GPG-encrypted file (signing/upload.keystore.gpg), and its secrets are organization
+# secrets, so that other Android projects of the organization can use the same key:
+#   ANDROID_KEYSTORE_GPG_PASSPHRASE, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+#   ANDROID_KEY_PASSWORD
+# A job in an environment can read an organization secret also.
+# The `release` environment has no required reviewers on purpose while the repository is
+# private, because only the maintainers can start a release.
+# TODO(public repository): before the repository becomes public, give the `release`
+# environment required reviewers, so that a maintainer approves each release job.
+
+jobs:
+  # ---------------------------------------------------------------------------------
+  # Resolve the tag + version once, and probe which optional signing/publish secrets
+  # exist. Secrets can't be referenced in job-level `if:`, so we surface booleans as
+  # job outputs that downstream jobs gate on.
+  # ---------------------------------------------------------------------------------
+  preflight:
+    name: Preflight (resolve version + probe secrets)
+    runs-on: ubuntu-latest
+    environment: release   # reads the signing secrets to probe them
+    outputs:
+      ref: ${{ steps.resolve.outputs.ref }}
+      version: ${{ steps.resolve.outputs.version }}
+      version_code: ${{ steps.resolve.outputs.version_code }}
+      has_play: ${{ steps.secrets.outputs.has_play }}
+      has_android_signing: ${{ steps.secrets.outputs.has_android_signing }}
+      has_wear_play: ${{ steps.secrets.outputs.has_wear_play }}
+      has_ios: ${{ steps.secrets.outputs.has_ios }}
+      has_macos_signing: ${{ steps.secrets.outputs.has_macos_signing }}
+      has_macos_notarization: ${{ steps.secrets.outputs.has_macos_notarization }}
+      has_msi_signing: ${{ steps.secrets.outputs.has_msi_signing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          # This job runs only Python from this repository. The token is read-only, and the
+          # next step uses the credentials to fetch master.
+
+      - name: Refuse a tag that is not on master
+        # release.yml cuts tags only from master, but a tag pushed by hand, or a manual run
+        # of this workflow, can name any commit. Build and publish only reviewed code.
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+            echo "::error::Refusing to build: $(git rev-parse HEAD) is not on master."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Resolve version from tag
+        id: resolve
+        # The ref arrives via env, never interpolated into the script body: a workflow_dispatch
+        # input is attacker-controllable text, and `${{ }}` inside `run:` is substituted before
+        # bash ever sees it (a quote in the value would otherwise break out into the shell, and
+        # into the `python3 -c` string literal).
+        env:
+          REF: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Bash's [[ =~ ]], not grep: grep matches line-by-line, so a multi-line input could
+          # smuggle extra key=value pairs into $GITHUB_OUTPUT. Anchoring the whole string also
+          # rejects a branch name or an unrelated v* tag, which would otherwise build for an
+          # hour of macOS/Windows runner time and publish a Release with versionCode 1.
+          if [[ ! "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Refusing to build '$REF': not a v<year>.<week>.<count> release tag."
+            exit 1
+          fi
+          VERSION="${REF#v}"
+          CODE="$(python3 -c "import os, sys; sys.path.insert(0, 'scripts'); import cut_version; print(cut_version.version_code(os.environ['REF'][1:]))")"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Building $REF -> version $VERSION (code $CODE)"
+
+      - name: Probe optional secrets
+        id: secrets
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          ANDROID_KEYSTORE_GPG_PASSPHRASE: ${{ secrets.ANDROID_KEYSTORE_GPG_PASSPHRASE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          WEAR_PLAY_ENABLED: ${{ secrets.WEAR_PLAY_ENABLED }}
+          # The iOS leg needs ALL of these, not just the certificate: the archive
+          # authenticates to Apple with the App Store Connect API key (it drives
+          # -allowProvisioningUpdates), so gating on the cert alone would let the job start
+          # and then fail deep inside a ~20-minute macOS archive with a signing error.
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          ASC_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          MSI_SIGNING_PFX_BASE64: ${{ secrets.MSI_SIGNING_PFX_BASE64 }}
+          MSI_SIGNING_STORE_PASS: ${{ secrets.MSI_SIGNING_STORE_PASS }}
+        run: |
+          emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
+          all_set() { for v in "$@"; do [ -n "$v" ] || return 1; done; }
+
+          all_set "${PLAY_SERVICE_ACCOUNT_JSON:-}" && emit has_play true || emit has_play false
+          # The upload keystore is a GPG-encrypted file in the repository. The gate needs the
+          # file and all four secrets: a tag from before the file has no keystore to decrypt,
+          # and an absent password stops the build late, in the Gradle signing task.
+          [ -f signing/upload.keystore.gpg ] \
+            && all_set "${ANDROID_KEYSTORE_GPG_PASSPHRASE:-}" "${ANDROID_KEYSTORE_PASSWORD:-}" \
+                       "${ANDROID_KEY_ALIAS:-}" "${ANDROID_KEY_PASSWORD:-}" \
+            && emit has_android_signing true || emit has_android_signing false
+          # Opt-in flag, not a credential: the Wear app is a SEPARATE Play listing, so its
+          # upload must stay off until that listing actually exists (Play 404s otherwise).
+          all_set "${WEAR_PLAY_ENABLED:-}" && emit has_wear_play true || emit has_wear_play false
+
+          all_set "${IOS_CERTIFICATE_BASE64:-}" "${IOS_CERTIFICATE_PASSWORD:-}" \
+                  "${ASC_API_KEY_BASE64:-}" "${ASC_API_KEY_ID:-}" "${ASC_API_ISSUER_ID:-}" \
+            && emit has_ios true || emit has_ios false
+
+          all_set "${MACOS_CERTIFICATE_BASE64:-}" "${MACOS_SIGNING_IDENTITY:-}" \
+            && emit has_macos_signing true || emit has_macos_signing false
+          # Notarization is a strict superset of signing: Apple will not notarize an
+          # unsigned bundle, so this is reported separately and consumed as signing AND
+          # notarization rather than as an independent capability.
+          all_set "${MACOS_NOTARY_APPLE_ID:-}" "${MACOS_NOTARY_PASSWORD:-}" "${MACOS_NOTARY_TEAM_ID:-}" \
+            && emit has_macos_notarization true || emit has_macos_notarization false
+
+          all_set "${MSI_SIGNING_PFX_BASE64:-}" "${MSI_SIGNING_STORE_PASS:-}" \
+            && emit has_msi_signing true || emit has_msi_signing false
+
+  # ---------------------------------------------------------------------------------
+  # Desktop: one runner per OS, Nucleus packaging + the electron-builder update
+  # manifests. THIS is what makes desktop self-update work (§6.1).
+  # ---------------------------------------------------------------------------------
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    needs: preflight
+    environment: release   # reads the macOS and Windows signing secrets
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest       # -> .dmg + .zip (the updater's silent-install path) + latest-mac.yml
+          - os: windows-latest     # -> .msi + latest.yml
+          - os: ubuntu-latest      # -> .AppImage + latest-linux.yml
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # git-bash on the Windows runner; keeps find/cp/gradlew invocations identical.
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # git describe needs the tag to resolve the version (§4)
+          fetch-tags: true
+          submodules: 'true'
+          lfs: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          # The build runs third-party Gradle plugins. Do not keep the token in .git/config.
+          persist-credentials: false
+
+      # The JetBrains JDK, not Temurin. See "The JDK" at the top of this file.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      # Used by the staging step below. setup-python provides `python` on all three
+      # runners (the Windows images do not ship a `python3` shim).
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      # The full project graph (incl. Android modules) configures even for a desktop-only
+      # task, so the Android SDK must be present on every desktop runner.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          # The action's default package list still asks for the obsolete 'tools' package, which
+          # Google removed from the SDK repository. sdkmanager then fails the job before Gradle runs.
+          packages: 'platform-tools'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # -------------------------------------------------------------------------------
+      # macOS Developer ID signing + notarization (§7). Dormant until the secrets exist.
+      #
+      # This configures the PACKAGING task rather than post-processing its output, which
+      # is not a style preference: notarization staples a ticket into the .dmg/.zip and
+      # therefore changes their bytes. Signing after packaging would leave the generated
+      # latest-mac.yml describing the pre-staple bytes, and the updater rejects a download
+      # whose sha512 does not match (ChecksumException, plan §10).
+      #
+      # The Nucleus plugin reads these as Gradle PROPERTIES (there is no environment-
+      # variable fallback), so they are written to the runner's gradle.properties rather
+      # than passed as -P flags, which would put the notary password in the process list.
+      # -------------------------------------------------------------------------------
+      - name: Configure macOS signing + notarization
+        if: runner.os == 'macOS' && needs.preflight.outputs.has_macos_signing == 'true'
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          HAS_NOTARIZATION: ${{ needs.preflight.outputs.has_macos_notarization }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/desktop-signing.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$MACOS_CERTIFICATE_BASE64" | base64 -d > "$RUNNER_TEMP/desktop-cert.p12"
+          security import "$RUNNER_TEMP/desktop-cert.p12" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          # Without this, codesign prompts for keychain access and hangs the runner.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+
+          PROPS="${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"
+          mkdir -p "$(dirname "$PROPS")"
+          {
+            echo "compose.desktop.mac.sign=true"
+            echo "compose.desktop.mac.signing.identity=$MACOS_SIGNING_IDENTITY"
+            echo "compose.desktop.mac.signing.keychain=$KEYCHAIN"
+            if [ "$HAS_NOTARIZATION" = "true" ]; then
+              echo "compose.desktop.mac.notarization.appleID=$MACOS_NOTARY_APPLE_ID"
+              echo "compose.desktop.mac.notarization.password=$MACOS_NOTARY_PASSWORD"
+              echo "compose.desktop.mac.notarization.teamID=$MACOS_NOTARY_TEAM_ID"
+            fi
+          } >> "$PROPS"
+          echo "macOS signing configured (notarization: $HAS_NOTARIZATION)"
+
+      # Windows Authenticode signing (§7). Dormant until the secrets exist. The desktop
+      # build script signs the MSI when MSI_SIGNING_STORE_FILE names a .pfx file, so this
+      # step writes the file from the base64 secret, the same way as the Android keystore.
+      - name: Decode MSI signing certificate
+        if: runner.os == 'Windows' && needs.preflight.outputs.has_msi_signing == 'true'
+        env:
+          MSI_SIGNING_PFX_BASE64: ${{ secrets.MSI_SIGNING_PFX_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$MSI_SIGNING_PFX_BASE64" | base64 -d > "$RUNNER_TEMP/msi-signing.pfx"
+          echo "MSI_SIGNING_STORE_FILE=$RUNNER_TEMP/msi-signing.pfx" >> "$GITHUB_ENV"
+
+      - name: Package desktop distributable + update manifest
+        env:
+          # Read with MSI_SIGNING_STORE_FILE from the step above. Without that file the
+          # MSI is unsigned (SmartScreen warning). Do not set MSI_SIGNING_STORE_FILE here:
+          # a step env value replaces the value that the step above wrote to GITHUB_ENV.
+          MSI_SIGNING_STORE_PASS: ${{ secrets.MSI_SIGNING_STORE_PASS }}
+        run: |
+          # packageDistributionForCurrentOS, NOT packageReleaseDistributionForCurrentOS: the
+          # latter routes through ProGuard, which is unconfigured here and would strip a
+          # reflection-heavy app (Kodein DI + kotlinx.serialization).
+          ./gradlew :app:desktop:packageDistributionForCurrentOS \
+            -Psnapshotpb.enableAutoUpdater=true \
+            --stacktrace -Dorg.gradle.console=plain
+
+      - name: Stage installers + manifests
+        # Delegated to a tested script rather than a shell find-loop because a plain copy
+        # is WRONG on macOS: Nucleus runs electron-builder once per target format into its
+        # own directory, so Dmg and Zip each emit their own latest-mac.yml listing only
+        # their own installer. Copying both into one directory makes the second clobber the
+        # first, and the Release then advertises only one of the two — silently losing
+        # either the .dmg or, worse, the .zip that is the sole format macOS can silently
+        # install-and-restart from. The script merges them into one manifest and recomputes
+        # sha512/size from the staged bytes so notarization cannot desync them (§6.1, §10).
+        #
+        # It exits non-zero when no manifest exists at all: a Release without one looks
+        # healthy but can never be updated from.
+        run: |
+          set -euo pipefail
+          python scripts/stage_release_manifest.py --build-dir app/desktop/build --dist-dir dist
+          echo "Staged for ${{ matrix.os }}:"; ls -la dist/
+
+      - name: Upload desktop artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.os }}
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------
+  # Android + Wear: build the release AABs (signed when the keystore secret is present,
+  # §7). Always attach them to the GitHub Release for QA; Play upload is a separate,
+  # gated job.
+  # ---------------------------------------------------------------------------------
+  android:
+    name: Android + Wear (AAB)
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: release   # reads the upload keystore secrets
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: 'true'
+          lfs: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          # The build runs third-party Gradle plugins. Do not keep the token in .git/config.
+          persist-credentials: false
+
+      # The JetBrains JDK, not Temurin. See "The JDK" at the top of this file.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          # The action's default package list still asks for the obsolete 'tools' package, which
+          # Google removed from the SDK repository. sdkmanager then fails the job before Gradle runs.
+          packages: 'platform-tools'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # This step must come before the build: the release signingConfig exists only when
+      # ANDROID_KEYSTORE_FILE names the decrypted keystore (§7). gpg reads the passphrase
+      # from stdin, because a --passphrase flag puts it in the process list.
+      - name: Decrypt upload keystore
+        if: needs.preflight.outputs.has_android_signing == 'true'
+        env:
+          ANDROID_KEYSTORE_GPG_PASSPHRASE: ${{ secrets.ANDROID_KEYSTORE_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_GPG_PASSPHRASE" | gpg --batch --yes --quiet \
+            --pinentry-mode loopback --passphrase-fd 0 \
+            --output "$RUNNER_TEMP/upload.keystore" --decrypt signing/upload.keystore.gpg
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+
+      - name: Build release bundles
+        env:
+          # Consumed by the dormant release signingConfig in app/android + app/wear.
+          # Unset -> unsigned AAB (fine for the QA artifact; Play upload is gated on it).
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # AABs go to Play; the APKs are the sideload/QA artifacts attached to the GitHub
+          # Release (§6.2), since a .aab cannot be installed directly on a device.
+          ./gradlew :app:android:bundleRelease :app:wear:bundleRelease \
+            :app:android:assembleRelease :app:wear:assembleRelease \
+            --stacktrace -Dorg.gradle.console=plain
+
+      - name: Stage AABs + APKs
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find app -type f -path '*/outputs/bundle/release/*.aab' -exec cp -v {} dist/ \;
+          find app -type f -path '*/outputs/apk/release/*.apk' -exec cp -v {} dist/ \;
+          echo "Staged Android artifacts:"; ls -la dist/
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------
+  # Browser (Compose for Wasm). validation.yml already builds this target on every PR, so
+  # a release that omitted it would be the only channel silently stuck on an old build.
+  # Produces a static site bundle and attaches it to the GitHub Release as a tarball. This
+  # repository does not deploy it: snapshotpb.com hosts the web app. The deploy workflow of
+  # the snapshotpb.com repository does not build the app. It names one release tag and
+  # downloads snapshotpb-web-<version>.tar.gz from that Release. Thus keep the name of the
+  # asset, and keep index.html at the root of the archive. Not part of the Nucleus
+  # auto-update channel, because the browser always serves the latest bundle.
+  # ---------------------------------------------------------------------------------
+  browser:
+    name: Browser (Wasm)
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: 'true'
+          lfs: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          # The build runs third-party Gradle plugins. Do not keep the token in .git/config.
+          persist-credentials: false
+
+      # The JetBrains JDK, not Temurin. See "The JDK" at the top of this file.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          # The action's default package list still asks for the obsolete 'tools' package, which
+          # Google removed from the SDK repository. sdkmanager then fails the job before Gradle runs.
+          packages: 'platform-tools'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Build wasm distribution
+        run: |
+          ./gradlew :app:browser:wasmJsBrowserDistribution \
+            --stacktrace -Dorg.gradle.console=plain
+
+      - name: Stage wasm bundle
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Locate the bundle by its index.html rather than hardcoding the Kotlin/Wasm output
+          # layout (build/dist/wasmJs/productionExecutable), which has moved between Kotlin
+          # releases. Deepest-but-first match under dist/ is the real document root.
+          SRC="$(dirname "$(find app/browser/build -type f -name 'index.html' -path '*dist*' | head -1)")"
+          if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
+            echo "::error::No wasm bundle (index.html) found under app/browser/build."
+            exit 1
+          fi
+          echo "Bundling $SRC"
+          tar -czf "dist/snapshotpb-web-${VERSION}.tar.gz" -C "$SRC" .
+          ls -la dist/
+
+      - name: Upload browser artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------
+  # Zepp OS (Amazfit) watch app (§6.5). `npm run build` in app/zepp runs
+  # scripts/stamp-version.mjs, which writes the version from `git describe` into
+  # app.json when CI is set. On a clean checkout of the tag, the .zab thus gets the tag
+  # version. The job attaches the unsigned .zab to the GitHub Release. It does not sign
+  # the package and does not upload it to the Zepp store: the owner decides on these.
+  # ---------------------------------------------------------------------------------
+  zepp:
+    name: Zepp OS (.zab)
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0          # git describe needs the tag to resolve the version (§4)
+          fetch-tags: true
+          submodules: 'true'      # build-proto reads the Configuration-Protocol submodule
+          lfs: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          # npm ci runs the install scripts of third-party packages. Do not keep the token
+          # in .git/config.
+          persist-credentials: false
+
+      # The same Node version and npm cache as zepp-validation.yml. npm ci checks each
+      # package against the integrity hash in package-lock.json, so the cache cannot
+      # change what the build installs.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app/zepp/package-lock.json
+
+      - name: Install dependencies
+        working-directory: app/zepp
+        run: npm ci
+
+      - name: Build Zepp app
+        working-directory: app/zepp
+        env:
+          # stamp-version.mjs writes app.json only when CI is set. GitHub sets CI on every
+          # runner, but this value makes the dependency visible.
+          CI: 'true'
+        run: npm run build
+
+      # A dirty tree gives a `-dev` version (§4). The build regenerates the tracked
+      # src/protocol/proto.js before it stamps the version, so a difference in that file
+      # makes the tree dirty. Check every app.json and the manifest in the .zab, not only
+      # the app.json in the checkout, because the package is what a user installs.
+      - name: Check the .zab version
+        working-directory: app/zepp
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          VERSION_CODE: ${{ needs.preflight.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          if ! python3 - <<'EOF'
+          import glob, io, json, os, sys, zipfile
+
+          want = {"name": os.environ["VERSION"], "code": int(os.environ["VERSION_CODE"])}
+          archives = glob.glob("dist/*.zab")
+          if len(archives) != 1:
+              sys.exit(f"expected one .zab in app/zepp/dist, found {len(archives)}: {archives}")
+
+          found = []
+
+          def scan(zf, prefix):
+              for name in zf.namelist():
+                  if name == "manifest.json":
+                      for zpk in json.loads(zf.read(name)).get("zpks", []):
+                          found.append((prefix + name + ":" + zpk.get("name", "?"), zpk.get("version")))
+                  elif name.endswith("app.json"):
+                      found.append((prefix + name, json.loads(zf.read(name))["app"]["version"]))
+                  if name.endswith((".zip", ".zpk", ".ip-package")):
+                      try:
+                          scan(zipfile.ZipFile(io.BytesIO(zf.read(name))), prefix + name + "!/")
+                      except zipfile.BadZipFile:
+                          pass
+
+          scan(zipfile.ZipFile(archives[0]), archives[0] + "!/")
+          if not found:
+              sys.exit("found no app.json and no manifest version in the .zab")
+          wrong = [(path, got) for path, got in found if got != want]
+          for path, got in wrong:
+              print(f"{path}: {got}, expected {want}")
+          if wrong:
+              sys.exit(1)
+          print(f"OK - {len(found)} version entries are {want}")
+          EOF
+          then
+            echo "::error::The .zab does not have the version of the tag. Changed files:"
+            git status --porcelain
+            exit 1
+          fi
+
+      - name: Stage .zab
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # zeus names the package with the app ID and a build time stamp. A fixed name
+          # agrees with the other Release assets (snapshotpb-web-<version>.tar.gz).
+          cp -v app/zepp/dist/*.zab "dist/snapshotpb-zepp-${VERSION}.zab"
+          ls -la dist/
+
+      - name: Upload Zepp artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: zepp
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------------
+  # Create the GitHub Release. GATED behind the `release` Environment so a reviewer must
+  # approve (configure required reviewers in repo settings to activate; until then it
+  # runs unblocked — wired dormant, §7). MUST be non-prerelease + non-draft so the
+  # Nucleus updater's /releases/latest sees it (§10).
+  # ---------------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------------
+  # The application document of the manual. The manual repository (SnapshotPB-Manual)
+  # renders it beside the firmware document. It travels with the release, so the manual
+  # that describes this app comes from this app and from nothing else. The protocol
+  # submodule is needed: each shared key of the document is checked against it.
+  # ---------------------------------------------------------------------------------
+  manual-document:
+    name: Manual document
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Write the application document
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          python3 scripts/manual_app_document.py --version "$VERSION" \
+            --out "dist/snapshotpb-app-${VERSION}-manual-document.json"
+
+      - name: Upload the application document
+        uses: actions/upload-artifact@v7
+        with:
+          name: manual-document
+          path: dist/
+          if-no-files-found: error
+
+  create-release:
+    name: Publish GitHub Release
+    needs: [preflight, desktop, android, browser, zepp, manual-document]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write   # create the GitHub Release and upload assets
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Flatten assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          # Every runner's output goes into one flat directory. If two files have the same
+          # basename, one would replace the other (or `cp -n` would drop one with no error),
+          # and the Release would ship without an installer. Stop the job instead.
+          # fail_on_unmatched_files does NOT catch this, because it checks only the glob.
+          collision=0
+          while IFS= read -r -d '' file; do
+            name="$(basename "$file")"
+            if [ -e "release-assets/$name" ]; then
+              echo "::error::Two release assets have the name '$name' (second: $file)."
+              collision=1
+              continue
+            fi
+            cp -v "$file" "release-assets/$name"
+          done < <(find artifacts -type f -print0 | sort -z)
+          if [ "$collision" -ne 0 ]; then
+            exit 1
+          fi
+          echo "Release assets:"; ls -la release-assets/
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ needs.preflight.outputs.ref }}
+          name: ${{ needs.preflight.outputs.version }}
+          # Commit-derived notes since the previous tag. Cheap, and it means a release cut
+          # by an operator from the Actions tab is never an unexplained bag of binaries.
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
+          files: release-assets/*
+
+  # ---------------------------------------------------------------------------------
+  # Publish Android + Wear to Google Play (internal track). Dormant until the Play
+  # service-account secret exists and the build is signed with the upload keystore (§6.2, §7).
+  # ---------------------------------------------------------------------------------
+  publish-play:
+    name: Publish to Google Play
+    needs: [preflight, android]
+    if: needs.preflight.outputs.has_play == 'true' && needs.preflight.outputs.has_android_signing == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: android
+          path: dist
+
+      - name: Write Play service account
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play.json"
+
+      # The phone and Wear AABs share a versionCode but are DISTINCT Play apps
+      # (com.snapshotpb.configuration vs ...configuration.wear), each with its own listing
+      # and its own edit. Each step must therefore name exactly ONE file: `dist/*.aab`
+      # matches both, and the action uploads every match into the single edit opened for
+      # `packageName`, which Play rejects on a package-name mismatch.
+      - name: Upload phone AAB to Play (internal)
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play.json
+          packageName: com.snapshotpb.configuration
+          releaseFiles: dist/android-release.aab
+          track: internal
+          status: completed
+
+      # Gated separately on WEAR_PLAY_ENABLED rather than riding on has_play: the Wear app
+      # needs its own Play listing to exist first, and uploading to a package Play has
+      # never seen fails the whole job — which would also strand an otherwise-successful
+      # phone upload behind a red run.
+      - name: Upload Wear AAB to Play (internal)
+        if: needs.preflight.outputs.has_wear_play == 'true'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJson: ${{ runner.temp }}/play.json
+          packageName: com.snapshotpb.configuration.wear
+          releaseFiles: dist/wear-release.aab
+          track: internal
+          status: completed
+
+  # ---------------------------------------------------------------------------------
+  # Publish iOS to App Store Connect (§6.3). Dormant until the Apple secrets exist — the
+  # has_ios gate requires the distribution certificate AND the full App Store Connect API
+  # key triple, so the job is either fully equipped or does not start.
+  #
+  # Everything else it needs is committed: the shared iosApp.xcscheme, ExportOptions.plist,
+  # and a bundle identifier no longer derived from TEAM_ID. The archive step gives the
+  # version from the tag (§4) to xcodebuild as MARKETING_VERSION and CURRENT_PROJECT_VERSION
+  # build settings. A command-line build setting overrides Config.xcconfig, and the tracked
+  # file stays unchanged. An edit to that file would make `git describe --dirty` report a
+  # dirty tree, and the Gradle phase would then stamp a `-dev+dirty` version.
+  # ---------------------------------------------------------------------------------
+  publish-ios:
+    name: Publish to App Store Connect
+    needs: preflight
+    if: needs.preflight.outputs.has_ios == 'true'
+    runs-on: macos-latest
+    environment: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          submodules: 'true'
+          lfs: 'true'
+          ref: ${{ needs.preflight.outputs.ref }}
+          # The build runs third-party Gradle plugins. Do not keep the token in .git/config.
+          persist-credentials: false
+
+      # The upload step sends the build only when the committed export options set
+      # `destination = upload`. With `export`, xcodebuild writes an .ipa file, sends nothing
+      # and reports success, so the job would pass with no build in App Store Connect.
+      # Check this before the archive, which takes about 20 minutes.
+      - name: Check the export options
+        run: |
+          set -euo pipefail
+          DESTINATION="$(/usr/libexec/PlistBuddy -c 'Print :destination' iosApp/ExportOptions.plist)"
+          if [ "$DESTINATION" != "upload" ]; then
+            echo "::error::iosApp/ExportOptions.plist sets destination '$DESTINATION', not 'upload'."
+            exit 1
+          fi
+
+      # The JetBrains JDK, not Temurin. See "The JDK" at the top of this file.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: 'jetbrains'
+          java-version: '21'
+
+      # The Xcode target's "Compile Kotlin Framework" phase shells out to
+      # `./gradlew :app:ios:embedAndSignAppleFrameworkForXcode`, which configures the whole
+      # project graph — including the Android modules — so this runner needs the Android
+      # SDK and a warm Gradle cache exactly like the desktop leg. There is deliberately no
+      # separate `:app:ios:build` step: that phase runs first inside the archive, so a
+      # Kotlin failure surfaces just as early, and pre-building would additionally link the
+      # simulator target and run tests that the archive does not need.
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+          # The action's default package list still asks for the obsolete 'tools' package, which
+          # Google removed from the SDK repository. sdkmanager then fails the job before Gradle runs.
+          packages: 'platform-tools'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      # -------------------------------------------------------------------------------
+      # Signing uses an App Store Connect API key with -allowProvisioningUpdates, so Xcode
+      # resolves (or creates) the distribution profile itself. That avoids storing a
+      # .mobileprovision as a secret and keeping its name in sync with the Apple portal —
+      # a binding that silently rots when a profile is regenerated. Only the distribution
+      # certificate has to be installed by hand.
+      # -------------------------------------------------------------------------------
+      - name: Install signing material
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+          ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/app-signing.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$IOS_CERTIFICATE_BASE64" | base64 -d > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$IOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          # Without this, codesign blocks on a GUI keychain-access prompt and the job hangs
+          # until it times out.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # Keep login.keychain in the search list: dropping it hides the Apple WWDR
+          # intermediate certificate, and codesign then fails to build the trust chain.
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+
+          # xcodebuild reads the API key from the file that -authenticationKeyPath names.
+          # The archive and the upload both use this one file.
+          printf '%s' "$ASC_API_KEY_BASE64" | base64 -d \
+            > "$RUNNER_TEMP/AuthKey_${ASC_API_KEY_ID}.p8"
+
+      - name: Archive
+        env:
+          ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          VERSION_CODE: ${{ needs.preflight.outputs.version_code }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_API_KEY_ID}.p8"
+          # App Store Connect rejects a build whose number is not strictly greater than the
+          # last one uploaded for the same marketing version. One tag normally means one
+          # build, but re-running this job for the same tag (a transient upload failure)
+          # would otherwise resubmit an already-used number, so the attempt is folded in
+          # (plan §3, iOS caveat). Attempt 1 is the unmodified code.
+          BUILD_NUMBER=$(( VERSION_CODE + RUN_ATTEMPT - 1 ))
+          echo "Archiving version $VERSION (build $BUILD_NUMBER)"
+          # CODE_SIGN_IDENTITY is overridden on the command line because the project pins
+          # "Apple Development" in its Release configuration (a project-template default
+          # that suits on-device debugging). Archiving with it would produce a
+          # development-signed app that App Store Connect rejects. Overriding here rather
+          # than editing the .pbxproj keeps local development working unchanged.
+          xcodebuild -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/iosApp.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            archive
+
+      # Apple deprecated `xcrun altool --upload-app`, and a future Xcode can remove it.
+      # ExportOptions.plist sets `destination` to `upload`, so -exportArchive signs the
+      # app and sends it to App Store Connect in one command. The job writes no .ipa.
+      # The upload uses the same App Store Connect API key as the archive. Xcode 14
+      # removed iTMSTransporter, and the Transporter app comes only from the Mac App
+      # Store, so a GitHub macOS runner does not have it. xcodebuild needs no other tool,
+      # and it exits with an error when the upload fails.
+      - name: Upload to App Store Connect
+        env:
+          ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_API_KEY_ID}.p8"
+          # -exportPath is still necessary: xcodebuild writes its export logs there.
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/iosApp.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist iosApp/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_API_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_API_ISSUER_ID"

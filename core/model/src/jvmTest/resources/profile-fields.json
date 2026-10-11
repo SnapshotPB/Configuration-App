@@ -1,0 +1,15 @@
+[
+  {"key": "FIRE_RATE_CAP", "unit": "TENTHS_BPS", "min": 0, "max": 1000, "group": "BASIC", "affectsMaxBps": true},
+  {"key": "EYE_THRESHOLD", "unit": "PERCENT", "min": 1, "max": 100, "group": "EYE", "affectsMaxBps": false},
+  {"key": "EYE_DEBOUNCE", "unit": "TENTHS_MS", "min": 0, "max": 99999, "group": "EYE", "affectsMaxBps": true},
+  {"key": "COCKING_SOLENOID_TIMEOUT", "unit": "TENTHS_MS", "min": 1, "max": 99999, "group": "EYE", "affectsMaxBps": true},
+  {"key": "SEAR_SOLENOID_DWELL", "unit": "TENTHS_MS", "min": 0, "max": 99999, "group": "TIMING", "affectsMaxBps": false},
+  {"key": "COCKING_SOLENOID_DELAY", "unit": "TENTHS_MS", "min": 0, "max": 99999, "group": "TIMING", "affectsMaxBps": true},
+  {"key": "COCKING_SOLENOID_DWELL_OPEN", "unit": "TENTHS_MS", "min": 0, "max": 99999, "group": "TIMING", "affectsMaxBps": true},
+  {"key": "COCKING_SOLENOID_DWELL_CLOSED", "unit": "TENTHS_MS", "min": 0, "max": 99999, "group": "TIMING", "affectsMaxBps": true},
+  {"key": "TRIGGER_DEBOUNCE_ON", "unit": "TENTHS_MS", "min": 1, "max": 99999, "group": "TRIGGER", "affectsMaxBps": false},
+  {"key": "TRIGGER_DEBOUNCE_OFF", "unit": "TENTHS_MS", "min": 1, "max": 99999, "group": "TRIGGER", "affectsMaxBps": false},
+  {"key": "RAMPING_CUSTOM_MULTIPLIER", "unit": "TENTHS_MULTIPLE", "min": 0, "max": 99999, "group": "RAMPING", "affectsMaxBps": false},
+  {"key": "RAMPING_CUSTOM_TRIGGER_PULLS", "unit": "COUNT", "min": 0, "max": 9999, "group": "RAMPING", "affectsMaxBps": false},
+  {"key": "RAMPING_CUSTOM_ROF_MINIMUM", "unit": "BPS", "min": 0, "max": 9999, "group": "RAMPING", "affectsMaxBps": false}
+]

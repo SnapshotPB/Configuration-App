@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Snapshot.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    </style>
+
+    <style name="Theme.Snapshot.Splash" parent="Theme.SplashScreen">
+        <item name="postSplashScreenTheme">@style/Theme.Snapshot.Base</item>
+    </style>
+</resources>

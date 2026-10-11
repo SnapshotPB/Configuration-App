@@ -1,0 +1,317 @@
+<resources>
+    <string name="app_name">Snapshot PB</string>
+    <string name="navigation_back">Back</string>
+    <!-- Shows the current vs. maximum character count for a length-limited text field, e.g. "7/10" -->
+    <string name="device_field_char_counter">%1$d/%2$d</string>
+    <!-- Add Device Screen -->
+    <string name="add_device_screen_title">Add Device</string>
+    <string name="add_device_screen_image_picker">Take Photo</string>
+    <string name="add_device_screen_gallery_picker">Select from Gallery</string>
+    <string name="add_device_screen_device_name_label">Device Name</string>
+    <string name="add_device_screen_image_config_label">Device Photo</string>
+    <string name="add_device_screen_save_button">Save Device</string>
+    <!-- Device Browse Screen -->
+    <string name="device_screen_title">Devices</string>
+    <string name="device_screen_active_profile">Active Profile: %1$s</string>
+    <string name="device_screen_no_profiles">No Profiles</string>
+    <string name="device_screen_list_discovered_devices">Discovered Devices</string>
+    <string name="device_screen_saved_configurations">Saved Configurations</string>
+    <string name="device_screen_no_saved_devices">No saved devices.</string>
+    <string name="device_screen_bluetooth_options">Bluetooth Options</string>
+    <string name="app_version_label">Version %1$s</string>
+    <!-- The name of a new device. Use a maximum of 10 characters (Device.MAX_NAME_LENGTH). -->
+    <string name="device_default_name">SnapshotPB</string>
+    <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->
+    <string name="device_tap_to_connect">Tap to connect &#8226; [#%1$s]</string>
+    <!-- Fallback label for a board with no user-given name: name, bullet, short id -->
+    <string name="device_fallback_name">%1$s &#8226; [#%2$s]</string>
+    <!-- Shown in place of a firmware version the board has not reported. Never invent a number here. -->
+    <string name="firmware_version_unknown">Unknown</string>
+    <!-- Profile Screen -->
+    <string name="profile_badge_description">Profile Badge</string>
+    <string name="profile_screen_title">Device Profiles</string>
+    <string name="profile_settings_title">Profile Settings</string>
+    <string name="profile_screen_details_title">Profile Details</string>
+    <string name="profile_section_basic_function">Basic Function</string>
+    <string name="profile_section_eye">Eye</string>
+    <string name="profile_section_timing_overview">Timing Overview</string>
+    <string name="profile_section_timing_overview_description">Visualizes one firing cycle from the trigger edge. The board qualifies the pull after the debounce-on time, then pulses the sear solenoid and runs the cocking solenoid sequence (delay, on, off). The debounce-off time follows the release.</string>
+    <string name="profile_section_timing">Timing</string>
+    <!-- Profile Timing Diagram -->
+    <string name="profile_timing_diagram_lane_trigger">Trigger</string>
+    <string name="profile_timing_diagram_label_ton">Debounce On</string>
+    <string name="profile_timing_diagram_label_toff">Debounce Off</string>
+    <string name="profile_timing_diagram_lane_sear">Sear</string>
+    <string name="profile_timing_diagram_lane_cocking">Cocking</string>
+    <string name="profile_timing_diagram_label_son">Sear On</string>
+    <string name="profile_timing_diagram_label_cdel">Delay</string>
+    <string name="profile_timing_diagram_label_con">On</string>
+    <string name="profile_timing_diagram_label_coff">Off</string>
+    <string name="profile_timing_diagram_label_con_eye">On until eye</string>
+    <string name="profile_timing_diagram_value_range">%1$s – %2$s</string>
+    <string name="profile_section_trigger">Trigger</string>
+    <string name="profile_section_ramping">Ramping</string>
+    <string name="profile_label_name">Name</string>
+    <string name="profile_label_name_details">Name for the given profile, limited to 10 ASCII characters.</string>
+    <string name="profile_label_fire_mode">Fire Mode</string>
+    <string name="profile_label_fire_mode_details">User preferred fire mode</string>
+    <string name="profile_fire_mode_mechanical">Mechanical</string>
+    <string name="profile_fire_mode_semi">Semi</string>
+    <string name="profile_fire_mode_trigger_only">Trigger Only</string>
+    <string name="profile_fire_mode_full_auto">Full Auto</string>
+    <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
+    <string name="profile_fire_mode_custom_ramping">Custom Ramping</string>
+    <string name="profile_label_fire_rate_cap">Fire Rate Cap</string>
+    <string name="profile_label_fire_rate_cap_details">Maximum fire rate in balls per second. The cocking solenoid closed dwell is increased if the fire rate is lower than the timing cycle allows. Set 0 for uncapped.</string>
+    <string name="profile_label_eye_mode">Eye Mode</string>
+    <string name="profile_label_eye_mode_details">Eye mode the marker supports if any</string>
+    <!-- A fire mode or an eye mode that the board reports and this app does not know -->
+    <string name="profile_mode_unknown">Unknown Mode</string>
+    <string name="profile_mode_unknown_details">The board reports a mode that this app does not know. A save keeps the mode of the board until you select a mode.</string>
+    <string name="profile_eye_mode_off">Off</string>
+    <string name="profile_eye_mode_reflective">Reflective</string>
+    <string name="profile_eye_mode_break_beam">Break Beam</string>
+    <string name="profile_label_eye_threshold">Eye Threshold</string>
+    <string name="profile_label_eye_threshold_details">Breach eye detection threshold as 0–100 percent of full scale; the eye sees a ball when the reading is below it. The app never sends 0 — the firmware would substitute its 50 percent default.</string>
+    <string name="profile_label_eye_debounce">Eye Debounce</string>
+    <string name="profile_label_eye_debounce_details">The time in milliseconds (0.1 ms steps) the eye must be within threshold to determine a ball is in the breach.</string>
+    <string name="profile_label_sear_solenoid_dwell">Sear Solenoid Dwell</string>
+    <string name="profile_label_sear_solenoid_dwell_details">The time in milliseconds (0.1 ms steps) the sear solenoid is energized during the firing cycle.</string>
+    <string name="profile_label_cocking_solenoid_delay">Cocking Solenoid Delay</string>
+    <string name="profile_label_cocking_solenoid_delay_details">The time in milliseconds (0.1 ms steps) the cocking solenoid waits after a trigger pull before energizing.</string>
+    <string name="profile_label_cocking_solenoid_dwell_open">Cocking Solenoid Dwell Open</string>
+    <string name="profile_label_cocking_solenoid_dwell_open_details">The time in milliseconds (0.1 ms steps) the cocking solenoid energizes to open the breach. When using an eye sensor, this setting is ignored.</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed">Cocking Solenoid Dwell Closed</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed_details">The time in milliseconds (0.1 ms steps) the cocking solenoid stays de-energized to close the breach and prevent the next firing cycle.</string>
+    <string name="profile_label_cocking_solenoid_timeout">Cocking Solenoid Timeout</string>
+    <string name="profile_label_cocking_solenoid_timeout_details">Anti-jam fail-open ceiling, in milliseconds (0.1 ms steps): the longest the cocking solenoid waits for the eye before closing on timing instead. Board default is 500 ms; it cannot be disabled (the app always sends a concrete value).</string>
+    <string name="profile_label_ramping_custom_multiplier">Ramping Custom Multiplier</string>
+    <string name="profile_label_ramping_custom_multiplier_details">The fire rate in ramping, as a multiple of the trigger-pull rate, after the ramping trigger-pull threshold is met. For example, 2.5× (250 percent) with 3 pulls in one second gives 7.5 balls per second.</string>
+    <string name="profile_label_ramping_custom_trigger_pulls">Ramping Custom Trigger Pulls</string>
+    <string name="profile_label_ramping_custom_trigger_pulls_details">The number of trigger pulls required in a one-second window to enter ramping for the following one second.</string>
+    <string name="profile_label_ramping_custom_rof_minimum">Ramping Custom ROF Minimum</string>
+    <string name="profile_label_ramping_custom_rof_minimum_details">A minimum rate of fire in ramping mode regardless of trigger pulls in the rolling window.</string>
+    <string name="profile_label_trigger_debounce_on">Trigger Debounce On</string>
+    <string name="profile_label_trigger_debounce_on_details">The time in milliseconds (0.1 ms steps) the trigger must be pulled to begin a firing cycle.</string>
+    <string name="profile_label_trigger_debounce_off">Trigger Debounce Off</string>
+    <string name="profile_label_trigger_debounce_off_details">The time in milliseconds (0.1 ms steps) the trigger must not be sensed before entering the trigger debounce-on cycle.</string>
+    <string name="profile_loading">Loading profile...</string>
+    <string name="profile_not_found">This profile is no longer available.</string>
+    <string name="profile_button_decrement">-</string>
+    <string name="profile_button_increment">+</string>
+    <string name="profile_marker_profile_active">Active: %1$s</string>
+    <string name="profile_marker_max_bps">Max BPS: %1$s</string>
+    <string name="profile_marker_fire_mode">Fire Mode: %1$s</string>
+    <string name="profile_marker_eye_mode">Eye Mode: %1$s</string>
+    <!-- Profile field editor shared by the phone and the watch -->
+    <string name="profile_tune_title">Tune Profile</string>
+    <string name="profile_step_fine">Fine</string>
+    <string name="profile_step_coarse">Coarse</string>
+    <!-- Value formats of a profile field: one-decimal milliseconds, a whole percent, one-decimal or whole balls per second, a one-decimal multiple -->
+    <string name="profile_value_ms">%1$s ms</string>
+    <string name="profile_value_percent">%1$d%</string>
+    <string name="profile_value_bps">%1$s BPS</string>
+    <string name="profile_value_multiple">%1$s×</string>
+    <string name="profile_value_uncapped">Uncapped</string>
+    <!-- Unit after the number in a profile field: milliseconds, percent, balls per second, a multiple -->
+    <string name="profile_unit_ms">ms</string>
+    <string name="profile_unit_percent">%</string>
+    <string name="profile_unit_bps">BPS</string>
+    <string name="profile_unit_multiple">×</string>
+    <!-- Profile Add Screen -->
+    <string name="profile_add_screen_title">Create Profile</string>
+    <string name="profile_add_screen_create_button">Create</string>
+    <!-- Configure Device Screen -->
+    <string name="profiles_device_configuration_title">Device Configuration</string>
+    <string name="profiles_device_configuration_body">Edit your device name, boot screen, and more.</string>
+    <string name="profiles_device_configuration_button">Configure</string>
+    <string name="configure_device_screen_title">Configure Device</string>
+    <string name="configure_device_screen_device_name_label">Device Name</string>
+    <string name="configure_device_screen_boot_text_label">Boot Text</string>
+    <string name="configure_device_screen_boot_text_details">Text displayed briefly when the board powers on.</string>
+    <string name="configure_device_screen_active_profile_label">Active Profile</string>
+    <string name="configure_device_screen_active_profile_details">Select which stored profile the board should use at boot.</string>
+    <string name="configure_device_screen_active_profile_empty">No profiles have been added to this device.</string>
+    <string name="configure_device_screen_lockout_label">Firing Lockout</string>
+    <string name="configure_device_screen_lockout_details">Set on the board itself; shown here for reference.</string>
+    <string name="configure_device_screen_lockout_locked">Locked — the marker will not fire</string>
+    <string name="configure_device_screen_lockout_unlocked">Unlocked</string>
+    <string name="configure_device_screen_language_label">Board Language</string>
+    <string name="configure_device_screen_language_details">The language of the menu on the board. Boot text and profile names do not change.</string>
+    <string name="configure_device_screen_language_unavailable">The board has not reported a language. Connect to the board, or update its firmware.</string>
+    <string name="board_language_en">English</string>
+    <string name="board_language_es">Spanish</string>
+    <string name="board_language_de">German</string>
+    <string name="board_language_fr">French</string>
+    <string name="configure_device_screen_brightness_label">Screen Brightness</string>
+    <string name="configure_device_screen_brightness_details">How bright the board drives its screen. One screen serves every profile.</string>
+    <string name="configure_device_screen_brightness_unavailable">The board has not reported a brightness. Connect to the board, or update its firmware.</string>
+    <string name="board_brightness_low">Low</string>
+    <string name="board_brightness_default">Default</string>
+    <string name="board_brightness_high">High</string>
+    <string name="configure_device_screen_off_delay_label">Screen Off Delay</string>
+    <string name="configure_device_screen_off_delay_details">Seconds the board leaves the screen on after the last button press. Range 1 to 999. A shot does not hold the screen on.</string>
+    <string name="configure_device_screen_off_delay_unavailable">The board has not reported a delay. Connect to the board, or update its firmware.</string>
+    <!-- A screen-off delay in seconds, e.g. "30 s" -->
+    <string name="board_screen_off_delay_seconds">%1$s s</string>
+    <!-- Display Area section on the Configure Device screen -->
+    <string name="configure_device_screen_display_window_label">Display Area</string>
+    <string name="configure_device_screen_display_window_details">The part of the board screen that the grip frame shows. Select a frame, or set your own area.</string>
+    <string name="configure_device_screen_display_window_none">The board reported no area. Select a frame, or select a custom area.</string>
+    <string name="configure_device_screen_display_window_unset">Not set</string>
+    <string name="configure_device_screen_display_window_custom">Custom area</string>
+    <string name="configure_device_screen_display_window_drawing">Drawing of the board screen with the visible area marked</string>
+    <string name="configure_device_screen_display_window_hint">Drag the marked area to move it.</string>
+    <string name="configure_device_screen_display_window_width_label">Visible width</string>
+    <string name="configure_device_screen_display_window_height_label">Visible height</string>
+    <!-- Visible area readout: width, height, then the corner offsets -->
+    <string name="configure_device_screen_display_window_summary">Width %1$s, height %2$s, at %3$s, %4$s</string>
+    <string name="grip_frame_full_panel">Full panel</string>
+    <string name="grip_frame_e1">E1 frame</string>
+    <string name="grip_frame_e2">E2 frame</string>
+    <string name="configure_device_screen_save_button">Save</string>
+    <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
+    <string name="bluetooth_needs_permission_icon">Bluetooth Icon</string>
+    <string name="bluetooth_needs_permission_title">Bluetooth</string>
+    <string name="bluetooth_needs_permission_paragraph">To find devices, this application requires permission to use Bluetooth.</string>
+    <!-- Bluetooth -->
+    <string name="start_scanning_icon_explanation">Bluetooth Icon</string>
+    <string name="start_scanning_explanation">Start scanning for Snapshot PB boards</string>
+    <string name="scanning_icon_explanation">Bluetooth Scanning Icon</string>
+    <string name="scanning_explanation">Scanning for Snapshot PB boards</string>
+    <string name="scanning_title">Scanning</string>
+    <string name="connecting_icon_explanation">Bluetooth Connecting Icon</string>
+    <string name="connecting_explanation">Configuring Snapshot PB - %1$s - %2$s</string>
+    <string name="connecting_title">Connecting</string>
+    <string name="bluetooth_disabled_icon_explanation">Disabled Bluetooth Icon</string>
+    <string name="bluetooth_disabled">Enable Bluetooth to start scanning</string>
+    <string name="bluetooth_disabled_explanation">To find devices, Bluetooth must be enabled on your system.</string>
+    <string name="bluetooth_error_settings_menu">Failed to launch system Bluetooth settings menu. Please enable Bluetooth manually.</string>
+    <!-- Permission denied (e.g. iOS: the user declined the system Bluetooth prompt) -->
+    <string name="bluetooth_permission_denied_title">Bluetooth permission denied</string>
+    <string name="bluetooth_permission_denied_paragraph">This app is not allowed to use Bluetooth. Open Settings to allow Bluetooth access, then return to scan for devices.</string>
+    <string name="bluetooth_permission_denied_action">Open Settings</string>
+    <!-- Location services off (Android API 30 and below: BLE scanning needs the system Location toggle on) -->
+    <string name="location_disabled_icon_explanation">Location Services Icon</string>
+    <string name="location_disabled_title">Turn on Location</string>
+    <string name="location_disabled_paragraph">On this version of Android, scanning for Bluetooth devices requires Location services to be on. Turn on Location, then return to scan for devices.</string>
+    <string name="location_disabled_action">Open Location Settings</string>
+    <string name="location_error_settings_menu">Failed to launch system Location settings menu. Please turn on Location manually.</string>
+    <!-- Gallery-->
+    <string name="gallery_error_mime_png_only">Only JPG and PNG images allowed</string>
+    <!-- Buttons -->
+    <string name="button_accept">Accept</string>
+    <string name="button_start_scanning">Start Scanning</string>
+    <string name="button_stop_scanning">Stop Scanning</string>
+    <string name="pair_board_title">New Board</string>
+    <string name="pair_board_explanation">Choose your Snapshot PB board in the list of the browser</string>
+    <string name="button_pair_board">Pair a Board</string>
+    <string name="button_delete">Delete</string>
+    <string name="button_add_profile">Add Profile</string>
+    <string name="button_cancel">Cancel</string>
+    <!-- Destructive-action confirmations -->
+    <string name="delete_device_dialog_title">Delete device?</string>
+    <string name="delete_device_dialog_message">%1$s and its saved profiles are removed from this app. The board itself is not changed.</string>
+    <string name="delete_profile_dialog_title">Delete profile?</string>
+    <string name="delete_profile_dialog_message">%1$s is removed locally. Save to the board afterwards to apply the change there.</string>
+    <!-- Common -->
+    <string name="common_yes">Yes</string>
+    <string name="logo_content_description">Snapshot PB Logo</string>
+    <!-- Connecting / new device flow -->
+    <string name="connecting_screen_failed_title">Couldn’t read device</string>
+    <string name="connecting_screen_failed_body">No configuration was received from %1$s. Make sure the board is powered on and in range, then try again.</string>
+    <string name="connecting_screen_back_button">Back</string>
+    <string name="connecting_step_connection">Connect to %1$s</string>
+    <string name="connecting_step_services">Confirming Device Features</string>
+    <string name="connecting_attempt">Attempt %1$d of %2$d</string>
+    <string name="connecting_step_device_info">Download Device Configuration</string>
+    <string name="connecting_step_profiles">Download Configuration Profiles</string>
+    <string name="connecting_button_finish">Finish Configuration</string>
+    <string name="connecting_title_setup">Setting Up Your Board</string>
+    <string name="connecting_title_complete">Configuration Collected!</string>
+    <string name="new_device_screen_cancel_button">Cancel</string>
+    <!-- Device sync conflict dialog -->
+    <string name="sync_conflict_dialog_title">Device settings differ</string>
+    <string name="sync_conflict_dialog_message">%1$s’s settings on the board don’t match what you have saved locally. Which values would you like to keep?</string>
+    <string name="sync_conflict_dialog_take_device">Use device values</string>
+    <string name="sync_conflict_dialog_take_local">Keep my values</string>
+    <!-- Divergence / Sync actions -->
+    <string name="device_pending_changes_banner_title">Unsaved Changes</string>
+    <string name="device_pending_changes_banner_message">You have local configuration edits that differ from the settings on the board.</string>
+    <string name="device_pending_changes_save_to_board">Save to Board</string>
+    <string name="device_pending_changes_discard">Discard Changes</string>
+    <string name="device_pending_changes_connect_to_save">Connect via Bluetooth to save changes</string>
+    <string name="device_pending_changes_lockout_to_save">The board is in lockout. Turn off the lockout switch on the board, then connect again to save changes.</string>
+    <string name="device_pending_changes_lockout_short">Board in lockout</string>
+    <string name="profile_badge_unsaved">Unsaved</string>
+    <string name="device_discovered_card_info">Board: %1$s • Version: %2$s</string>
+    <!-- Profiles screen connection card -->
+    <string name="connection_card_title">Board Connection</string>
+    <string name="connection_card_connect">Connect</string>
+    <string name="connection_card_disconnect">Disconnect</string>
+    <string name="connection_card_retry">Retry</string>
+    <string name="connection_card_cancel">Cancel</string>
+    <string name="connection_card_status_connected">Connected</string>
+    <string name="connection_card_status_disconnected">Not connected</string>
+    <string name="connection_card_status_connecting">Connecting…</string>
+    <string name="connection_card_status_failed">Connection failed</string>
+    <string name="connection_card_disconnected_hint">Connect to read the board and save changes.</string>
+    <string name="connection_card_failed_hint">Make sure the board is powered on and in range, then try again.</string>
+    <string name="connection_step_connect">Connecting to board</string>
+    <!-- Web/browser unsupported-Bluetooth block screen (Chromium-only Web Bluetooth) -->
+    <string name="unsupported_browser_title">Bluetooth isn’t available in this browser</string>
+    <string name="unsupported_browser_message">Snapshot PB pairs with your board over Bluetooth, which the web app can only do in a Chromium-based browser — Chrome, Edge, or Opera. Open this page in one of those to scan for and configure your board.</string>
+    <string name="unsupported_browser_details_show">Why not this browser?</string>
+    <string name="unsupported_browser_details_hide">Hide the details</string>
+    <string name="unsupported_browser_details_webkit">Web Bluetooth — the browser API this app uses — exists only in Chromium browsers. Safari and every browser on iPhone/iPad are built on Apple’s WebKit, which has never implemented it, so Bluetooth will not work there. On Apple devices, use the native Snapshot PB app instead.</string>
+    <string name="unsupported_browser_details_firefox">Firefox also lacks Web Bluetooth, but for a separate reason: Mozilla declined to implement it on privacy grounds.</string>
+    <string name="unsupported_browser_webkit_bug_link">View the WebKit tracking bug</string>
+    <!-- Wear OS (watch) UI -->
+    <string name="wear_section_synced_devices">Synced Devices</string>
+    <string name="wear_no_synced_devices">No Synced Devices</string>
+    <string name="wear_device_photo_description">Device photo</string>
+    <string name="wear_no_profile">No profile</string>
+    <string name="wear_profile_label">Profile: %1$s</string>
+    <string name="wear_action_grant_permissions">Grant Permissions</string>
+    <string name="wear_action_enable_bluetooth">Enable Bluetooth</string>
+    <string name="wear_action_turn_on_location">Turn on Location</string>
+    <string name="wear_action_stop_scanning">Stop Scanning</string>
+    <string name="wear_action_scan_for_boards">Scan for Boards</string>
+    <string name="wear_section_discovered_boards">Discovered Boards</string>
+    <string name="wear_searching">Searching…</string>
+    <string name="wear_discovered_board_secondary">%1$s • [#%2$s]</string>
+    <string name="wear_bluetooth_settings_error">Could not open Bluetooth settings</string>
+    <string name="wear_location_settings_error">Could not open Location settings</string>
+    <string name="wear_select_profile">Select Profile</string>
+    <!-- Profile chip subtitle on the watch: fire mode and sear dwell, e.g. "Mode: SEMI / Dwell: 4.5 ms" -->
+    <string name="wear_profile_secondary">Mode: %1$s / Dwell: %2$s ms</string>
+    <string name="wear_connecting_title">Connecting...</string>
+    <string name="wear_connected_title">Connected</string>
+    <string name="wear_connection_failed_title">Connection Failed</string>
+    <!-- Board label on the watch connect screen: board type then short id, e.g. "Snapshot PB [#A1B2]" -->
+    <string name="wear_board_with_id">%1$s [#%2$s]</string>
+    <string name="wear_step_connection">Connection</string>
+    <string name="wear_step_services">Services</string>
+    <string name="wear_step_device_info">Device Info</string>
+    <string name="wear_step_profiles">Profiles</string>
+    <string name="wear_all_data_loaded">All data loaded successfully.</string>
+    <string name="wear_unable_to_communicate">Unable to communicate with the board.</string>
+    <string name="wear_action_continue">Continue</string>
+    <string name="wear_action_back_to_list">Back to List</string>
+    <string name="wear_connected_via_ble">Connected via BLE</string>
+    <string name="wear_ble_disconnected">BLE Disconnected</string>
+    <string name="wear_tap_to_disconnect">Tap to Disconnect</string>
+    <string name="wear_tap_to_connect_directly">Tap to Connect Directly</string>
+    <string name="wear_save_succeeded">Saved to board</string>
+    <string name="wear_save_failed">Save failed</string>
+    <!-- Desktop auto-updater dialog -->
+    <string name="updater_dialog_title">Update Available</string>
+    <string name="updater_message">A new version (%1$s) is available. Would you like to update now?</string>
+    <string name="updater_downloading">Downloading update: %1$d%%</string>
+    <string name="updater_starting_download">Starting download...</string>
+    <string name="updater_error">Error: %1$s</string>
+    <string name="updater_error_unknown">Unknown error</string>
+    <string name="updater_action_update_now">Update Now</string>
+    <string name="updater_action_later">Later</string>
+    <string name="updater_action_close">Close</string>
+</resources>

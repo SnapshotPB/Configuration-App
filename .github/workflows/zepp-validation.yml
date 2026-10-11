@@ -1,0 +1,123 @@
+name: Validate Zepp OS App
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ master ]
+    types: [ opened, reopened, synchronize ]
+    paths:
+      - 'app/zepp/**'
+      - '.github/workflows/zepp-validation.yml'
+      # The parity test reads the profile field fixture in core:model, and
+      # build-proto reads the protocol submodule. A change to either must run
+      # the Zepp suite.
+      - 'core/model/**'
+      - 'core/protocol/builder/Configuration-Protocol'
+
+# A force-push should cancel the superseded run rather than queue behind it.
+concurrency:
+  group: zepp-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate-zepp:
+    name: Validate Zepp Build
+    runs-on: ubuntu-latest
+    # The virtual-board harness drives timer-based BLE callbacks; cap the job so a
+    # hung await fails the run instead of burning the default 6h.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          lfs: 'true'
+          submodules: 'true'
+
+      # The npm download cache is keyed on the committed lock file, so a new
+      # dependency version reaches CI only through a commit that changes the lock.
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app/zepp/package-lock.json
+
+      # npm ci installs exactly the versions in package-lock.json and fails when the
+      # lock file and package.json do not agree. It always starts from an empty
+      # node_modules, so a corrupt cached tree cannot enter the build.
+      - name: Install dependencies
+        run: |
+          cd app/zepp
+          npm ci
+
+      # Regenerate the protocol bindings from the Configuration-Protocol submodule
+      # before testing, so the suite runs against fresh output rather than the
+      # committed copy of src/protocol/proto.js. This is what catches protocol drift.
+      - name: Generate protocol bindings
+        run: |
+          cd app/zepp
+          npm run build-proto
+
+      - name: Run Zepp tests
+        run: |
+          cd app/zepp
+          npm test
+
+      - name: Build Zepp App
+        run: |
+          cd app/zepp
+          npm run build
+
+      # The harness lives in app/zepp/.test/ because zeus compiles every .js under the
+      # app root and copies every non-.js into the shipped package. Dot-directories are
+      # stripped by two hardcoded ignore globs inside @zeppos/zpm, not by anything this
+      # repo controls, so a zpm upgrade could start shipping test code silently. Assert
+      # it is absent instead of trusting that. Archives nest (.zab contains an
+      # .ip-package source zip), so recurse.
+      - name: Assert no test code in the release package
+        run: |
+          cd app/zepp
+          python3 - <<'EOF'
+          import glob, io, sys, zipfile
+
+          # Match on path SEGMENTS, not substrings: a leaked harness shows up as a
+          # ".test" dir if zpm's dot-strip breaks, or as a plain "test" dir if someone
+          # renames it. The app root has no legitimate test/ directory, so either is a
+          # leak. Substring matching on ".test" alone silently misses the "test" form.
+          DIR_NAMES = {".test", "test", "tests", "__tests__"}
+          SUBSTRINGS = ("vitest", "virtual-board")
+          leaks = []
+
+          def is_leak(name):
+              segs = name.split("/")
+              if any(s in DIR_NAMES for s in segs):
+                  return True
+              if any(sub in s for s in segs for sub in SUBSTRINGS):
+                  return True
+              return name.endswith((".test.js", ".spec.js"))
+
+          def scan(zf, prefix=""):
+              for name in zf.namelist():
+                  if is_leak(name):
+                      leaks.append(prefix + name)
+                  if name.endswith((".zip", ".zpk", ".ip-package")):
+                      try:
+                          with zf.open(name) as fh:
+                              scan(zipfile.ZipFile(io.BytesIO(fh.read())), prefix + name + "!/")
+                      except zipfile.BadZipFile:
+                          pass
+
+          archives = glob.glob("dist/*.zab")
+          if not archives:
+              sys.exit("no .zab produced in dist/ - build did not emit a package")
+          for a in archives:
+              scan(zipfile.ZipFile(a), a + "!/")
+
+          if leaks:
+              sys.exit("test code leaked into the release package:\n  " + "\n  ".join(leaks))
+          print(f"OK - scanned {len(archives)} archive(s), no test code shipped")
+          EOF

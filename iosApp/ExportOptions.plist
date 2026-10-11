@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for the App Store Connect leg of build-release.yml (§6.3).
+
+  Signing is AUTOMATIC rather than manual: the release job authenticates with an App
+  Store Connect API key and passes -allowProvisioningUpdates, so Xcode fetches (or
+  creates) the distribution profile itself. Manual signing would require committing a
+  provisioning-profile name here and keeping it in sync with whatever is regenerated in
+  the Apple portal — a step that silently rots. It also matches the project's
+  CODE_SIGN_STYLE = Automatic, so local development and CI do not diverge.
+
+  manageAppVersionAndBuildNumber MUST stay false. Left at its default, Xcode rewrites
+  CFBundleVersion during export, which would discard the tag-derived build number
+  that CI passes to xcodebuild as CURRENT_PROJECT_VERSION and break the "one tag = one build number" rule (§3).
+
+  destination is upload, not export. Then xcodebuild -exportArchive sends the signed
+  build to App Store Connect itself, with the same API key as the archive. This
+  replaces "xcrun altool upload-app", which Apple deprecated. The release job stops
+  when this value is not upload. Caution: an export with this file sends a build to
+  App Store Connect. For a local .ipa file only, use a copy of this file with
+  destination set to export.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+
+	<key>teamID</key>
+	<string>S9MGTJXVTV</string>
+
+	<key>signingStyle</key>
+	<string>automatic</string>
+
+	<key>destination</key>
+	<string>upload</string>
+
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+
+	<key>uploadSymbols</key>
+	<true/>
+
+	<key>stripSwiftSymbols</key>
+	<true/>
+</dict>
+</plist>

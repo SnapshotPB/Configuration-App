@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest. It adds the Demo launcher entry, which starts the app with the simulated
+  board of FakeBoard. It also adds the background location permission that the hardware tests
+  with no screen use. It merges into a debug APK only, so neither the release nor the benchmark
+  build carries the entry, the activity behind it, or the permission.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Android 10 and 11 give BLE scan results only to an app in the foreground, unless the app
+      has this permission. OtsSessionE2ETest and ConnectReliabilityE2ETest show no screen, so
+      without the permission their scans find nothing on those versions. The tests grant the
+      permission (grantHeadlessScanPermissions). The app does not ask the user for it. From
+      API 31, a scan needs no location (BLUETOOTH_SCAN with neverForLocation). Before API 29,
+      the permission does not exist.
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <application>
+        <!--
+          A trampoline, not an activity-alias: it clears the task before it starts MainActivity, so
+          the Demo entry gives a clean demo session even when the app already runs. An alias would
+          resume whatever was there, and would leave a second MainActivity answering the request bus.
+
+          The empty taskAffinity keeps this activity out of the app's own task. Sharing that task
+          makes the system resume the running app on a tap, and the demo entry then does nothing at
+          all. excludeFromRecents hides the one-frame task this activity opens instead.
+        -->
+        <activity
+            android:name=".activity.DemoActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_demo"
+            android:label="@string/demo_launcher_label"
+            android:noHistory="true"
+            android:roundIcon="@mipmap/ic_launcher_demo"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

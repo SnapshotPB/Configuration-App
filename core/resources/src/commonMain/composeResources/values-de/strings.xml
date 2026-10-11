@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Snapshot PB</string>
+    <string name="navigation_back">Zurück</string>
+    <!-- Shows the current vs. maximum character count for a length-limited text field, e.g. "7/10" -->
+    <string name="device_field_char_counter">%1$d/%2$d</string>
+    <!-- Add Device Screen -->
+    <string name="add_device_screen_title">Gerät hinzufügen</string>
+    <string name="add_device_screen_image_picker">Foto aufnehmen</string>
+    <string name="add_device_screen_gallery_picker">Aus Galerie wählen</string>
+    <string name="add_device_screen_device_name_label">Gerätename</string>
+    <string name="add_device_screen_image_config_label">Gerätefoto</string>
+    <string name="add_device_screen_save_button">Gerät speichern</string>
+    <!-- Device Browse Screen -->
+    <string name="device_screen_title">Geräte</string>
+    <string name="device_screen_active_profile">Aktives Profil: %1$s</string>
+    <string name="device_screen_no_profiles">Keine Profile</string>
+    <string name="device_screen_list_discovered_devices">Gefundene Geräte</string>
+    <string name="device_screen_saved_configurations">Gespeicherte Konfigurationen</string>
+    <string name="device_screen_no_saved_devices">Keine gespeicherten Geräte.</string>
+    <string name="device_screen_bluetooth_options">Bluetooth-Optionen</string>
+    <string name="app_version_label">Version %1$s</string>
+    <string name="device_default_name">SnapshotPB</string>
+    <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->
+    <string name="device_tap_to_connect">Zum Verbinden tippen &#8226; [#%1$s]</string>
+    <!-- Fallback label for a board with no user-given name: name, bullet, short id -->
+    <string name="device_fallback_name">%1$s &#8226; [#%2$s]</string>
+    <!-- Shown in place of a firmware version the board has not reported. Never invent a number here. -->
+    <string name="firmware_version_unknown">Unbekannt</string>
+    <!-- Profile Screen -->
+    <string name="profile_badge_description">Profilabzeichen</string>
+    <string name="profile_screen_title">Geräteprofile</string>
+    <string name="profile_settings_title">Profileinstellungen</string>
+    <string name="profile_screen_details_title">Profildetails</string>
+    <string name="profile_section_basic_function">Grundfunktion</string>
+    <string name="profile_section_eye">Auge</string>
+    <string name="profile_section_timing_overview">Timing-Übersicht</string>
+    <string name="profile_section_timing_overview_description">Zeigt einen Schusszyklus ab der Abzugsflanke. Die Platine erkennt den Zug nach der Entprellzeit Ein, dann folgen der Impuls des Sear-Magnetventils und die Abfolge des Cocking-Magnetventils (Verzögerung, Ein, Aus). Die Entprellzeit Aus folgt dem Loslassen.</string>
+    <string name="profile_section_timing">Timing</string>
+    <!-- Profile Timing Diagram -->
+    <string name="profile_timing_diagram_lane_trigger">Abzug</string>
+    <string name="profile_timing_diagram_label_ton">Entprellung ein</string>
+    <string name="profile_timing_diagram_label_toff">Entprellung aus</string>
+    <string name="profile_timing_diagram_lane_sear">Sear</string>
+    <string name="profile_timing_diagram_lane_cocking">Cocking</string>
+    <string name="profile_timing_diagram_label_son">Sear ein</string>
+    <string name="profile_timing_diagram_label_cdel">Verzögerung</string>
+    <string name="profile_timing_diagram_label_con">Ein</string>
+    <string name="profile_timing_diagram_label_coff">Aus</string>
+    <string name="profile_timing_diagram_label_con_eye">Ein bis Auge</string>
+    <string name="profile_timing_diagram_value_range">%1$s – %2$s</string>
+    <string name="profile_section_trigger">Abzug</string>
+    <string name="profile_section_ramping">Ramping</string>
+    <string name="profile_label_name">Name</string>
+    <string name="profile_label_name_details">Name des Profils, begrenzt auf 10 ASCII-Zeichen.</string>
+    <string name="profile_label_fire_mode">Feuermodus</string>
+    <string name="profile_label_fire_mode_details">Vom Benutzer bevorzugter Feuermodus</string>
+    <string name="profile_fire_mode_mechanical">Mechanisch</string>
+    <string name="profile_fire_mode_semi">Semi</string>
+    <string name="profile_fire_mode_trigger_only">Nur Abzug</string>
+    <string name="profile_fire_mode_full_auto">Vollautomatik</string>
+    <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
+    <string name="profile_fire_mode_custom_ramping">Ramping benutzerdefiniert</string>
+    <string name="profile_label_fire_rate_cap">Feuerratenbegrenzung</string>
+    <string name="profile_label_fire_rate_cap_details">Maximale Feuerrate in Bällen pro Sekunde. Die geschlossene Haltezeit des Cocking-Magnetventils wird erhöht, wenn die Feuerrate niedriger ist, als der Timing-Zyklus zulässt. 0 bedeutet keine Begrenzung.</string>
+    <string name="profile_label_eye_mode">Augenmodus</string>
+    <string name="profile_label_eye_mode_details">Augenmodus, den der Markierer unterstützt, falls vorhanden</string>
+    <!-- A fire mode or an eye mode that the board reports and this app does not know -->
+    <string name="profile_mode_unknown">Unbekannter Modus</string>
+    <string name="profile_mode_unknown_details">Die Platine meldet einen Modus, den diese App nicht kennt. Beim Speichern behält die Platine ihren Modus, bis Sie einen Modus auswählen.</string>
+    <string name="profile_eye_mode_off">Aus</string>
+    <string name="profile_eye_mode_reflective">Reflektierend</string>
+    <string name="profile_eye_mode_break_beam">Lichtschranke</string>
+    <string name="profile_label_eye_threshold">Augenschwelle</string>
+    <string name="profile_label_eye_threshold_details">Erkennungsschwelle der Augen im Breech als 0–100 Prozent des Vollausschlags; das Auge erkennt einen Ball, wenn der Messwert darunter liegt. Die App sendet nie 0 — die Firmware würde ihren Standardwert von 50 Prozent einsetzen.</string>
+    <string name="profile_label_eye_debounce">Augen-Entprellung</string>
+    <string name="profile_label_eye_debounce_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Auge innerhalb der Schwelle bleiben muss, damit ein Ball im Breech erkannt wird.</string>
+    <string name="profile_label_sear_solenoid_dwell">Haltezeit Sear-Magnetventil</string>
+    <string name="profile_label_sear_solenoid_dwell_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Sear-Magnetventil während des Schusszyklus bestromt wird.</string>
+    <string name="profile_label_cocking_solenoid_delay">Verzögerung Cocking-Magnetventil</string>
+    <string name="profile_label_cocking_solenoid_delay_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Cocking-Magnetventil nach einem Abzugszug wartet, bevor es bestromt wird.</string>
+    <string name="profile_label_cocking_solenoid_dwell_open">Haltezeit Cocking-Magnetventil offen</string>
+    <string name="profile_label_cocking_solenoid_dwell_open_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Cocking-Magnetventil bestromt wird, um den Breech zu öffnen. Bei Verwendung eines Augensensors wird diese Einstellung ignoriert.</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed">Haltezeit Cocking-Magnetventil geschlossen</string>
+    <string name="profile_label_cocking_solenoid_dwell_closed_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Cocking-Magnetventil stromlos bleibt, um den Breech zu schließen und den nächsten Schusszyklus zu verhindern.</string>
+    <string name="profile_label_cocking_solenoid_timeout">Zeitlimit Cocking-Magnetventil</string>
+    <string name="profile_label_cocking_solenoid_timeout_details">Obergrenze gegen Verklemmen, in Millisekunden (Schritte von 0,1 ms): So lange wartet das Cocking-Magnetventil höchstens auf das Auge, bevor es stattdessen nach Timing schließt. Der Standardwert der Platine ist 500 ms; er lässt sich nicht abschalten (die App sendet immer einen konkreten Wert).</string>
+    <string name="profile_label_ramping_custom_multiplier">Ramping-Multiplikator</string>
+    <string name="profile_label_ramping_custom_multiplier_details">Die Feuerrate im Ramping als Vielfaches der Abzugsrate, sobald die Ramping-Schwelle der Abzugszüge erreicht ist. Beispiel: 2,5× (250 Prozent) bei 3 Abzugszügen in einer Sekunde ergibt 7,5 Bälle pro Sekunde.</string>
+    <string name="profile_label_ramping_custom_trigger_pulls">Ramping-Abzugszüge</string>
+    <string name="profile_label_ramping_custom_trigger_pulls_details">Die Anzahl der Abzugszüge innerhalb einer Sekunde, die nötig ist, um für die folgende Sekunde in das Ramping zu wechseln.</string>
+    <string name="profile_label_ramping_custom_rof_minimum">Ramping-Mindestfeuerrate</string>
+    <string name="profile_label_ramping_custom_rof_minimum_details">Eine Mindestfeuerrate im Ramping-Modus, unabhängig von den Abzugszügen im gleitenden Zeitfenster.</string>
+    <string name="profile_label_trigger_debounce_on">Abzug-Entprellung ein</string>
+    <string name="profile_label_trigger_debounce_on_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die der Abzug gezogen sein muss, damit ein Schusszyklus beginnt.</string>
+    <string name="profile_label_trigger_debounce_off">Abzug-Entprellung aus</string>
+    <string name="profile_label_trigger_debounce_off_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die der Abzug nicht erkannt werden darf, bevor der Zyklus „Abzug-Entprellung ein“ beginnt.</string>
+    <string name="profile_loading">Profil wird geladen...</string>
+    <string name="profile_not_found">Dieses Profil ist nicht mehr verfügbar.</string>
+    <string name="profile_button_decrement">-</string>
+    <string name="profile_button_increment">+</string>
+    <string name="profile_marker_profile_active">Aktiv: %1$s</string>
+    <string name="profile_marker_max_bps">Max. BPS: %1$s</string>
+    <string name="profile_marker_fire_mode">Feuermodus: %1$s</string>
+    <string name="profile_marker_eye_mode">Augenmodus: %1$s</string>
+    <!-- Profile field editor shared by the phone and the watch -->
+    <string name="profile_tune_title">Profil abstimmen</string>
+    <string name="profile_step_fine">Fein</string>
+    <string name="profile_step_coarse">Grob</string>
+    <!-- Value formats of a profile field: one-decimal milliseconds, a whole percent, one-decimal or whole balls per second, a one-decimal multiple -->
+    <string name="profile_value_ms">%1$s ms</string>
+    <string name="profile_value_percent">%1$d&#160;%</string>
+    <string name="profile_value_bps">%1$s BPS</string>
+    <string name="profile_value_multiple">%1$s×</string>
+    <string name="profile_value_uncapped">Unbegrenzt</string>
+    <!-- Unit after the number in a profile field: milliseconds, percent, balls per second, a multiple -->
+    <string name="profile_unit_ms">ms</string>
+    <string name="profile_unit_percent">%</string>
+    <string name="profile_unit_bps">BPS</string>
+    <string name="profile_unit_multiple">×</string>
+    <!-- Profile Add Screen -->
+    <string name="profile_add_screen_title">Profil erstellen</string>
+    <string name="profile_add_screen_create_button">Erstellen</string>
+    <!-- Configure Device Screen -->
+    <string name="profiles_device_configuration_title">Gerätekonfiguration</string>
+    <string name="profiles_device_configuration_body">Bearbeiten Sie den Gerätenamen, den Startbildschirm und mehr.</string>
+    <string name="profiles_device_configuration_button">Konfigurieren</string>
+    <string name="configure_device_screen_title">Gerät konfigurieren</string>
+    <string name="configure_device_screen_device_name_label">Gerätename</string>
+    <string name="configure_device_screen_boot_text_label">Starttext</string>
+    <string name="configure_device_screen_boot_text_details">Text, der beim Einschalten der Platine kurz angezeigt wird.</string>
+    <string name="configure_device_screen_active_profile_label">Aktives Profil</string>
+    <string name="configure_device_screen_active_profile_details">Wählen Sie, welches gespeicherte Profil die Platine beim Start verwenden soll.</string>
+    <string name="configure_device_screen_active_profile_empty">Diesem Gerät wurden noch keine Profile hinzugefügt.</string>
+    <string name="configure_device_screen_lockout_label">Feuersperre</string>
+    <string name="configure_device_screen_lockout_details">Wird an der Platine selbst eingestellt; hier nur zur Information.</string>
+    <string name="configure_device_screen_lockout_locked">Gesperrt — der Markierer feuert nicht</string>
+    <string name="configure_device_screen_lockout_unlocked">Entsperrt</string>
+    <string name="configure_device_screen_language_label">Sprache der Platine</string>
+    <string name="configure_device_screen_language_details">Die Sprache des Menüs auf der Platine. Starttext und Profilnamen ändern sich nicht.</string>
+    <string name="configure_device_screen_language_unavailable">Die Platine hat keine Sprache gemeldet. Verbinden Sie sich mit der Platine oder aktualisieren Sie ihre Firmware.</string>
+    <string name="board_language_en">Englisch</string>
+    <string name="board_language_es">Spanisch</string>
+    <string name="board_language_de">Deutsch</string>
+    <string name="board_language_fr">Französisch</string>
+    <string name="configure_device_screen_brightness_label">Bildschirmhelligkeit</string>
+    <string name="configure_device_screen_brightness_details">Wie hell die Platine ihren Bildschirm ansteuert. Ein Bildschirm gilt für alle Profile.</string>
+    <string name="configure_device_screen_brightness_unavailable">Die Platine hat keine Helligkeit gemeldet. Verbinden Sie sich mit der Platine oder aktualisieren Sie ihre Firmware.</string>
+    <string name="board_brightness_low">Niedrig</string>
+    <string name="board_brightness_default">Standard</string>
+    <string name="board_brightness_high">Hoch</string>
+    <string name="configure_device_screen_off_delay_label">Verzögerung bis Bildschirm aus</string>
+    <string name="configure_device_screen_off_delay_details">Sekunden, die die Platine den Bildschirm nach dem letzten Tastendruck eingeschaltet lässt. Bereich 1 bis 999. Ein Schuss hält den Bildschirm nicht an.</string>
+    <string name="configure_device_screen_off_delay_unavailable">Die Platine hat keine Verzögerung gemeldet. Verbinden Sie sich mit der Platine oder aktualisieren Sie ihre Firmware.</string>
+    <!-- A screen-off delay in seconds, e.g. "30 s" -->
+    <string name="board_screen_off_delay_seconds">%1$s s</string>
+    <!-- Display Area section on the Configure Device screen -->
+    <string name="configure_device_screen_display_window_label">Anzeigebereich</string>
+    <string name="configure_device_screen_display_window_details">Der Teil des Platinenbildschirms, den der Griffrahmen zeigt. Wählen Sie einen Rahmen, oder legen Sie einen eigenen Bereich fest.</string>
+    <string name="configure_device_screen_display_window_none">Die Platine hat keinen Bereich gemeldet. Wählen Sie einen Rahmen, oder wählen Sie einen eigenen Bereich.</string>
+    <string name="configure_device_screen_display_window_unset">Nicht festgelegt</string>
+    <string name="configure_device_screen_display_window_custom">Eigener Bereich</string>
+    <string name="configure_device_screen_display_window_drawing">Zeichnung des Platinenbildschirms mit dem markierten sichtbaren Bereich</string>
+    <string name="configure_device_screen_display_window_hint">Ziehen Sie den markierten Bereich, um ihn zu verschieben.</string>
+    <string name="configure_device_screen_display_window_width_label">Sichtbare Breite</string>
+    <string name="configure_device_screen_display_window_height_label">Sichtbare Höhe</string>
+    <!-- Visible area readout: width, height, then the corner offsets -->
+    <string name="configure_device_screen_display_window_summary">Breite %1$s, Höhe %2$s, bei %3$s, %4$s</string>
+    <string name="grip_frame_full_panel">Ganzes Panel</string>
+    <string name="grip_frame_e1">E1-Rahmen</string>
+    <string name="grip_frame_e2">E2-Rahmen</string>
+    <string name="configure_device_screen_save_button">Speichern</string>
+    <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
+    <string name="bluetooth_needs_permission_icon">Bluetooth-Symbol</string>
+    <string name="bluetooth_needs_permission_title">Bluetooth</string>
+    <string name="bluetooth_needs_permission_paragraph">Um Geräte zu finden, benötigt diese Anwendung die Berechtigung für Bluetooth.</string>
+    <!-- Bluetooth -->
+    <string name="start_scanning_icon_explanation">Bluetooth-Symbol</string>
+    <string name="start_scanning_explanation">Suche nach Snapshot PB-Platinen starten</string>
+    <string name="scanning_icon_explanation">Symbol für Bluetooth-Suche</string>
+    <string name="scanning_explanation">Suche nach Snapshot PB-Platinen</string>
+    <string name="scanning_title">Suche läuft</string>
+    <string name="connecting_icon_explanation">Symbol für Bluetooth-Verbindung</string>
+    <string name="connecting_explanation">Snapshot PB wird konfiguriert - %1$s - %2$s</string>
+    <string name="connecting_title">Verbindung wird hergestellt</string>
+    <string name="bluetooth_disabled_icon_explanation">Symbol für deaktiviertes Bluetooth</string>
+    <string name="bluetooth_disabled">Aktivieren Sie Bluetooth, um die Suche zu starten</string>
+    <string name="bluetooth_disabled_explanation">Um Geräte zu finden, muss Bluetooth auf Ihrem System aktiviert sein.</string>
+    <string name="bluetooth_error_settings_menu">Die Bluetooth-Einstellungen des Systems konnten nicht geöffnet werden. Bitte aktivieren Sie Bluetooth manuell.</string>
+    <!-- Permission denied (e.g. iOS: the user declined the system Bluetooth prompt) -->
+    <string name="bluetooth_permission_denied_title">Bluetooth-Berechtigung verweigert</string>
+    <string name="bluetooth_permission_denied_paragraph">Diese App darf Bluetooth nicht verwenden. Öffnen Sie die Einstellungen, um den Bluetooth-Zugriff zu erlauben, und kehren Sie dann zurück, um nach Geräten zu suchen.</string>
+    <string name="bluetooth_permission_denied_action">Einstellungen öffnen</string>
+    <!-- Location services off (Android API 30 and below: BLE scanning needs the system Location toggle on) -->
+    <string name="location_disabled_icon_explanation">Symbol für Standortdienste</string>
+    <string name="location_disabled_title">Standort aktivieren</string>
+    <string name="location_disabled_paragraph">In dieser Android-Version benötigt die Suche nach Bluetooth-Geräten aktivierte Standortdienste. Aktivieren Sie den Standort und kehren Sie dann zurück, um nach Geräten zu suchen.</string>
+    <string name="location_disabled_action">Standorteinstellungen öffnen</string>
+    <string name="location_error_settings_menu">Die Standorteinstellungen des Systems konnten nicht geöffnet werden. Bitte aktivieren Sie den Standort manuell.</string>
+    <!-- Gallery-->
+    <string name="gallery_error_mime_png_only">Nur JPG- und PNG-Bilder sind erlaubt</string>
+    <!-- Buttons -->
+    <string name="button_accept">Akzeptieren</string>
+    <string name="button_start_scanning">Suche starten</string>
+    <string name="button_stop_scanning">Suche beenden</string>
+    <string name="pair_board_title">Neue Platine</string>
+    <string name="pair_board_explanation">Snapshot PB-Platine in der Liste des Browsers auswählen</string>
+    <string name="button_pair_board">Platine koppeln</string>
+    <string name="button_delete">Löschen</string>
+    <string name="button_add_profile">Profil hinzufügen</string>
+    <string name="button_cancel">Abbrechen</string>
+    <!-- Destructive-action confirmations -->
+    <string name="delete_device_dialog_title">Gerät löschen?</string>
+    <string name="delete_device_dialog_message">%1$s und die gespeicherten Profile werden aus dieser App entfernt. Die Platine selbst wird nicht verändert.</string>
+    <string name="delete_profile_dialog_title">Profil löschen?</string>
+    <string name="delete_profile_dialog_message">%1$s wird lokal entfernt. Speichern Sie danach auf der Platine, um die Änderung dort zu übernehmen.</string>
+    <!-- Common -->
+    <string name="common_yes">Ja</string>
+    <string name="logo_content_description">Snapshot PB-Logo</string>
+    <!-- Connecting / new device flow -->
+    <string name="connecting_screen_failed_title">Gerät konnte nicht gelesen werden</string>
+    <string name="connecting_screen_failed_body">Von %1$s wurde keine Konfiguration empfangen. Stellen Sie sicher, dass die Platine eingeschaltet und in Reichweite ist, und versuchen Sie es erneut.</string>
+    <string name="connecting_screen_back_button">Zurück</string>
+    <string name="connecting_step_connection">Mit %1$s verbinden</string>
+    <string name="connecting_step_services">Gerätefunktionen werden geprüft</string>
+    <string name="connecting_attempt">Versuch %1$d von %2$d</string>
+    <string name="connecting_step_device_info">Gerätekonfiguration herunterladen</string>
+    <string name="connecting_step_profiles">Konfigurationsprofile herunterladen</string>
+    <string name="connecting_button_finish">Konfiguration abschließen</string>
+    <string name="connecting_title_setup">Ihre Platine wird eingerichtet</string>
+    <string name="connecting_title_complete">Konfiguration erfasst!</string>
+    <string name="new_device_screen_cancel_button">Abbrechen</string>
+    <!-- Device sync conflict dialog -->
+    <string name="sync_conflict_dialog_title">Geräteeinstellungen unterscheiden sich</string>
+    <string name="sync_conflict_dialog_message">Die Einstellungen von %1$s auf der Platine stimmen nicht mit Ihren lokal gespeicherten Werten überein. Welche Werte möchten Sie behalten?</string>
+    <string name="sync_conflict_dialog_take_device">Gerätewerte verwenden</string>
+    <string name="sync_conflict_dialog_take_local">Meine Werte behalten</string>
+    <!-- Divergence / Sync actions -->
+    <string name="device_pending_changes_banner_title">Nicht gespeicherte Änderungen</string>
+    <string name="device_pending_changes_banner_message">Sie haben lokale Konfigurationsänderungen, die von den Einstellungen auf der Platine abweichen.</string>
+    <string name="device_pending_changes_save_to_board">Auf Platine speichern</string>
+    <string name="device_pending_changes_discard">Änderungen verwerfen</string>
+    <string name="device_pending_changes_connect_to_save">Über Bluetooth verbinden, um Änderungen zu speichern</string>
+    <string name="device_pending_changes_lockout_to_save">Die Platine ist in der Feuersperre. Die Sperre am Schalter der Platine ausschalten und neu verbinden, um Änderungen zu speichern.</string>
+    <string name="device_pending_changes_lockout_short">Platine gesperrt</string>
+    <string name="profile_badge_unsaved">Nicht gespeichert</string>
+    <string name="device_discovered_card_info">Platine: %1$s • Version: %2$s</string>
+    <!-- Profiles screen connection card -->
+    <string name="connection_card_title">Platinenverbindung</string>
+    <string name="connection_card_connect">Verbinden</string>
+    <string name="connection_card_disconnect">Trennen</string>
+    <string name="connection_card_retry">Erneut versuchen</string>
+    <string name="connection_card_cancel">Abbrechen</string>
+    <string name="connection_card_status_connected">Verbunden</string>
+    <string name="connection_card_status_disconnected">Nicht verbunden</string>
+    <string name="connection_card_status_connecting">Verbindung wird hergestellt…</string>
+    <string name="connection_card_status_failed">Verbindung fehlgeschlagen</string>
+    <string name="connection_card_disconnected_hint">Verbinden Sie sich, um die Platine zu lesen und Änderungen zu speichern.</string>
+    <string name="connection_card_failed_hint">Stellen Sie sicher, dass die Platine eingeschaltet und in Reichweite ist, und versuchen Sie es erneut.</string>
+    <string name="connection_step_connect">Verbindung zur Platine wird hergestellt</string>
+    <!-- Web/browser unsupported-Bluetooth block screen (Chromium-only Web Bluetooth) -->
+    <string name="unsupported_browser_title">Bluetooth ist in diesem Browser nicht verfügbar</string>
+    <string name="unsupported_browser_message">Snapshot PB verbindet sich über Bluetooth mit Ihrer Platine. Im Web geht das nur in einem Chromium-Browser — Chrome, Edge oder Opera. Öffnen Sie diese Seite in einem davon, um Ihre Platine zu suchen und zu konfigurieren.</string>
+    <string name="unsupported_browser_details_show">Warum nicht in diesem Browser?</string>
+    <string name="unsupported_browser_details_hide">Details ausblenden</string>
+    <string name="unsupported_browser_details_webkit">Web Bluetooth — die Browser-Schnittstelle, die diese App verwendet — gibt es nur in Chromium-Browsern. Safari und alle Browser auf iPhone und iPad bauen auf WebKit von Apple auf, das sie nie umgesetzt hat; dort funktioniert Bluetooth also nicht. Verwenden Sie auf Apple-Geräten stattdessen die native Snapshot PB-App.</string>
+    <string name="unsupported_browser_details_firefox">Auch Firefox hat kein Web Bluetooth, jedoch aus einem anderen Grund: Mozilla hat die Umsetzung aus Datenschutzgründen abgelehnt.</string>
+    <string name="unsupported_browser_webkit_bug_link">Den WebKit-Fehlerbericht ansehen</string>
+    <!-- Wear OS (watch) UI -->
+    <string name="wear_section_synced_devices">Synchronisierte Geräte</string>
+    <string name="wear_no_synced_devices">Keine synchronisierten Geräte</string>
+    <string name="wear_device_photo_description">Gerätefoto</string>
+    <string name="wear_no_profile">Kein Profil</string>
+    <string name="wear_profile_label">Profil: %1$s</string>
+    <string name="wear_action_grant_permissions">Berechtigungen erteilen</string>
+    <string name="wear_action_enable_bluetooth">Bluetooth aktivieren</string>
+    <string name="wear_action_turn_on_location">Standort aktivieren</string>
+    <string name="wear_action_stop_scanning">Suche beenden</string>
+    <string name="wear_action_scan_for_boards">Nach Platinen suchen</string>
+    <string name="wear_section_discovered_boards">Gefundene Platinen</string>
+    <string name="wear_searching">Suche läuft…</string>
+    <string name="wear_discovered_board_secondary">%1$s • [#%2$s]</string>
+    <string name="wear_bluetooth_settings_error">Bluetooth-Einstellungen konnten nicht geöffnet werden</string>
+    <string name="wear_location_settings_error">Standorteinstellungen konnten nicht geöffnet werden</string>
+    <string name="wear_select_profile">Profil wählen</string>
+    <!-- Profile chip subtitle on the watch: fire mode and sear dwell, e.g. "Mode: SEMI / Dwell: 4.5 ms" -->
+    <string name="wear_profile_secondary">Modus: %1$s / Haltezeit: %2$s ms</string>
+    <string name="wear_connecting_title">Verbindung...</string>
+    <string name="wear_connected_title">Verbunden</string>
+    <string name="wear_connection_failed_title">Verbindung fehlgeschlagen</string>
+    <!-- Board label on the watch connect screen: board type then short id, e.g. "Snapshot PB [#A1B2]" -->
+    <string name="wear_board_with_id">%1$s [#%2$s]</string>
+    <string name="wear_step_connection">Verbindung</string>
+    <string name="wear_step_services">Dienste</string>
+    <string name="wear_step_device_info">Geräteinfo</string>
+    <string name="wear_step_profiles">Profile</string>
+    <string name="wear_all_data_loaded">Alle Daten wurden geladen.</string>
+    <string name="wear_unable_to_communicate">Keine Kommunikation mit der Platine möglich.</string>
+    <string name="wear_action_continue">Weiter</string>
+    <string name="wear_action_back_to_list">Zurück zur Liste</string>
+    <string name="wear_connected_via_ble">Über BLE verbunden</string>
+    <string name="wear_ble_disconnected">BLE getrennt</string>
+    <string name="wear_tap_to_disconnect">Zum Trennen tippen</string>
+    <string name="wear_tap_to_connect_directly">Zum direkten Verbinden tippen</string>
+    <string name="wear_save_succeeded">Auf Platine gespeichert</string>
+    <string name="wear_save_failed">Speichern fehlgeschlagen</string>
+    <!-- Desktop auto-updater dialog -->
+    <string name="updater_dialog_title">Update verfügbar</string>
+    <string name="updater_message">Eine neue Version (%1$s) ist verfügbar. Möchten Sie jetzt aktualisieren?</string>
+    <string name="updater_downloading">Update wird heruntergeladen: %1$d%%</string>
+    <string name="updater_starting_download">Download wird gestartet...</string>
+    <string name="updater_error">Fehler: %1$s</string>
+    <string name="updater_error_unknown">Unbekannter Fehler</string>
+    <string name="updater_action_update_now">Jetzt aktualisieren</string>
+    <string name="updater_action_later">Später</string>
+    <string name="updater_action_close">Schließen</string>
+</resources>

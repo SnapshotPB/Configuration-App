@@ -1,0 +1,4 @@
+[submodule "core/protocol/builder/Configuration-Protocol"]
+	path = core/protocol/builder/Configuration-Protocol
+	url = ../Configuration-Protocol.git
+	branch = main

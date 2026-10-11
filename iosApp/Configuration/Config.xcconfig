@@ -1,0 +1,27 @@
+// Single source for the iOS app's identity and version.
+//
+// The release workflow does not edit this file. It passes MARKETING_VERSION and
+// CURRENT_PROJECT_VERSION to xcodebuild as build settings, from the git tag
+// (docs/versioning-and-release-plan.md §4, §6.3). A build setting on the command line
+// overrides the values below. An edit here would make `git describe --dirty` stamp the
+// release as a dev build.
+
+// The Apple Developer team. Stated here so it lives in one obvious place; the target
+// build settings in project.pbxproj also carry DEVELOPMENT_TEAM (written by
+// add_uitest_target.rb) and, being target-level, take precedence over this file.
+TEAM_ID=S9MGTJXVTV
+
+PRODUCT_NAME=SnapshotPB
+
+// Deliberately NOT suffixed with $(TEAM_ID). That suffix is a project-template default
+// meant to stop personal-team developers colliding on a shared identifier, but the bundle
+// ID is the app's permanent App Store identity — deriving it from the team would change
+// that identity the moment TEAM_ID was filled in, orphaning existing installs. TEAM_ID
+// has been empty in every build to date, so this literal is byte-identical to the
+// identifier the app already ships with.
+PRODUCT_BUNDLE_IDENTIFIER=com.snapshotpb.configuration.SnapshotPB
+
+// Placeholders for local/dev builds only. A release build gets its values from xcodebuild.
+// CURRENT_PROJECT_VERSION is the monotonic integer the App Store requires.
+CURRENT_PROJECT_VERSION=1
+MARKETING_VERSION=1.0

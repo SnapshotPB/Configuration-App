@@ -1,0 +1,102 @@
+# Report Runner Specs. A diagnostic workflow. It builds nothing.
+# Run it from the Actions tab to record what hardware a given runner label gives you.
+# GitHub changed the standard runner size more than once, and the size differs between
+# a public and a private repository. The tuning in validation.yml assumes 2 vCPU and
+# 7.8 GiB of RAM, the standard size for a private repository (report of 2026-09-19). Use
+# this report to confirm that assumption before you change the heap limits.
+name: Report Runner Specs
+
+on:
+  workflow_dispatch:
+  # A workflow_dispatch run is possible only after this file reaches the default branch.
+  # The trigger below keeps the report available on a feature branch too: an edit to this
+  # file runs it on the branch that carries the edit. Each job is about one minute long and
+  # builds nothing, so the cost of an accidental run is small.
+  push:
+    paths:
+      - '.github/workflows/runner-specs.yml'
+
+# The report reads only the runner hardware. It needs no repository access.
+permissions:
+  contents: read
+
+jobs:
+  specs:
+    name: Specs (${{ matrix.label }})
+    strategy:
+      # Report every label, even when one of them has no runner and the job fails to start.
+      fail-fast: false
+      matrix:
+        # One entry for each label to measure. The organization has no larger runner, so the
+        # standard runner is the only label available.
+        #
+        # Caution: a larger runner bills per minute and the included free minutes never apply
+        # to it. Confirm the spending limit before you add such a label here.
+        label:
+          - ubuntu-latest
+    runs-on: ${{ matrix.label }}
+    steps:
+      - name: Collect the hardware report
+        env:
+          # The label arrives through the environment, never through `${{ }}` inside the script
+          # body. GitHub substitutes `${{ }}` before bash reads the line, so a quote in the value
+          # would otherwise break out into the shell.
+          REQUESTED_LABEL: ${{ matrix.label }}
+        run: |
+          set -euo pipefail
+
+          # The report goes to a file first. A pipe to tee can lose the last lines when the step
+          # exits, so the file is copied to the log and to the job summary after it is complete.
+          report="$RUNNER_TEMP/runner-specs.md"
+
+          {
+            echo "### Runner report"
+            echo ""
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Requested label | \`$REQUESTED_LABEL\` |"
+            echo "| Runner name | \`${RUNNER_NAME:-unknown}\` |"
+            echo "| Runner OS / arch | \`${RUNNER_OS:-?} / ${RUNNER_ARCH:-?}\` |"
+            echo "| CPU cores (nproc) | \`$(nproc)\` |"
+            echo "| CPU model | \`$(awk -F': ' '/^model name/ {print $2; exit}' /proc/cpuinfo)\` |"
+            echo "| Total RAM | \`$(awk '/^MemTotal:/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)\` |"
+            echo "| Available RAM | \`$(awk '/^MemAvailable:/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)\` |"
+            echo "| Swap | \`$(awk '/^SwapTotal:/ {printf "%.1f GiB", $2/1048576}' /proc/meminfo)\` |"
+            echo "| Free disk on / | \`$(df -h --output=avail / | tail -1 | tr -d ' ')\` |"
+            echo "| Free disk on the workspace | \`$(df -h --output=avail "$RUNNER_TEMP" | tail -1 | tr -d ' ')\` |"
+            echo "| Kernel | \`$(uname -srm)\` |"
+            echo "| Distribution | \`$(. /etc/os-release && echo "$PRETTY_NAME")\` |"
+            echo ""
+
+            # The JVM gives a default maximum heap of a quarter of the physical RAM. Several forked
+            # JVMs in this build use that default. The Kotlin/Native commonizer is one of them, and
+            # neither org.gradle.jvmargs nor kotlin.daemon.jvmargs covers it. The numbers below say
+            # what such a fork gets when nothing caps it.
+            echo "### Default JVM ergonomics"
+            echo ""
+            echo '```'
+            if command -v java >/dev/null 2>&1; then
+              java -XX:+PrintFlagsFinal -version 2>/dev/null \
+                | grep -E '\b(MaxHeapSize|InitialHeapSize|ActiveProcessorCount|UseG1GC|UseParallelGC)\b' || true
+              java -version 2>&1
+            else
+              echo "No java on PATH."
+            fi
+            echo '```'
+            echo ""
+
+            for section in "lscpu:lscpu" "free -h:free -h" "df -h:df -h"; do
+              title="${section%%:*}"
+              command="${section#*:}"
+              echo "<details><summary>$title</summary>"
+              echo ""
+              echo '```'
+              eval "$command" || true
+              echo '```'
+              echo "</details>"
+              echo ""
+            done
+          } > "$report"
+
+          cat "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"

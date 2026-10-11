@@ -1,0 +1,115 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 68422,
+    "appName": "Snapshot PB",
+    "appType": "app",
+    "version": {
+      "code": 1,
+      "name": "1.0.0"
+    },
+    "icon": "icon.png",
+    "description": "Snapshot PB Configuration App",
+    "vender": "SnapshotPB"
+  },
+  "defaultLanguage": "en-US",
+  "runtime": {
+    "apiVersion": {
+      "compatible": "3.0.0",
+      "target": "3.0.0",
+      "minVersion": "3.0.0"
+    }
+  },
+  "permissions": [
+    "device:bluetooth",
+    "device:os.local_storage"
+  ],
+  "targets": {
+    "gtr-4": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/device_list/index",
+            "page/connecting/index",
+            "page/device_config/index",
+            "page/profile_selection/index",
+            "page/board_setting_selection/index",
+            "page/profile_edit/index",
+            "page/profile_field/index"
+          ]
+        }
+      },
+      "platforms": [
+        {
+          "name": "gtr-4",
+          "deviceSource": 7930112
+        },
+        {
+          "name": "gtr-4-w",
+          "deviceSource": 7930113
+        }
+      ],
+      "designWidth": 466
+    },
+    "t-rex-3": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/device_list/index",
+            "page/connecting/index",
+            "page/device_config/index",
+            "page/profile_selection/index",
+            "page/board_setting_selection/index",
+            "page/profile_edit/index",
+            "page/profile_field/index"
+          ]
+        }
+      },
+      "platforms": [
+        {
+          "name": "t-rex-3",
+          "deviceSource": 8716544
+        },
+        {
+          "name": "t-rex-3-2",
+          "deviceSource": 8716545
+        },
+        {
+          "name": "t-rex-3-3",
+          "deviceSource": 8716547
+        }
+      ],
+      "designWidth": 480
+    },
+    "bip-5-unity": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/device_list/index",
+            "page/connecting/index",
+            "page/device_config/index",
+            "page/profile_selection/index",
+            "page/board_setting_selection/index",
+            "page/profile_edit/index",
+            "page/profile_field/index"
+          ]
+        }
+      },
+      "platforms": [
+        {
+          "name": "bip-5-unity",
+          "deviceSource": 8782081
+        },
+        {
+          "name": "bip-5-unity",
+          "deviceSource": 8782088
+        },
+        {
+          "name": "bip-5-unity",
+          "deviceSource": 8782089
+        }
+      ],
+      "designWidth": 480
+    }
+  }
+}

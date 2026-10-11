@@ -1,0 +1,132 @@
+# The words of the app for the manual. scripts/manual_app_document.py reads this file, the
+# strings of the app, the profile field table, and the protocol, and writes the application
+# document of the manual (SnapshotPB-Manual, schemas/app/v1).
+#
+# A setting is keyed by its shared key, which is the field path in the protocol, for example
+# autococker.eye_mode. The title comes from the strings of the app, by the string id in
+# `label`. A numeric profile field needs no `label`: its string id is profile_label_<field>,
+# and its section comes from the profile field table. Another profile setting names its
+# `section`, and a device setting names its `label`.
+#
+# `targets` limits an entry to the platforms it names. `overrides.<target>` changes the
+# description, the path, or the editable flag for one platform. Each description is in
+# ASD-STE100 Simplified Technical English. A text is a string in English, or a table with
+# one member for each language, for example { en = "...", de = "..." }. A title and a path
+# come from the strings of the app in each language of the app.
+
+[app]
+name = "SnapshotPB app"
+# The protocol has no version number yet. This value pairs the document with the firmware
+# document, which states the same value.
+protocol_version = "1.0.0"
+summary = "The SnapshotPB app reads and writes the settings of a board through Bluetooth. It runs on Android, on Wear OS, on iOS, on the desktop, and in a browser."
+
+[targets.android]
+name = "Android"
+[targets.ios]
+name = "iOS"
+[targets.desktop]
+name = "Desktop"
+[targets.browser]
+name = "Browser"
+description = "The browser app uses Web Bluetooth. It works in a browser that supports Web Bluetooth, such as Chrome."
+[targets.wear]
+name = "Wear OS"
+description = "The watch app edits the active profile of the board. It shows the other profiles, and it does not add, delete, or rename a profile. A number is set with a stepper."
+
+# The path to a setting on each platform. {section} is the section of a profile setting,
+# {label} is the title of the setting, and another {id} is a string of the app, such as the
+# name of a screen. The watch opens the active profile from the board screen, and each
+# device setting is a card on the board screen.
+[paths]
+profile = "{profile_screen_details_title} > {section} > {label}"
+device = "{configure_device_screen_title} > {label}"
+[paths.wear]
+profile = "{profile_tune_title} > {label}"
+device = "{label}"
+
+# ----- the device settings -----
+
+[settings."device_config.active_profile"]
+label = "configure_device_screen_active_profile_label"
+description = "The profile that the board uses. The app lists the profiles of the board, and you select one. The board changes to that profile at once."
+
+[settings."device_config.language"]
+label = "configure_device_screen_language_label"
+description = "The language of the menu on the board. The boot text and the profile names do not change. The app shows the languages that the board reports."
+
+[settings."device_config.screen_brightness"]
+label = "configure_device_screen_brightness_label"
+description = "How bright the board drives its screen. One screen serves every profile."
+
+[settings."device_config.screen_off_delay"]
+label = "configure_device_screen_off_delay_label"
+description = "The number of seconds that the board keeps the screen on after the last button press, from 1 to 999."
+[settings."device_config.screen_off_delay".overrides.wear]
+description = "The number of seconds that the board keeps the screen on after the last button press. The watch offers a list of preset values."
+
+# ----- the profile settings -----
+
+[settings."autococker.fire_mode"]
+section = "profile_section_basic_function"
+description = "The fire mode of the profile. The app shows the modes that the board reports. A mode that the app does not know shows as Unknown Mode. The NXL 2026 mode has no setting of its own, because the league sets its rules. The Custom Ramping mode uses the settings of the Ramping section."
+
+[settings."profile.fire_rate_cap"]
+description = "The maximum rate of fire, in balls per second. The value 0 removes the cap. The app does not show this setting for the NXL 2026 fire mode. In that mode the cap is the limit of the league, which is 10.5 balls per second. The board keeps the value, and it applies again in a different fire mode."
+
+[settings."autococker.eye_mode"]
+section = "profile_section_eye"
+description = "The type of eye that the marker has, if any."
+
+[settings."autococker.eye_threshold"]
+description = "The level, in percent of full scale, below which the eye reports a ball."
+
+[settings."autococker.eye_debounce"]
+description = "The time that the eye must report a ball before the board accepts it, in milliseconds."
+
+[settings."autococker.cocking_solenoid_timeout"]
+description = "The longest time that the board waits for the eye to see a ball before it closes the breech, in milliseconds. The app shows the row only when the eye closes the breech."
+
+[settings."autococker.sear_solenoid_dwell"]
+description = "The time that the sear solenoid stays energized in one firing cycle, in milliseconds."
+
+[settings."autococker.cocking_solenoid_delay"]
+description = "The time between the trigger pull and the start of the cocking solenoid, in milliseconds."
+
+[settings."autococker.cocking_solenoid_dwell_open"]
+description = "The time that the cocking solenoid stays energized to open the breech, in milliseconds."
+
+[settings."autococker.cocking_solenoid_dwell_closed"]
+description = "The time that the cocking solenoid stays released to close the breech before the next cycle, in milliseconds."
+
+[settings."autococker.trigger_debounce_on"]
+description = "The time that the trigger must stay pulled before a firing cycle starts, in milliseconds."
+
+[settings."autococker.trigger_debounce_off"]
+description = "The time that the trigger must stay released before the board accepts the next pull, in milliseconds."
+
+[settings."autococker.ramping_custom_multiplier"]
+description = "The rate of fire in ramping, as a multiple of the trigger pull rate. The app shows the Ramping section only for the Custom Ramping fire mode."
+
+[settings."autococker.ramping_custom_trigger_pulls"]
+description = "The number of trigger pulls in one second that starts ramping."
+
+[settings."autococker.ramping_custom_rof_minimum"]
+description = "The minimum rate of fire in ramping, in balls per second, whatever the trigger pull rate."
+
+# ----- the topics -----
+
+[topics."topic.bluetooth"]
+title = "Connect to a board"
+where = "Devices"
+description = "Turn the Bluetooth radio of the board on. Open the Devices screen. The app lists the boards in range under Discovered Devices. Tap a board to connect to it."
+[topics."topic.bluetooth".overrides.wear]
+description = "The watch shows the boards that the phone app saved, and it keeps them in step with the phone. The watch can also scan for a board and connect to it directly."
+[topics."topic.bluetooth".overrides.browser]
+description = "Select Pair a Board. The browser shows its own chooser with the boards in range. Select the board to connect to it. The browser app works in a browser that supports Web Bluetooth, such as Chrome."
+
+[topics."topic.lockout"]
+title = "Firing Lockout"
+where = "Configure Device > Firing Lockout"
+editable = false
+description = "The app shows whether the board is locked. The lockout is set on the board itself, and the app does not change it."

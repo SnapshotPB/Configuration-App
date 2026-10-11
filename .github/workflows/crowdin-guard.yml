@@ -1,0 +1,45 @@
+name: Crowdin Guard
+# The translations in values-*/strings.xml are written by hand in this repository. Crowdin is
+# not the source of truth, but its GitHub integration opens "New Crowdin updates" PRs from the
+# l10n_master branch, and those PRs replaced hand-written strings in #78 to #80. This workflow
+# fails such a PR when it changes or removes a string that master holds.
+#
+# The workflow has no paths filter, so the check reports on every PR to master. The job runs
+# only for a Crowdin branch (l10n_*). On every other PR GitHub shows the job as skipped, and a
+# skipped job satisfies a required status check. Thus the owner can mark
+# "Validate (Crowdin translations)" as required, and a normal PR can still change a
+# translation by hand.
+on:
+  pull_request:
+    branches: [ master ]
+    types: [ opened, reopened, synchronize ]
+
+concurrency:
+  group: crowdin-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Validate (Crowdin translations)
+    if: startsWith(github.head_ref, 'l10n_')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          # A PR checks out its merge commit. Depth 2 also gets the two parents of that commit.
+          # The first parent is master, so the check sees what the merge would change there.
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Run the copy of the checker that master holds, so that the PR cannot change the rules
+      # that check it. The runner image has Python 3, and the checker uses only the standard
+      # library.
+      - name: Check that no hand-written string changes
+        run: |
+          set -euo pipefail
+          git show HEAD^1:scripts/check_crowdin_pr.py > "$RUNNER_TEMP/check_crowdin_pr.py"
+          python3 "$RUNNER_TEMP/check_crowdin_pr.py" --repo "$GITHUB_WORKSPACE" --base HEAD^1 --head HEAD

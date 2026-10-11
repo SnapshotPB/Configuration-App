@@ -1,0 +1,23 @@
+{
+  "name": "snapshot-pb-config-zepp",
+  "version": "1.0.0",
+  "private": true,
+  "zeppos": true,
+  "scripts": {
+    "build-proto": "pbjs -t static-module -w es6 -o src/protocol/proto.js -p ../../core/protocol/builder/Configuration-Protocol \"../../core/protocol/builder/Configuration-Protocol/snapshotpb/v1/*.proto\" \"../../core/protocol/builder/Configuration-Protocol/snapshotpb/autococker/v1/*.proto\" \"../../core/protocol/builder/Configuration-Protocol/snapshotpb/common/v1/*.proto\"",
+    "stamp-version": "node scripts/stamp-version.mjs",
+    "build": "npm run build-proto && npm run stamp-version && zeus build",
+    "dev": "npm run build-proto && npm run stamp-version && zeus dev -t \"Amazfit T-Rex 3\"",
+    "test": "vitest run --config .test/vitest.config.js",
+    "test:watch": "vitest --config .test/vitest.config.js"
+  },
+  "devDependencies": {
+    "@zeppos/zeus-cli": "^1.9.0",
+    "protobufjs": "^7.2.4",
+    "protobufjs-cli": "^1.1.1",
+    "vitest": "^2.1.9"
+  },
+  "_moduleAliases": {
+    "zeppos-app-utils": "node_modules/@zeppos/zeus-cli/private-modules/zeppos-app-utils"
+  }
+}

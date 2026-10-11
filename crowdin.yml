@@ -1,0 +1,16 @@
+base_path: .
+preserve_hierarchy: true
+files:
+  - source: /core/resources/src/commonMain/composeResources/values/strings.xml
+    translation: /core/resources/src/commonMain/composeResources/values-%android_code%/%original_file_name%
+    type: android
+    # Every locale the app ships is mapped here. The key is the Crowdin language id,
+    # the value is the Compose Resources / Android qualifier used in the directory name.
+    languages_mapping:
+      android_code:
+        de-DE: de
+        es-ES: es
+        es-MX: es-rMX
+        es-US: es-rUS
+        fr-FR: fr
+        fr-CA: fr-rCA

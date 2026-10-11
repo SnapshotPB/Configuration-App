@@ -1,0 +1,29 @@
+*.hprof
+*.iml
+.kotlin
+.gradle
+**/build/
+xcuserdata
+!src/**/build/
+local.properties
+.idea
+.DS_Store
+captures
+.externalNativeBuild
+.cxx
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+**/xcshareddata/WorkspaceSettings.xcsettings
+node_modules/
+
+# Python bytecode from scripts/ (cut_version.py + its tests)
+__pycache__/
+*.pyc
+
+# Release signing (docs/versioning-and-release-plan.md §7). Git tracks only the encrypted
+# upload keystore. The keystore and its passwords stay on the local disk.
+/signing/*
+!/signing/upload.keystore.gpg

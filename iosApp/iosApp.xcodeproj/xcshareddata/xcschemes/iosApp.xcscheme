@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared scheme for the iosApp application target.
+
+  This must stay SHARED (i.e. live under xcshareddata, committed to the repo): CI runs
+  `xcodebuild -scheme iosApp archive`, and an unshared scheme exists only in the local
+  xcuserdata of whoever created it, so the release job would fail with
+  "The project does not contain a scheme named iosApp".
+
+  ArchiveAction is pinned to Release; the release workflow overrides the signing settings
+  on the xcodebuild command line rather than here, so this scheme stays usable for
+  ordinary local development (docs/versioning-and-release-plan.md §6.3).
+-->
+<Scheme
+   LastUpgradeVersion = "1600"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+<BuildableReference
+   BuildableIdentifier = "primary"
+   BlueprintIdentifier = "30B3C5A7F86F024625D6BFF7"
+   BuildableName = "SnapshotPB.app"
+   BlueprintName = "iosApp"
+   ReferencedContainer = "container:iosApp.xcodeproj">
+</BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+<BuildableReference
+   BuildableIdentifier = "primary"
+   BlueprintIdentifier = "3614E8CEDB4FD06EEC2E3340"
+   BuildableName = "iosAppUITests.xctest"
+   BlueprintName = "iosAppUITests"
+   ReferencedContainer = "container:iosApp.xcodeproj">
+</BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+<BuildableReference
+   BuildableIdentifier = "primary"
+   BlueprintIdentifier = "3614E8CEDB4FD06EEC2E3340"
+   BuildableName = "iosAppUITests.xctest"
+   BlueprintName = "iosAppUITests"
+   ReferencedContainer = "container:iosApp.xcodeproj">
+</BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+<BuildableReference
+   BuildableIdentifier = "primary"
+   BlueprintIdentifier = "30B3C5A7F86F024625D6BFF7"
+   BuildableName = "SnapshotPB.app"
+   BlueprintName = "iosApp"
+   ReferencedContainer = "container:iosApp.xcodeproj">
+</BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+<BuildableReference
+   BuildableIdentifier = "primary"
+   BlueprintIdentifier = "30B3C5A7F86F024625D6BFF7"
+   BuildableName = "SnapshotPB.app"
+   BlueprintName = "iosApp"
+   ReferencedContainer = "container:iosApp.xcodeproj">
+</BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
