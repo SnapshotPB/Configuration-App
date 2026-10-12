@@ -75,7 +75,10 @@ jobs:
 
   validate:
     name: Validate (${{ matrix.target }})
-    runs-on: ubuntu-latest
+    # Only the macos target needs a macOS runner. The runner comes from the target name and not
+    # from a new matrix value: setup-gradle puts the matrix values in its cache key, so a new
+    # value on the Linux targets makes their PR jobs miss the entries that master wrote.
+    runs-on: ${{ matrix.target == 'macos' && 'macos-latest' || 'ubuntu-latest' }}
     permissions:
       contents: read
       # setup-gradle writes a PR comment when a job fails (add-job-summary-as-pr-comment).
@@ -90,12 +93,13 @@ jobs:
         # OOM that forced the old --no-parallel/--no-daemon/two-pass workaround: the wasm Binaryen pass
         # (browser) and the Kotlin/Native iOS commonizer/konanc (ios) now run in separate process trees
         # on separate machines, so they can never peak together. Wall-clock drops from the SUM of every
-        # target (built single-threaded) to the MAX of the four jobs (built in parallel, full cores).
+        # target (built single-threaded) to the MAX of the five jobs (built in parallel, full cores).
         #
         # The repository is public, so the standard Linux runner has 4 CPUs (2 cores with 2 threads
-        # each) and 15.6 GiB of RAM (runner-specs.yml, report of 2026-10-11). Gradle sets its
-        # worker count from the CPU count, so four tasks run at the same time. Each task that a
-        # target does not need still costs wall-clock time.
+        # each) and 15.6 GiB of RAM (measured on 2026-10-11). Gradle sets its worker count from
+        # the CPU count, so four tasks run at the same time. Each task that a target does not
+        # need still costs wall-clock time. The standard macOS runner has 3 CPUs and 7 GB of RAM
+        # (GitHub documentation), and it is free of charge for a public repository.
         #
         # The task lists cover what the old `./gradlew build` on a Linux runner checked:
         #   android  — :app:android + :app:wear debug and release APKs, a compile check of the
@@ -104,10 +108,34 @@ jobs:
         #   desktop  — :app:desktop assemble, plus `jvmTest` (runs core:bluetooth/core:model commonTest)
         #   browser  — :app:browser wasm/Binaryen, plus `wasmJsBrowserTest` (same commonTest on wasm)
         #   ios      — :app:ios klibs + native commonizer. The job only compiles. A Linux host cannot
-        #              link an Apple framework or run an iOS test, so Gradle skips those tasks. The
-        #              first link of the ComposeApp framework is the macOS job of build-release.yml.
-        #              This workflow has no macOS job. A standard macOS runner is free of charge
-        #              for a public repository, so a macOS job can close this gap.
+        #              link an Apple framework or run an iOS test, so Gradle skips those tasks.
+        #   macos    — the tasks that the ios target cannot do: the debug link of the ComposeApp
+        #              framework for the device and for the simulator, plus `iosSimulatorArm64Test`
+        #              (the same commonTest on the iOS Simulator).
+        #
+        # The macos target runs Gradle with one worker (`gradle-args`). A Kotlin/Native link runs in
+        # the Gradle daemon. On its first use of a library, it makes the compiler cache of that
+        # library in ~/.konan. The largest one is material-icons-extended, which imagepickerkmp
+        # brings in. During this work, one link holds about 1.5 GB of the 3 GB Gradle heap. With
+        # three workers, the two framework links and a test link ran at the same time, and the
+        # first run on the runner failed with "Java heap space" after 30 minutes. One worker lets
+        # only one link use the heap at a time.
+        #
+        # Measured on a MacBook with the JVM limited to 3 CPUs and the heap of gradle.properties:
+        #   empty ~/.konan, one worker    — 8 minutes, 8.8 GB of RAM (daemon 5.8 GB, clang++ 2.9 GB)
+        #   full ~/.konan, one worker     — 82 seconds, 3.1 GB of RAM
+        #   full ~/.konan, three workers  — 52 seconds, 4.6 GB of RAM
+        # A run with an empty ~/.konan thus needs more RAM than the 7 GB of the runner, and macOS
+        # must compress or swap memory. On the runner, such a run passed in 23 minutes
+        # (2026-10-12). It occurs only when the cache step below finds no entry, or after an
+        # update of Kotlin or of a Compose library.
+        #
+        # The macos target does not link the release framework, so the first release link is still
+        # the macOS job of build-release.yml. The release link of iosArm64 fails with "Java heap
+        # space" in the 3 GB Gradle heap of gradle.properties. On a MacBook it passed with a heap
+        # of 5 GB, and the Gradle daemon and clang then used about 13 GB of RAM, which the 7 GB
+        # runner does not have. `:app:ios:build` links the two release frameworks, so do not use
+        # it on macOS.
         #
         # The android target does not run `:app:android:build`. The baseline profile plugin adds the
         # nonMinifiedRelease and benchmarkRelease variants to :app:android, and the build script adds
@@ -131,6 +159,11 @@ jobs:
             tasks: ":app:browser:build wasmJsBrowserTest"
           - target: ios
             tasks: ":app:ios:build"
+          - target: macos
+            tasks: ":app:ios:linkDebugFrameworkIosArm64 :app:ios:linkDebugFrameworkIosSimulatorArm64 iosSimulatorArm64Test"
+            # Only this entry has the key, so the matrix values of the Linux targets, and thus
+            # their Gradle cache keys, do not change.
+            gradle-args: "--max-workers=1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -160,11 +193,12 @@ jobs:
 
       # Kotlin/Native keeps the compiler + commonized platform libs in ~/.konan, which lives OUTSIDE
       # the Gradle user home that setup-gradle caches. Without this the iOS job re-downloads konan and
-      # recompiles the native platform libraries on every run. Only the iOS target uses native, so the
-      # cache is scoped to it; the key tracks the Kotlin/AGP versions pinned in the version catalog.
+      # recompiles the native platform libraries on every run. Only the ios and macos targets use
+      # native, so the cache is scoped to them, and `runner.os` gives each of them its own
+      # entry; the key tracks the Kotlin/AGP versions pinned in the version catalog.
       # A run on master writes the entry when the key is new. A PR run restores it.
       - name: Cache Kotlin/Native (~/.konan)
-        if: matrix.target == 'ios'
+        if: matrix.target == 'ios' || matrix.target == 'macos'
         uses: actions/cache@v6
         with:
           path: ~/.konan
@@ -185,7 +219,7 @@ jobs:
           # encryption key, and the entry would be invalid on the next commit in any case,
           # because resolveProjectVersion() puts the `git describe` output into the build inputs.
           cache-read-only: ${{ github.ref != 'refs/heads/master' }}
-          # Four jobs would otherwise post four scan comments per PR — only comment when one fails.
+          # Five jobs would otherwise post five scan comments per PR — only comment when one fails.
           add-job-summary-as-pr-comment: 'on-failure'
 
       # `composite` is a SEPARATE Gradle build with its own settings.gradle.kts, consumed as a
@@ -202,9 +236,10 @@ jobs:
 
       # No --no-parallel / --no-daemon / build-split needed anymore: each runner builds a single target
       # family, so org.gradle.parallel (gradle.properties) and the setup-gradle-managed daemon are back
-      # on and peak RAM stays under the 15.6 GiB of the runner.
+      # on and peak RAM stays under the 15.6 GiB of the Linux runner. The macos target is the
+      # exception: its `gradle-args` sets one worker (see the matrix comment).
       - name: Build ${{ matrix.target }}
-        run: ./gradlew ${{ matrix.tasks }} --stacktrace -Dorg.gradle.console=plain
+        run: ./gradlew ${{ matrix.tasks }} ${{ matrix.gradle-args }} --stacktrace -Dorg.gradle.console=plain
 
       # The console gives only the name of a failed test. A browser test that Mocha stops after
       # its time limit shows as the bare text "Error". The reports hold the message and the stack
