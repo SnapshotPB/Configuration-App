@@ -43,8 +43,8 @@ val localizationCheck = tasks.register<LocalizationCheckTask>("localizationCheck
             include("values-*/strings.xml")
         }
     )
-    // Keep this in step with the languages_mapping block of crowdin.yml. A locale that has
-    // no directory produces no file, so only this list can report it.
+    // Every locale that the app ships. A locale that has no directory produces no file, so
+    // only this list can report it.
     expectedLocales = setOf(
         "values-de",
         "values-es",

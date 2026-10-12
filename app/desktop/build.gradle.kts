@@ -40,7 +40,7 @@ kotlin {
                 implementation(projects.core.media)
                 implementation(projects.core.model)
                 implementation(projects.core.protocol)
-                // Crowdin-managed shared strings (public Res class), used by the updater dialog.
+                // Shared strings (public Res class), used by the updater dialog.
                 implementation(projects.core.resources)
                 implementation(projects.core.store)
 

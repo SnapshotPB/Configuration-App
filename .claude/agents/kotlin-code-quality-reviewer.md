@@ -28,7 +28,7 @@ These break the build or violate enforced project policy — treat as blocking:
 - **`commonMain` must stay platform-agnostic.** No `android.*`, `java.*` (beyond KMP-safe stdlib), or platform-only imports in shared source sets. Platform behavior goes through an interface in `core` + `expect`/`actual` or an injected abstraction. Flag platform leakage into `commonMain`.
 - **`core/*` must not import from `platform/*` or `app/*`.** Dependency flow is one-directional: `app` → `core:common` → `core:model`/`store`/`di`. Flag any upward or sideways import.
 - **New models are `@Serializable`.** Data classes in `core/model` persisted via DeviceStore must carry `@Serializable`. Adding a non-nullable field without a default to an existing serializable model breaks deserialization of stored JSON — flag it and suggest a default or nullable.
-- **String resources:** escape apostrophes as `\'` in `strings.xml` (bare `'` and `&apos;` both fail AAPT2). New user-facing strings belong in `core/resources` (Crowdin-managed), not hardcoded.
+- **String resources:** escape apostrophes as `\'` in `strings.xml` (bare `'` and `&apos;` both fail AAPT2). New user-facing strings belong in `core/resources`, not hardcoded.
 
 ## Project Patterns (Should Fix when violated)
 

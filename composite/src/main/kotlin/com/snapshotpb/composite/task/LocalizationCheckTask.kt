@@ -27,8 +27,8 @@ import org.gradle.api.tasks.TaskAction
  *   with no escape makes AAPT2 refuse the base file. A repeated `name` silently discards a
  *   string.
  * - **A warning does not fail the build.** An absent key, an unknown key, an absent locale
- *   and a value that is still the English text all show translation drift. Crowdin sends the
- *   translations after a merge to `master`, so drift must never stop the build.
+ *   and a value that is still the English text all show translation drift. A translation
+ *   can come after its English string, so drift must never stop the build.
  *
  * The task writes every finding to [reportFile], which also makes the task cacheable. Gradle
  * skips the task body when the inputs did not change, so an empty console is not proof of a
@@ -50,7 +50,7 @@ abstract class LocalizationCheckTask : DefaultTask() {
     /**
      * The directory name of every locale the app ships, such as `values-de`. A locale that
      * has no directory at all produces no file and would otherwise go unreported, which is
-     * the largest gap the check can have. Keep this in step with `crowdin.yml`.
+     * the largest gap the check can have.
      */
     @get:Input
     abstract val expectedLocales: SetProperty<String>
