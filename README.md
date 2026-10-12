@@ -71,7 +71,7 @@ core/
   media/            Media/gallery abstractions
   protocol/         Protobuf board communication protocol definition module
     builder/        Protobuf compiler toolchain that builds Kotlin protobuf models from schemas
-  resources/        Crowdin-managed string resources
+  resources/        String resources of every locale
   util/             Utilities
   app-version/      Generated AppVersion stamp
 platform/

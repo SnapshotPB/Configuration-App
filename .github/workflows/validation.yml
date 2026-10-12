@@ -28,12 +28,10 @@ permissions:
   contents: read
 
 jobs:
-  # The scripts under scripts/ have unit tests: the release scripts (cut_version.py,
-  # stage_release_manifest.py) and the Crowdin scripts (check_crowdin_pr.py, which
-  # crowdin-guard.yml runs, and crowdin_push_translations.py). release.yml runs the tests
-  # before it cuts a tag. This job runs them on a PR that changes scripts/ too, so that a
-  # defect shows before the release day. It also runs the unit tests of the BLE validation
-  # tools (tools/ble-validation/tests).
+  # The scripts under scripts/ have unit tests, for example the release scripts (cut_version.py,
+  # stage_release_manifest.py). release.yml runs the tests before it cuts a tag. This job runs
+  # them on a PR that changes scripts/ too, so that a defect shows before the release day. It
+  # also runs the unit tests of the BLE validation tools (tools/ble-validation/tests).
   scripts:
     name: Validate (release scripts)
     runs-on: ubuntu-latest
