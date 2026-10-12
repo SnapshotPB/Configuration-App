@@ -88,6 +88,7 @@ The root build consumes composite as a published jar from `composite/m2`, not wi
 - A `scripts` job runs `python3 -m unittest discover -s scripts/tests` and `python3 -m unittest discover -s tools/ble-validation/tests` when a PR changes `scripts/` or `tools/ble-validation/`.
 - The push-to-master run writes the Gradle caches; a PR run only reads them. Only a PR run cancels an older run of the same PR.
 - A build scan is published only for a failed build on CI. The Develocity plugin in the root `settings.gradle.kts` controls this; do not add `--scan`.
+- A failed job uploads its test reports, test results and lint reports as the artifact `reports-<target>` (14 days). The console gives only the name of a failed test; a browser test that Mocha stops after its time limit shows as the bare text `Error`.
 
 **`release.yml`** cuts a tag (only from a commit on master) and dispatches **`build-release.yml`**, which builds every target and publishes. The jobs that read signing secrets declare `environment: release`.
 
