@@ -81,7 +81,7 @@ The root build consumes composite as a published jar from `composite/m2`, not wi
 ## CI Workflows (`.github/workflows/`)
 
 **`validation.yml`** — on every PR to master and on each push to master (ignores `app/zepp/**`):
-- Java 21 (the JetBrains JDK), ubuntu-latest (2 cores, 7.8 GiB RAM for this private repo).
+- Java 21 (the JetBrains JDK), ubuntu-latest (4 CPUs, 15.6 GiB RAM for this public repo; `runner-specs.yml` measures it).
 - A 4-target matrix (`android`, `desktop`, `browser`, `ios`); each target names its own task list. There is no root `build` task in CI.
 - The `android` target assembles debug and release of both apps, compiles the baseline module and the instrumented tests of both apps, and runs `lint`. It does not run `:app:android:build`, which would also build the three baseline-profile variants.
 - The `desktop` target also runs `:core:resources:localizationCheck` and `./gradlew -p composite test --no-daemon`.
@@ -96,7 +96,7 @@ Security rules for every workflow:
 - Use `persist-credentials: false` on checkouts of build jobs.
 - Pin every third-party action (not under `actions/`) to a full commit SHA with the tag in a trailing comment. `.github/dependabot.yml` updates them.
 
-Keep the task lists narrow: every task the target does not need costs wall-clock time on the 2-core runner.
+Keep the task lists narrow: every task the target does not need costs wall-clock time on the 4-CPU runner.
 
 ## Common Build Failures
 

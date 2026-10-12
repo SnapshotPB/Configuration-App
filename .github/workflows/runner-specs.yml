@@ -1,9 +1,11 @@
 # Report Runner Specs. A diagnostic workflow. It builds nothing.
 # Run it from the Actions tab to record what hardware a given runner label gives you.
 # GitHub changed the standard runner size more than once, and the size differs between
-# a public and a private repository. The tuning in validation.yml assumes 2 vCPU and
-# 7.8 GiB of RAM, the standard size for a private repository (report of 2026-09-19). Use
-# this report to confirm that assumption before you change the heap limits.
+# a public and a private repository. This repository is public, so the standard Linux runner
+# has 4 CPUs and 15.6 GiB of RAM (report of 2026-10-11). The same label gave 2 CPUs and
+# 7.8 GiB of RAM to a private repository (report of 2026-09-19). The heap limits in
+# gradle.properties and the notes in validation.yml assume the public size. Use this report
+# to confirm that assumption before you change the heap limits.
 name: Report Runner Specs
 
 on:
