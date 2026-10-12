@@ -81,8 +81,9 @@ The root build consumes composite as a published jar from `composite/m2`, not wi
 ## CI Workflows (`.github/workflows/`)
 
 **`validation.yml`** — on every PR to master and on each push to master (ignores `app/zepp/**`):
-- Java 21 (the JetBrains JDK), ubuntu-latest (4 CPUs, 15.6 GiB RAM for this public repo; `runner-specs.yml` measures it).
-- A 4-target matrix (`android`, `desktop`, `browser`, `ios`); each target names its own task list. There is no root `build` task in CI.
+- Java 21 (the JetBrains JDK), ubuntu-latest (4 CPUs, 15.6 GiB RAM for this public repo). The `macos` target runs on macos-latest (3 CPUs, 7 GB RAM).
+- A 5-target matrix (`android`, `desktop`, `browser`, `ios`, `macos`); each target names its own task list. There is no root `build` task in CI.
+- The `ios` target only compiles on Linux. The `macos` target links the debug `ComposeApp` framework for the device and for the simulator and runs `iosSimulatorArm64Test`. Do not run `:app:ios:build` on macOS: the release links fail with `Java heap space` in the 3 GB Gradle heap, and with a 5 GB heap the release link of `iosArm64` used about 13 GB RAM on a MacBook.
 - The `android` target assembles debug and release of both apps, compiles the baseline module and the instrumented tests of both apps, and runs `lint`. It does not run `:app:android:build`, which would also build the three baseline-profile variants.
 - The `desktop` target also runs `:core:resources:localizationCheck` and `./gradlew -p composite test --no-daemon`.
 - A `scripts` job runs `python3 -m unittest discover -s scripts/tests` and `python3 -m unittest discover -s tools/ble-validation/tests` when a PR changes `scripts/` or `tools/ble-validation/`.
@@ -97,7 +98,7 @@ Security rules for every workflow:
 - Use `persist-credentials: false` on checkouts of build jobs.
 - Pin every third-party action (not under `actions/`) to a full commit SHA with the tag in a trailing comment. `.github/dependabot.yml` updates them.
 
-Keep the task lists narrow: every task the target does not need costs wall-clock time on the 4-CPU runner.
+Keep the task lists narrow: every task the target does not need costs wall-clock time on the runner.
 
 ## Common Build Failures
 
