@@ -207,3 +207,20 @@ jobs:
       # on and peak RAM stays under the 15.6 GiB of the runner.
       - name: Build ${{ matrix.target }}
         run: ./gradlew ${{ matrix.tasks }} --stacktrace -Dorg.gradle.console=plain
+
+      # The console gives only the name of a failed test. A browser test that Mocha stops after
+      # its time limit shows as the bare text "Error". The reports hold the message and the stack
+      # trace, so a failed job keeps them. The glob also gets the reports of the composite build.
+      # The artifact needs no token scope, and this job reads no secret, so the reports hold none.
+      - name: Upload the test and lint reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-${{ matrix.target }}
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+            **/build/reports/lint-results-*
+            !**/node_modules/**
+          if-no-files-found: ignore
+          retention-days: 14
