@@ -74,7 +74,7 @@ dependencies {
     implementation(projects.core.protocol)
     implementation(projects.core.store)
     implementation(projects.core.di)
-    // Crowdin-managed shared strings (public Res class) read via Compose Resources
+    // Shared strings (public Res class) read via Compose Resources
     implementation(projects.core.resources)
     // Shared tenths-of-a-millisecond formatting, so the watch renders timings exactly as the phone does
     implementation(projects.core.util)
