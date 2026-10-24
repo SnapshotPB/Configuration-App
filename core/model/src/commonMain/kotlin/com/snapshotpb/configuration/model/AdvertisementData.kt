@@ -2,9 +2,6 @@ package com.snapshotpb.configuration.model
 
 import kotlinx.serialization.Serializable
 
-/** Length of the firmware version field in the advertisement. Firmware `FW_VERSION_ENC_LEN`. */
-private const val FIRMWARE_VERSION_SIZE = 4
-
 /**
  * The board information in the 0xFFE0 service data of the board advertisement.
  *
@@ -82,51 +79,6 @@ data class AdvertisementData(
             }
 
             return AdvertisementData(boardType, fwVersion, extraFields, firmwareVersion)
-        }
-    }
-}
-
-/**
- * A board firmware version: `<year>.<week>.<count>`, with `-dev` for a build that is not a release.
- *
- * The firmware version is a calendar version: the ISO week-year, the ISO week, and the number of the
- * release in that week. The advertisement carries it in 4 bytes (`bluetooth.c`, `FW_VERSION_ENC_LEN`):
- * `[year - 2000, week, count, flags]`, where bit 0 of `flags` marks a dev build. The text is the
- * firmware `SNAPSHOT_VERSION_STRING` (`app/CMakeLists.txt`), for example `2026.29.1-dev`. A dev build
- * of the firmware can have a different suffix than `dev`, which the 4 bytes do not carry.
- *
- * The natural order compares the year, then the week, then the count. A dev build is lower than
- * the release with the same numbers.
- */
-@Serializable
-data class FirmwareVersion(
-    val year: Int,
-    val week: Int,
-    val count: Int,
-    val dev: Boolean,
-) : Comparable<FirmwareVersion> {
-
-    override fun compareTo(other: FirmwareVersion): Int =
-        compareValuesBy(this, other, { it.year }, { it.week }, { it.count }, { !it.dev })
-
-    override fun toString(): String = "$year.$week.$count" + if (dev) "-dev" else ""
-
-    companion object {
-        /** Year of the value 0 in the first byte. Firmware: `major = ISO week-year - 2000`. */
-        private const val YEAR_BASE = 2000
-
-        /** Bit 0 of the flags byte. Firmware `FW_FLAG_DEV`. */
-        private const val FLAG_DEV = 0x01
-
-        /** Decodes the 4 version bytes of the advertisement, or returns `null` for another length. */
-        fun decode(bytes: ByteArray): FirmwareVersion? {
-            if (bytes.size != FIRMWARE_VERSION_SIZE) return null
-            return FirmwareVersion(
-                year = YEAR_BASE + (bytes[0].toInt() and 0xFF),
-                week = bytes[1].toInt() and 0xFF,
-                count = bytes[2].toInt() and 0xFF,
-                dev = (bytes[3].toInt() and FLAG_DEV) != 0,
-            )
         }
     }
 }
