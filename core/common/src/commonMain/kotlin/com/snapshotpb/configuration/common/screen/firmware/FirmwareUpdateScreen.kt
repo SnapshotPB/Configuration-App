@@ -115,7 +115,8 @@ internal fun FirmwareUpdateContent(
     onCancel: () -> Unit,
     onClose: () -> Unit,
 ) {
-    var askCancel by rememberSaveable { mutableStateOf(false) }
+    // The effect that the open cancel dialog tells the user, by name, or `null` when it is closed.
+    var askedEffect by rememberSaveable { mutableStateOf<String?>(null) }
     val phase = state.phase
     val running = phase as? FirmwareUpdatePhase.Running
     val cancelEffect = running?.cancelEffect
@@ -148,7 +149,7 @@ internal fun FirmwareUpdateContent(
                     ) {
                         StepList(phase)
                         Space(16.dp)
-                        Actions(phase, onStart, onRetry, onAskCancel = { askCancel = true }, onClose)
+                        Actions(phase, onStart, onRetry, onAskCancel = { askedEffect = cancelEffect?.name }, onClose)
                     }
                 }
             } else {
@@ -169,24 +170,25 @@ internal fun FirmwareUpdateContent(
                         PhaseDetails(phase)
                     }
                     Space(16.dp)
-                    Actions(phase, onStart, onRetry, onAskCancel = { askCancel = true }, onClose)
+                    Actions(phase, onStart, onRetry, onAskCancel = { askedEffect = cancelEffect?.name }, onClose)
                 }
             }
         }
     }
 
-    // When the step changes to one with no stop while the dialog is open, the dialog closes.
+    // The dialog closes when the effect of a stop changes while it is open, for example from a stop
+    // of the upload to a stop of the wait. Then a tap on Stop cannot do what the user did not read.
     LaunchedEffect(cancelEffect) {
-        if (cancelEffect == null) askCancel = false
+        if (askedEffect != cancelEffect?.name) askedEffect = null
     }
-    if (askCancel && cancelEffect != null) {
+    if (cancelEffect != null && askedEffect == cancelEffect.name) {
         CancelDialog(
             effect = cancelEffect,
             onConfirm = {
-                askCancel = false
+                askedEffect = null
                 onCancel()
             },
-            onDismiss = { askCancel = false },
+            onDismiss = { askedEffect = null },
         )
     }
 }
@@ -263,24 +265,7 @@ private fun ColumnScope.PhaseDetails(phase: FirmwareUpdatePhase) {
         }
 
         is FirmwareUpdatePhase.Running -> {
-            if (phase.step >= FirmwareStep.RESET) {
-                ActionContainer(containerColor = MaterialTheme.colorScheme.errorContainer) {
-                    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text(
-                            text = stringResource(Res.string.firmware_update_swap_battery),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                        Space(4.dp)
-                        Text(
-                            text = stringResource(Res.string.firmware_update_swap_radio),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                    }
-                }
-            }
+            if (phase.step >= FirmwareStep.RESET) BoardInstallsWarning()
             Text(
                 text = stringResource(Res.string.firmware_update_warning_leave),
                 style = MaterialTheme.typography.bodyMedium,
@@ -305,6 +290,9 @@ private fun ColumnScope.PhaseDetails(phase: FirmwareUpdatePhase) {
         }
 
         is FirmwareUpdatePhase.Failed -> {
+            // After the reset, the board can still install the image, also after a stop or a
+            // failure of the app.
+            if (phase.step != null && phase.step >= FirmwareStep.RESET) BoardInstallsWarning()
             Text(
                 text = stringResource(Res.string.firmware_update_failed_title),
                 style = MaterialTheme.typography.titleLarge,
@@ -325,6 +313,27 @@ private fun ColumnScope.PhaseDetails(phase: FirmwareUpdatePhase) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+/** The warnings while the board can install the image: keep the battery in, and turn the radio on. */
+@Composable
+private fun BoardInstallsWarning() {
+    ActionContainer(containerColor = MaterialTheme.colorScheme.errorContainer) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = stringResource(Res.string.firmware_update_swap_battery),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Space(4.dp)
+            Text(
+                text = stringResource(Res.string.firmware_update_swap_radio),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
         }
     }
 }

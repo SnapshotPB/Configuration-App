@@ -232,6 +232,30 @@ class FirmwareUpdateViewModelTest {
     }
 
     @Test
+    fun anotherBoardClearsTheLastStep() {
+        val coordinator = FakeFirmwareUpdateCoordinator(status())
+        val viewModel = viewModel(coordinator)
+
+        coordinator.report(BOARD, FirmwareUpdateProgress.Verifying)
+        coordinator.report(OTHER_BOARD, FirmwareUpdateProgress.Checking)
+        // The step changes first, then the board.
+        coordinator.progress.value = FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NETWORK)
+        coordinator.deviceId.value = BOARD
+
+        assertEquals(null, (viewModel.state.value.phase as FirmwareUpdatePhase.Failed).step)
+    }
+
+    @Test
+    fun theFirstStateShowsAnUpdateThatRunsAlready() {
+        val coordinator = FakeFirmwareUpdateCoordinator(status())
+        coordinator.report(BOARD, FirmwareUpdateProgress.Uploading(offset = 1, total = 4))
+
+        val viewModel = viewModel(coordinator)
+
+        assertEquals(FirmwareStep.UPLOAD, (viewModel.state.value.phase as FirmwareUpdatePhase.Running).step)
+    }
+
+    @Test
     fun theNameOfTheBoardComesFromTheStore() = runTest {
         val store = testDeviceStore(UnconfinedTestDispatcher(testScheduler), listOf(testDevice(name = "Ego")))
         store.awaitLoaded()

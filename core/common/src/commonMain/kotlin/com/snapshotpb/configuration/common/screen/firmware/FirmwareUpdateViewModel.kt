@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningFold
@@ -35,29 +36,30 @@ class FirmwareUpdateViewModel(
         .map { devices -> devices.firstOrNull { it.id.toString() == deviceId }?.name }
         .distinctUntilChanged()
 
-    /** The progress with the last running step, so a failure can mark the step where it stopped. */
-    private val trackedProgress = coordinator.progress.runningFold(TrackedProgress()) { last, progress ->
-        TrackedProgress(
-            progress = progress,
-            lastStep = when (progress) {
-                FirmwareUpdateProgress.Idle -> null
-                else -> progress.runningStep() ?: last.lastStep
-            },
-        )
-    }
+    /**
+     * The progress and the board of the update, with the last running step of that board, so a
+     * failure can mark the step where it stopped. A new board or [FirmwareUpdateProgress.Idle]
+     * clears the last step. The fold drops its seed, so the first value is the real progress.
+     */
+    private val trackedProgress = combine(coordinator.progress, coordinator.deviceId, ::Pair)
+        .runningFold(TrackedProgress()) { last, (progress, updatingId) ->
+            val sameRun = updatingId == last.updatingId && progress != FirmwareUpdateProgress.Idle
+            TrackedProgress(
+                progress = progress,
+                updatingId = updatingId,
+                lastStep = progress.runningStep() ?: last.lastStep.takeIf { sameRun },
+            )
+        }
+        .drop(1)
 
     /**
-     * The status starts with `null`, so the screen shows the progress of a running update before
-     * the first status arrives.
+     * The status of the board. It starts with `null`, so the screen shows the progress of a running
+     * update before the first status arrives.
      */
-    private val boardStatus: Flow<FirmwareStatus?> = coordinator.status(deviceId)
+    private val boardStatus: Flow<FirmwareStatus?> = coordinator.status(deviceId).onStart<FirmwareStatus?> { emit(null) }
 
-    val state: StateFlow<FirmwareUpdateScreenState> = combine(
-        boardStatus.onStart { emit(null) },
-        trackedProgress,
-        coordinator.deviceId,
-    ) { status, tracked, updatingId ->
-        firmwareUpdateScreenState(deviceId, status, tracked.progress, updatingId, tracked.lastStep)
+    val state: StateFlow<FirmwareUpdateScreenState> = combine(boardStatus, trackedProgress) { status, tracked ->
+        firmwareUpdateScreenState(deviceId, status, tracked.progress, tracked.updatingId, tracked.lastStep)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, FirmwareUpdateScreenState())
 
     /** Starts the update. The tap on the confirm button is the confirmation of the user. */
@@ -114,6 +116,7 @@ class FirmwareUpdateViewModel(
 
     private data class TrackedProgress(
         val progress: FirmwareUpdateProgress = FirmwareUpdateProgress.Idle,
+        val updatingId: String? = null,
         val lastStep: FirmwareStep? = null,
     )
 

@@ -219,7 +219,8 @@ internal fun firmwareUpdateScreenState(
 
 /**
  * The status of [step] in the step list of [phase]. Before the start, every step is pending. When
- * the screen did not see the step of a failure, every step is pending.
+ * the screen did not see the step of a failure, every step is pending. The step of a stop is
+ * pending, not failed.
  */
 internal fun firmwareStepStatus(phase: FirmwareUpdatePhase, step: FirmwareStep): StepStatus {
     val current = when (phase) {
@@ -231,6 +232,8 @@ internal fun firmwareStepStatus(phase: FirmwareUpdatePhase, step: FirmwareStep):
     return when {
         step < current -> StepStatus.COMPLETED
         step > current -> StepStatus.PENDING
+        // A stop of the user is not a failure of the step: after the reset, the board continues.
+        phase is FirmwareUpdatePhase.Failed && phase.reason == FirmwareUpdateFailure.CANCELLED -> StepStatus.PENDING
         phase is FirmwareUpdatePhase.Failed -> StepStatus.FAILED
         else -> StepStatus.IN_PROGRESS
     }

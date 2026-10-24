@@ -54,6 +54,14 @@ class FirmwareUpdateStateTest {
     }
 
     @Test
+    fun theStepOfAStopIsPendingAndNotFailed() {
+        val phase = FirmwareUpdatePhase.Failed(FirmwareUpdateFailure.CANCELLED, null, FirmwareStep.SWAP)
+
+        assertEquals(StepStatus.COMPLETED, firmwareStepStatus(phase, FirmwareStep.RESET))
+        assertEquals(StepStatus.PENDING, firmwareStepStatus(phase, FirmwareStep.SWAP))
+    }
+
+    @Test
     fun afterTheDoneStepEveryStepIsComplete() {
         assertEquals(
             List(FirmwareStep.entries.size) { StepStatus.COMPLETED },
