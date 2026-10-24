@@ -307,7 +307,8 @@
     <!-- Desktop auto-updater dialog -->
     <string name="updater_dialog_title">Update Available</string>
     <string name="updater_message">A new version (%1$s) is available. Would you like to update now?</string>
-    <string name="updater_downloading">Downloading update: %1$d%%</string>
+    <!-- %1$s is the percent text of profile_value_percent. Compose Resources shows a double percent sign as two signs. -->
+    <string name="updater_downloading">Downloading update: %1$s</string>
     <string name="updater_starting_download">Starting download...</string>
     <string name="updater_error">Error: %1$s</string>
     <string name="updater_error_unknown">Unknown error</string>

@@ -307,7 +307,7 @@
     <!-- Desktop auto-updater dialog -->
     <string name="updater_dialog_title">Mise à jour disponible</string>
     <string name="updater_message">Une nouvelle version (%1$s) est disponible. Voulez-vous mettre à jour maintenant?</string>
-    <string name="updater_downloading">Téléchargement de la mise à jour&#160;: %1$d%%</string>
+    <string name="updater_downloading">Téléchargement de la mise à jour&#160;: %1$s</string>
     <string name="updater_starting_download">Démarrage du téléchargement...</string>
     <string name="updater_error">Erreur&#160;: %1$s</string>
     <string name="updater_error_unknown">Erreur inconnue</string>

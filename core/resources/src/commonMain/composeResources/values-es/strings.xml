@@ -307,7 +307,7 @@
     <!-- Desktop auto-updater dialog -->
     <string name="updater_dialog_title">Actualización disponible</string>
     <string name="updater_message">Hay una versión nueva (%1$s) disponible. ¿Quieres actualizar ahora?</string>
-    <string name="updater_downloading">Descargando la actualización: %1$d%%</string>
+    <string name="updater_downloading">Descargando la actualización: %1$s</string>
     <string name="updater_starting_download">Iniciando la descarga...</string>
     <string name="updater_error">Error: %1$s</string>
     <string name="updater_error_unknown">Error desconocido</string>
