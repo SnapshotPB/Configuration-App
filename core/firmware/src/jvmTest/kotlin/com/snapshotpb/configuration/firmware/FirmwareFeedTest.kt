@@ -169,6 +169,27 @@ class FirmwareFeedTest {
     }
 
     @Test
+    fun theBetaChannelComparesVersions_notThePlaceInTheList() = test {
+        val index = Json.parseToJsonElement(fixtureText("snapshot_v2/index.json")).jsonObject
+        val releases = index.getValue("releases") as JsonArray
+        site.replies["$SITE/snapshot_v2/index.json"] =
+            Reply.Text(JsonObject(index + ("releases" to JsonArray(releases.reversed()))).toString())
+
+        assertEquals("2027.1.1", feed.latest("snapshot_v2", FirmwareChannel.BETA)?.version)
+    }
+
+    @Test
+    fun aClearedDownloadIsDownloadedAgain() = test {
+        val release = assertNotNull(feed.latest("snapshot_v2"))
+        feed.download(release)
+
+        feed.clearDownload()
+        feed.download(release)
+
+        assertEquals(2, site.requests.count { it == release.assets.image.url })
+    }
+
+    @Test
     fun theBoardIndexHoldsEveryReleaseNewestFirst() = test {
         val index = assertNotNull(feed.releases("snapshot_v2"))
 

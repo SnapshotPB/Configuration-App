@@ -101,8 +101,12 @@ class FirmwareFeed(
             FirmwareChannel.STABLE -> readOrNull("$siteUrl/$board/latest.json")
             FirmwareChannel.BETA -> {
                 val index = readOrNull<FirmwareBoardIndex>("$siteUrl/$board/index.json")
-                // The site writes the releases newest first, in the version order of its tags.
-                index?.releases?.firstOrNull { it.channel in BETA_CHANNELS }
+                // A release whose version does not parse can get no offer, so the feed drops it.
+                index?.releases
+                    ?.filter { it.channel in BETA_CHANNELS }
+                    ?.mapNotNull { release -> release.firmwareVersion?.let { release to it } }
+                    ?.maxByOrNull { (_, version) -> version }
+                    ?.first
             }
         }
     }
@@ -160,6 +164,14 @@ class FirmwareFeed(
         }
         lastImage = FirmwareImage(release, bytes.copyOf())
         return FirmwareImage(release, bytes)
+    }
+
+    /**
+     * Removes the last good image from memory, for example after the board accepted it. The next
+     * [download] gets the image from the site again.
+     */
+    suspend fun clearDownload() {
+        downloadMutex.withLock { lastImage = null }
     }
 
     private suspend inline fun <reified T> readOrNull(url: String): T? = try {

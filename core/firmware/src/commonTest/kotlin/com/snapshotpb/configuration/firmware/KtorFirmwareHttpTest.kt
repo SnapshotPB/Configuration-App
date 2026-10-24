@@ -6,11 +6,18 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -80,5 +87,56 @@ class KtorFirmwareHttpTest {
 
         assertEquals(100, first.actual)
         assertEquals(99, second.expected)
+    }
+
+    @Test
+    fun aBodyThatEndsBeforeItsLengthIsAnHttpFailure() = runTest {
+        val http = KtorFirmwareHttp(
+            MockEngine { respond(ByteReadChannel(ByteArray(60)), headers = headersOf(HttpHeaders.ContentLength, "100")) },
+        )
+
+        val error = assertFailsWith<FirmwareFeedException.Http> { http.getBytes(url, 100) { _, _ -> } }
+
+        assertNull(error.status)
+    }
+
+    @Test
+    fun aCancellationOfTheCallerStaysACancellation() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val http = KtorFirmwareHttp(
+            MockEngine {
+                started.complete(Unit)
+                awaitCancellation()
+            },
+        )
+        var failure: Throwable? = null
+        val job = launch {
+            try {
+                http.getText(url)
+            } catch (error: Throwable) {
+                failure = error
+                throw error
+            }
+        }
+
+        started.await()
+        job.cancelAndJoin()
+
+        assertIs<CancellationException>(failure)
+    }
+
+    @Test
+    fun aRequestThatRunsTooLongIsAnHttpFailureWithNoStatus() = runTest {
+        val http = KtorFirmwareHttp(
+            MockEngine {
+                delay(10_000)
+                respond("late")
+            },
+            FirmwareHttpTimeouts(textRequestMillis = 100),
+        )
+
+        val error = assertFailsWith<FirmwareFeedException.Http> { http.getText(url) }
+
+        assertNull(error.status)
     }
 }
