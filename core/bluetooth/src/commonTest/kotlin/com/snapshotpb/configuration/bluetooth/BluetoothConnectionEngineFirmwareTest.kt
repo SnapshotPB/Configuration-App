@@ -7,6 +7,7 @@ import com.snapshotpb.configuration.bluetooth.smp.ImageHash
 import com.snapshotpb.configuration.bluetooth.smp.OsCommand
 import com.snapshotpb.configuration.bluetooth.smp.SmpGroup
 import com.snapshotpb.configuration.bluetooth.smp.SmpOperation
+import com.snapshotpb.configuration.bluetooth.smp.mcubootImage
 import com.snapshotpb.configuration.model.FirmwareAsset
 import com.snapshotpb.configuration.model.FirmwareAssets
 import com.snapshotpb.configuration.model.FirmwareImage
@@ -343,6 +344,57 @@ class BluetoothConnectionEngineFirmwareTest {
     }
 
     @Test
+    fun updateFirmware_whenSlot1HoldsTheImageAndIsPending_onlyResets() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+        val smp = assertNotNull(f.smp)
+        smp.holdInSlot1(FakeSmpBoard.NEW_HASH, pending = true)
+
+        f.engine.updateFirmware(BOARD_ID, MCUBOOT_IMAGE, requestId = 6L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        assertIs<FirmwareUpdateProgress.AwaitingSwap>(f.lastUpload().progress)
+        assertEquals(ImageHash(FakeSmpBoard.NEW_HASH).toHex(), f.lastUpload().uploadedImageHash)
+        assertTrue(smp.requests.none { it.header.command == ImageCommand.UPLOAD && it.header.group == SmpGroup.IMAGE })
+        assertTrue(smp.requests.none { it.header.operation == SmpOperation.Write && it.header.command == ImageCommand.STATE })
+        assertEquals(1, smp.resetCount)
+    }
+
+    @Test
+    fun updateFirmware_whenSlot1HoldsTheImageAndIsNotPending_testsAndResets() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+        val smp = assertNotNull(f.smp)
+        smp.holdInSlot1(FakeSmpBoard.NEW_HASH, pending = false)
+
+        f.engine.updateFirmware(BOARD_ID, MCUBOOT_IMAGE, requestId = 6L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        assertIs<FirmwareUpdateProgress.AwaitingSwap>(f.lastUpload().progress)
+        assertTrue(smp.requests.none { it.header.command == ImageCommand.UPLOAD && it.header.group == SmpGroup.IMAGE })
+        assertEquals(1, smp.requests.count { it.header.operation == SmpOperation.Write && it.header.command == ImageCommand.STATE })
+        assertEquals(1, smp.resetCount)
+    }
+
+    @Test
+    fun updateFirmware_whenSlot1HoldsAnotherImage_uploads() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+        val smp = assertNotNull(f.smp)
+        smp.holdInSlot1(ByteArray(32) { 0x33 }, pending = false)
+
+        f.engine.updateFirmware(BOARD_ID, MCUBOOT_IMAGE, requestId = 6L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        assertIs<FirmwareUpdateProgress.AwaitingSwap>(f.lastUpload().progress)
+        assertContentEquals(MCUBOOT_IMAGE.bytes, smp.imageBoard.written)
+        assertEquals(1, smp.resetCount)
+    }
+
+    @Test
     fun updateFirmware_whenNotConnected_failsWithNotConnected() = runTest(UnconfinedTestDispatcher()) {
         val f = newFixture()
 
@@ -504,6 +556,23 @@ class BluetoothConnectionEngineFirmwareTest {
         )
         val BOARD_CONFIG = DeviceConfig(activeProfile = 0u, bootText = "HELLO")
         val BOARD_PROFILES = Profiles(profiles = listOf(Profile(name = "P0")))
+
+        /** An MCUboot image whose TLVs hold [FakeSmpBoard.NEW_HASH]. */
+        val MCUBOOT_IMAGE = FirmwareImage(
+            manifest = FirmwareManifest(
+                version = "2026.43.1",
+                compatibleHardware = listOf("snapshot_v2"),
+                assets = FirmwareAssets(
+                    image = FirmwareAsset(
+                        name = "snapshot_v2-2026.43.1-app.signed.bin",
+                        url = "https://example.invalid/image.bin",
+                        size = 0,
+                        sha256 = "cd".repeat(32),
+                    ),
+                ),
+            ),
+            bytes = mcubootImage(FakeSmpBoard.NEW_HASH),
+        )
 
         /** An image of three chunk frames. The fake board does not check the hash of the file. */
         val IMAGE = FirmwareImage(

@@ -72,6 +72,12 @@ internal class FakeSmpBoard(
     private var uploadedHash: ByteArray? = null
     private var pending = false
 
+    /** Puts an image with [hash] in slot 1, as after an earlier upload, and marks it [pending]. */
+    fun holdInSlot1(hash: ByteArray, pending: Boolean) {
+        uploadedHash = hash
+        this.pending = pending
+    }
+
     /** True after `os reset`. */
     var resetCount: Int = 0
         private set

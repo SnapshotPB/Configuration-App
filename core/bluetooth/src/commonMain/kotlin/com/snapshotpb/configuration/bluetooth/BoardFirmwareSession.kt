@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.bluetooth.smp.ImageHash
 import com.snapshotpb.configuration.bluetooth.smp.ImageManagement
 import com.snapshotpb.configuration.bluetooth.smp.ImageSlot
 import com.snapshotpb.configuration.bluetooth.smp.McuMgrError
+import com.snapshotpb.configuration.bluetooth.smp.McubootImage
 import com.snapshotpb.configuration.bluetooth.smp.OsManagement
 import com.snapshotpb.configuration.bluetooth.smp.SmpCharacteristicMissing
 import com.snapshotpb.configuration.bluetooth.smp.SmpClient
@@ -69,6 +70,12 @@ internal class BoardFirmwareSession(
      * Uploads [image] to slot 1, marks it for a test boot and resets the board. Returns the MCUboot
      * hash of the uploaded image.
      *
+     * The first `image list` tells whether slot 1 already holds [image], from an earlier attempt:
+     * its hash is the MCUboot hash in the TLVs of [image] ([McubootImage.hashOf]). When the slot is
+     * pending, only the reset follows. When it is not pending, `image test` and the reset follow.
+     * An earlier attempt can stop after the upload or after `image test`, for example when the link
+     * drops before the reset; a new upload to a pending slot would then fail. Else the upload runs.
+     *
      * @param sha256 The SHA-256 of the whole image file, 32 bytes.
      * @param onProgress Receives the offset of the board after each chunk.
      * @param onResetting Called after the upload, before `image test`.
@@ -83,20 +90,38 @@ internal class BoardFirmwareSession(
     ): ImageHash {
         val before = images.list()
         log.d { "Slots before the upload: ${before.describe()}" }
+        val imageHash = McubootImage.hashOf(image)
+        val held = before.updateSlot()?.takeIf { slot -> imageHash != null && slot.hash == imageHash && !slot.active }
+        if (held != null) {
+            log.d { "Slot $UPDATE_SLOT holds the image ${held.hash.toHex()} already (pending: ${held.pending}); no upload" }
+            onProgress(UploadProgress(image.size.toLong(), image.size.toLong()))
+            onResetting()
+            if (!held.pending) testImage(held.hash)
+            os.reset()
+            return held.hash
+        }
         images.upload(image, sha256, boardBufferSize = service.bufferSize, onProgress = onProgress)
         val after = images.list()
         log.d { "Slots after the upload: ${after.describe()}" }
-        val uploaded = after.firstOrNull { it.image == 0 && it.slot == UPDATE_SLOT }
+        val uploaded = after.updateSlot()
             ?: throw FirmwareStepRefused("The board lists no image in slot $UPDATE_SLOT after the upload")
         onResetting()
-        val tested = images.test(uploaded.hash)
-        if (tested.none { it.hash == uploaded.hash && it.pending }) {
-            throw FirmwareStepRefused("The board did not mark the image ${uploaded.hash.toHex()} as pending")
-        }
+        testImage(uploaded.hash)
         os.reset()
         log.d { "The board resets to the image ${uploaded.hash.toHex()}" }
         return uploaded.hash
     }
+
+    /** Marks the image with [hash] for a test boot, and checks that the board marked it pending. */
+    private suspend fun testImage(hash: ImageHash) {
+        val tested = images.test(hash)
+        if (tested.none { it.hash == hash && it.pending }) {
+            throw FirmwareStepRefused("The board did not mark the image ${hash.toHex()} as pending")
+        }
+    }
+
+    /** The update slot of a board with one image. */
+    private fun List<ImageSlot>.updateSlot(): ImageSlot? = firstOrNull { it.image == 0 && it.slot == UPDATE_SLOT }
 
     /**
      * Confirms the image that runs when `image list` shows it as not confirmed, and returns it. The
