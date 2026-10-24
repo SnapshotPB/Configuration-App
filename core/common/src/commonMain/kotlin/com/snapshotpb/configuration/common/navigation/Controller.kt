@@ -15,6 +15,7 @@ internal val navConfig = SavedStateConfiguration {
             subclass(ScreenKeyConnectingDevice::class, ScreenKeyConnectingDevice.serializer())
             subclass(ScreenKeyDeviceBrowser::class, ScreenKeyDeviceBrowser.serializer())
             subclass(ScreenKeyDeviceConfigure::class, ScreenKeyDeviceConfigure.serializer())
+            subclass(ScreenKeyFirmwareUpdate::class, ScreenKeyFirmwareUpdate.serializer())
             subclass(ScreenKeyProfile::class, ScreenKeyProfile.serializer())
             subclass(ScreenKeyProfileAdd::class, ScreenKeyProfileAdd.serializer())
             subclass(ScreenKeyProfiles::class, ScreenKeyProfiles.serializer())

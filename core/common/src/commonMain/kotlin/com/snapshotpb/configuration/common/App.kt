@@ -28,6 +28,7 @@ import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.common.navigation.ScreenKeyConnectingDevice
 import com.snapshotpb.configuration.common.navigation.ScreenKeyDeviceBrowser
 import com.snapshotpb.configuration.common.navigation.ScreenKeyDeviceConfigure
+import com.snapshotpb.configuration.common.navigation.ScreenKeyFirmwareUpdate
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfile
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfileAdd
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfiles
@@ -39,6 +40,7 @@ import com.snapshotpb.configuration.common.screen.device.ConfigureDeviceScreen
 import com.snapshotpb.configuration.common.screen.device.ConnectingDeviceScreen
 import com.snapshotpb.configuration.common.screen.device.DeviceBrowserScreen
 import com.snapshotpb.configuration.common.screen.device.composable.DeviceSyncConflictDialog
+import com.snapshotpb.configuration.common.screen.firmware.FirmwareUpdateScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfileAddScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfileScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfilesScreen
@@ -119,6 +121,12 @@ fun App(
                     ConfigureDeviceScreen(
                         navigationController = navigationController,
                         deviceId = screenKeyDeviceConfigure.deviceId,
+                    )
+                }
+                entry<ScreenKeyFirmwareUpdate> { screenKeyFirmwareUpdate ->
+                    FirmwareUpdateScreen(
+                        navigationController = navigationController,
+                        deviceId = screenKeyFirmwareUpdate.deviceId,
                     )
                 }
                 entry<ScreenKeyConnectingDevice> { screenKeyConnecting ->

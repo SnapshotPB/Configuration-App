@@ -53,7 +53,9 @@ import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.composable.gripFrameLabel
 import com.snapshotpb.configuration.common.composable.textFieldName
 import com.snapshotpb.configuration.common.navigation.NavigationController
+import com.snapshotpb.configuration.common.navigation.ScreenKeyFirmwareUpdate
 import com.snapshotpb.configuration.common.screen.device.composable.DisplayWindowEditor
+import com.snapshotpb.configuration.common.screen.firmware.FirmwareSection
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
@@ -121,6 +123,14 @@ fun ConfigureDeviceScreen(
         navigationController.navigateBackToProfiles(deviceId)
     }
 
+    // The Firmware section. Its button opens the update screen of this board.
+    val firmwareSection: @Composable () -> Unit = {
+        FirmwareSection(
+            deviceId = deviceId,
+            onOpenUpdate = { navigationController.goTo(ScreenKeyFirmwareUpdate(deviceId)) },
+        )
+    }
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTwoPane = fitsTwoPanes(maxWidth, maxHeight)
 
@@ -171,6 +181,7 @@ fun ConfigureDeviceScreen(
                         device = device,
                         onEdit = viewModel::editDraft,
                         onSave = onSave,
+                        firmwareSection = firmwareSection,
                     )
                 }
             }
@@ -188,6 +199,7 @@ fun ConfigureDeviceScreen(
                     device = device,
                     onEdit = viewModel::editDraft,
                     onSave = onSave,
+                    firmwareSection = firmwareSection,
                 )
             }
         }
@@ -198,6 +210,9 @@ fun ConfigureDeviceScreen(
  * The fields and the Save button of the configuration screen. Both layouts show this one form,
  * so a field is written one time. The two layouts used to hold a copy each.
  *
+ * [firmwareSection] is the Firmware section. It is not part of the draft, and Save does not
+ * change it.
+ *
  * [onEdit] applies a change to the draft. The "unsaved" marks compare the draft with the board
  * state of [device].
  */
@@ -207,6 +222,7 @@ private fun ColumnScope.ConfigureDeviceForm(
     device: Device?,
     onEdit: ((ConfigureDeviceDraft) -> ConfigureDeviceDraft) -> Unit,
     onSave: () -> Unit,
+    firmwareSection: @Composable () -> Unit,
 ) {
     val boardState = device?.boardState
     val isBootTextDiverged = boardState?.let { draft.bootText != it.bootText } ?: false
@@ -318,6 +334,8 @@ private fun ColumnScope.ConfigureDeviceForm(
     )
 
     LockoutStatusRow(enabled = device?.lockoutEnabled == true)
+
+    firmwareSection()
 
     Space(8.dp)
 

@@ -314,4 +314,82 @@
     <string name="updater_action_update_now">Mettre à jour maintenant</string>
     <string name="updater_action_later">Plus tard</string>
     <string name="updater_action_close">Fermer</string>
+    <!-- Firmware section of the Configure Device screen -->
+    <string name="firmware_section_label">Micrologiciel</string>
+    <string name="firmware_section_details">Le micrologiciel de la carte et la version la plus récente pour cette carte.</string>
+    <string name="firmware_section_board_version">Micrologiciel de la carte&#160;: %1$s</string>
+    <string name="firmware_section_target">Type de carte&#160;: %1$s</string>
+    <string name="firmware_section_latest">Version la plus récente&#160;: %1$s</string>
+    <!-- The text after the colon comes from the firmware site, in English. -->
+    <string name="firmware_section_release_note">Note de version&#160;: %1$s</string>
+    <string name="firmware_section_update_button">Mettre à jour</string>
+    <string name="firmware_section_show_update_button">Voir la mise à jour</string>
+    <!-- The step of the update that runs now, e.g. "Update in progress: Download the firmware" -->
+    <string name="firmware_section_in_progress">Mise à jour en cours&#160;: %1$s</string>
+    <string name="firmware_section_check_again_button">Vérifier à nouveau</string>
+    <!-- Shown in place of a board type that the board has not reported. -->
+    <string name="firmware_target_unknown">Inconnu</string>
+    <!-- Why the Firmware section offers no update -->
+    <string name="firmware_reason_update_in_progress">L’application met à jour une autre carte. Attendez la fin de cette mise à jour.</string>
+    <string name="firmware_reason_not_connected">Connectez-vous à la carte pour rechercher une mise à jour.</string>
+    <string name="firmware_reason_checking">Recherche d’une mise à jour…</string>
+    <string name="firmware_reason_no_update_service">Le micrologiciel de cette carte ne peut pas être mis à jour par Bluetooth. Installez une fois un micrologiciel plus récent par USB.</string>
+    <string name="firmware_reason_platform_unsupported">Cette version de l’application ne peut pas mettre à jour le micrologiciel. Utilisez l’application sur Android, iOS, Windows ou Linux.</string>
+    <string name="firmware_reason_update_service_error">Le service de mise à jour de la carte n’a pas répondu. Connectez-vous de nouveau à la carte.</string>
+    <string name="firmware_reason_check_failed">L’application n’a pas pu lire les versions du micrologiciel. Vérifiez votre connexion Internet.</string>
+    <string name="firmware_reason_no_release">Il n’y a pas encore de version du micrologiciel pour cette carte.</string>
+    <string name="firmware_reason_incompatible_hardware">La version la plus récente n’est pas destinée au matériel de cette carte.</string>
+    <string name="firmware_reason_unknown_board_version">L’application ne connaît pas la version du micrologiciel de la carte, elle ne peut donc pas la comparer à la version la plus récente.</string>
+    <string name="firmware_reason_up_to_date">La carte a le micrologiciel le plus récent.</string>
+    <string name="firmware_reason_not_yet_released">Les mises à jour du micrologiciel ne sont pas disponibles dans cette version de l’application.</string>
+    <!-- Firmware Update screen -->
+    <string name="firmware_update_title">Mise à jour du micrologiciel</string>
+    <!-- The firmware version of the board and the version of the update, e.g. "From 2026.29.1 to 2026.43.1" -->
+    <string name="firmware_update_versions">De %1$s à %2$s</string>
+    <string name="firmware_update_warnings_title">Avant de commencer</string>
+    <string name="firmware_update_warning_still">Gardez le marqueur immobile et pointez-le dans une direction sûre.</string>
+    <string name="firmware_update_warning_no_fire">Le marqueur ne tire pas pendant que la carte reçoit le micrologiciel.</string>
+    <string name="firmware_update_warning_battery">Ne retirez pas la batterie pendant la mise à jour, ni tant que l’écran de la carte est éteint.</string>
+    <!-- The expected time of the dark screen, e.g. "1:30" -->
+    <string name="firmware_update_warning_restart">La carte redémarre à la fin de la mise à jour. Son écran reste éteint pendant environ %1$s.</string>
+    <string name="firmware_update_warning_radio">Après le redémarrage, le Bluetooth de la carte est désactivé. Activez-le dans le menu de la carte pour que l’application puisse se reconnecter.</string>
+    <string name="firmware_update_warning_leave">Vous pouvez quitter cet écran. La mise à jour continue.</string>
+    <string name="firmware_update_start_button">Lancer la mise à jour</string>
+    <!-- The steps of the firmware update -->
+    <string name="firmware_step_check">Rechercher la version la plus récente</string>
+    <string name="firmware_step_download">Télécharger le micrologiciel</string>
+    <string name="firmware_step_prepare">Préparer la carte</string>
+    <string name="firmware_step_upload">Envoyer le micrologiciel à la carte</string>
+    <string name="firmware_step_reset">Redémarrer la carte</string>
+    <string name="firmware_step_swap">Installer le micrologiciel</string>
+    <string name="firmware_step_verify">Se connecter et vérifier le nouveau micrologiciel</string>
+    <!-- The time since the restart and the expected time, e.g. "0:45 of about 1:30" -->
+    <string name="firmware_update_swap_time">%1$s sur environ %2$s</string>
+    <string name="firmware_update_swap_battery">Ne retirez pas la batterie.</string>
+    <string name="firmware_update_swap_radio">Quand l’écran de la carte s’allume, activez le Bluetooth dans le menu de la carte.</string>
+    <string name="firmware_update_cancel_button">Arrêter la mise à jour</string>
+    <string name="firmware_update_cancel_title">Arrêter la mise à jour&#160;?</string>
+    <string name="firmware_update_cancel_stops_update">La carte arrête la mise à jour et garde son micrologiciel actuel. Vous pourrez réessayer plus tard.</string>
+    <string name="firmware_update_cancel_stops_wait">La carte continue d’installer le micrologiciel. Ne retirez pas la batterie. L’application cesse d’attendre la carte.</string>
+    <string name="firmware_update_cancel_confirm">Arrêter</string>
+    <string name="firmware_update_cancel_keep">Continuer</string>
+    <string name="firmware_update_done_title">Mise à jour terminée</string>
+    <string name="firmware_update_done_body">La carte utilise maintenant le micrologiciel %1$s.</string>
+    <string name="firmware_update_done_body_unknown">La carte utilise maintenant le nouveau micrologiciel.</string>
+    <string name="firmware_update_failed_title">Mise à jour arrêtée</string>
+    <!-- A code for support, e.g. "Details: NoAnswer" -->
+    <string name="firmware_update_failed_detail">Détails&#160;: %1$s</string>
+    <string name="firmware_update_retry_button">Réessayer</string>
+    <string name="firmware_update_close_button">Fermer</string>
+    <!-- Why the firmware update stopped -->
+    <string name="firmware_failure_network">Le téléchargement s’est arrêté. Vérifiez votre connexion Internet, puis réessayez.</string>
+    <string name="firmware_failure_no_release">Il n’y a pas de micrologiciel plus récent pour cette carte.</string>
+    <string name="firmware_failure_bad_image">Le micrologiciel téléchargé est endommagé. Réessayez.</string>
+    <string name="firmware_failure_not_connected">La carte n’est pas connectée. Connectez-vous à la carte, puis réessayez.</string>
+    <string name="firmware_failure_link_lost">La connexion Bluetooth s’est interrompue. La carte garde son micrologiciel actuel. Rapprochez-vous de la carte, puis réessayez.</string>
+    <string name="firmware_failure_board_refused">La carte a refusé la mise à jour. Réessayez.</string>
+    <string name="firmware_failure_reverted">Le nouveau micrologiciel n’a pas démarré, la carte est donc revenue à son micrologiciel précédent.</string>
+    <string name="firmware_failure_not_copied">La carte n’a pas installé le nouveau micrologiciel. Elle utilise toujours son micrologiciel précédent.</string>
+    <string name="firmware_failure_no_advertisement">L’application n’a pas trouvé la carte après le redémarrage. Activez le Bluetooth dans le menu de la carte, puis réessayez.</string>
+    <string name="firmware_failure_cancelled">Vous avez arrêté la mise à jour.</string>
 </resources>

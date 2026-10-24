@@ -25,6 +25,7 @@ kotlin {
             dependencies {
                 implementation(projects.core.appVersion)
                 implementation(projects.core.bluetooth)
+                implementation(projects.core.firmware)
                 implementation(projects.core.model)
                 implementation(projects.core.resources)
                 implementation(projects.core.store)

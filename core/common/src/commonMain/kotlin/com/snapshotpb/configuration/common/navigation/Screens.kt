@@ -33,3 +33,9 @@ data class ScreenKeyDeviceConfigure(
 data class ScreenKeyConnectingDevice(
     val deviceId: String,
 ) : ScreenKey()
+
+/** The firmware update of the board [deviceId]: the warnings, the steps and the result. */
+@Serializable
+data class ScreenKeyFirmwareUpdate(
+    val deviceId: String,
+) : ScreenKey()
