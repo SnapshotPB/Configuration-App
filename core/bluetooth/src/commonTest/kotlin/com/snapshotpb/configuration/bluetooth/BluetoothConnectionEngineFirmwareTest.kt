@@ -23,7 +23,9 @@ import dev.bluefalcon.core.ConnectionPriority
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -221,6 +223,63 @@ class BluetoothConnectionEngineFirmwareTest {
         assertNull(f.service())
         assertFalse(BOARD_ID in f.stateManager.connectedDevices.value)
         assertTrue(f.falconEngine.notifyCalls.contains(smp.characteristic to false))
+    }
+
+    @Test
+    fun save_duringASlowUpdateServiceRead_doesNotWait() = runTest(UnconfinedTestDispatcher()) {
+        // The board never answers `os info`, so the read ends only at the time limit of the answer.
+        val smp = FakeSmpBoard().apply { osInfoGate = CompletableDeferred() }
+        val f = newFixture(smp)
+        var readEnd = -1L
+        backgroundScope.launch {
+            f.stateManager.updateServices.first { it[BOARD_ID]?.status == UpdateServiceStatus.FAILED }
+            readEnd = currentTime
+        }
+        f.engine.connect(DEVICE_ID)
+        advanceTimeBy(1_000L)
+        assertEquals(UpdateServiceStatus.CHECKING, f.service()?.status)
+
+        var writeEnd = -1L
+        launch {
+            f.engine.writeDeviceConfiguration(BOARD_ID, boardDevice())
+            writeEnd = currentTime
+        }
+        advanceTimeBy(WRITE_MILLIS)
+        runCurrent()
+
+        // The SMP read holds no write lock, so the Save ended before the read of the board.
+        assertNull(f.writes.single().error)
+        assertEquals(listOf("device_config", "profiles"), f.board.writtenObjects)
+        assertTrue(writeEnd in 0 until readEnd, "the Save ended at $writeEnd ms, the read at $readEnd ms")
+        assertNull(f.service()?.target)
+    }
+
+    @Test
+    fun aBoardThatAnswersLate_getsNoTarget_andTheNextConnectReadsAgain() = runTest(UnconfinedTestDispatcher()) {
+        val smp = FakeSmpBoard()
+        val f = newFixture(smp, installSmp = false)
+        f.falconEngine.onTypedWrite = { _, _, _ -> CharacteristicWriteResult.Sent }
+        connect(f)
+        assertEquals(BoardUpdateService(UpdateServiceStatus.FAILED), f.service())
+
+        // The board answers now. A second connect on the live link reads the service again.
+        smp.install(f.falconEngine)
+        connect(f)
+
+        assertEquals(UpdateServiceStatus.AVAILABLE, f.service()?.status)
+        assertEquals("snapshot_v2", f.service()?.target?.board)
+    }
+
+    @Test
+    fun updateFirmware_duringTheUpdateServiceRead_failsWithNoUpdateService() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(FakeSmpBoard().apply { osInfoGate = CompletableDeferred() })
+        f.engine.connect(DEVICE_ID)
+        advanceTimeBy(PARK_MILLIS)
+
+        f.engine.updateFirmware(BOARD_ID, IMAGE, requestId = 4L)
+        runCurrent()
+
+        assertEquals(FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NO_UPDATE_SERVICE), f.lastUpload().progress)
     }
 
     @Test

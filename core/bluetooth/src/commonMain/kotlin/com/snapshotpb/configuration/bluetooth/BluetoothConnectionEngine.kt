@@ -38,10 +38,12 @@ import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -114,7 +116,7 @@ class BluetoothConnectionEngine(
 
     /**
      * The SMP session of each connected scan key whose board has the update service (see
-     * [readUpdateService]). Guarded by [connectionLock]. A firmware step uses a session only while
+     * [startUpdateServiceRead]). Guarded by [connectionLock]. A firmware step uses a session only while
      * it holds [writeMutex]. A teardown closes the session also while an upload uses it: that close
      * and the disconnect are how a Disconnect stops an upload.
      */
@@ -125,6 +127,9 @@ class BluetoothConnectionEngine(
      * the teardown removes the entry of that board. Guarded by [connectionLock].
      */
     private val updateServiceBoardIds: MutableMap<String, String> = mutableMapOf()
+
+    /** The update-service read of each scan key while it runs. Guarded by [connectionLock]. */
+    private val updateServiceJobs: MutableMap<String, Job> = mutableMapOf()
 
     /**
      * Serializes board writes. A write runs on [coroutineScope], not on the caller, so a caller that
@@ -285,7 +290,7 @@ class BluetoothConnectionEngine(
                     readInitialState(knownKey, client, livePeripheral, expectedBoardId(deviceId, knownKey))
                 }
                 restoreIdleState()
-                readUpdateService(knownKey, livePeripheral)
+                startUpdateServiceRead(knownKey, livePeripheral)
                 return
             }
 
@@ -372,7 +377,7 @@ class BluetoothConnectionEngine(
                 )
             }
             restoreIdleState()
-            if (otsReady) readUpdateService(key, peripheral)
+            if (otsReady) startUpdateServiceRead(key, peripheral)
         } finally {
             // Every normal path above leaves Connecting, so a lingering Connecting(deviceId) means
             // the attempt was cancelled mid-flight (a new connect, or a Disconnect/Cancel from the
@@ -1129,39 +1134,70 @@ class BluetoothConnectionEngine(
     }
 
     /**
-     * Reads the firmware update service of the board on [sessionKey] after the 4-step connect, and
-     * records it in [BluetoothStateManager.updateServices]. This is not a fifth connect step: the
-     * board is connected already, and no result of this read fails the connection. A board with
-     * no SMP service, an engine with no typed write, an SMP error and a time-out each give an entry
-     * with no target and a log line.
+     * Starts the read of the firmware update service of the board on [sessionKey] after the 4-step
+     * connect. The result goes to [BluetoothStateManager.updateServices]. This is not a fifth
+     * connect step: the board is connected already, and no result of this read fails the
+     * connection.
      *
-     * A live link that has a session keeps it, so a second read of the board does no SMP command.
-     * Must be called while [writeMutex] and [connectionLock] are held. The UI shows the board as
-     * connected during this read, so a Save in this time waits up to
-     * [UPDATE_SERVICE_READ_LIMIT_MILLIS]; the entry shows [UpdateServiceStatus.CHECKING] meanwhile.
+     * The read runs on [coroutineScope] after the connect releases its locks, so a Save does not
+     * wait for it. It takes [connectionLock] only for the short changes of the shared maps. Until it
+     * ends, the entry shows [UpdateServiceStatus.CHECKING], and no firmware request can use the
+     * session (see [firmwareLink]). A board with no SMP service, an engine with no typed write, an
+     * SMP error and a board that answers late each give an entry with no target and a log line. The
+     * next connect reads again.
+     *
+     * A live link that has a session with an image list keeps it, so a second read of the board does
+     * no SMP command. Must be called while [connectionLock] is held.
      */
-    private suspend fun readUpdateService(sessionKey: String, peripheral: BluetoothPeripheral) {
+    private fun startUpdateServiceRead(sessionKey: String, peripheral: BluetoothPeripheral) {
         val boardId = connectedBoardIds[sessionKey] ?: return
-        smpSessions[sessionKey]?.let { session ->
-            // A session whose image list failed reads it again, so a verify after an update can
-            // see the image that runs.
-            if (session.service.activeImage == null) probeAgain(boardId, session)
+        if (updateServiceJobs[sessionKey]?.isActive == true) return
+        val session = smpSessions[sessionKey]
+        if (session != null && session.service.activeImage != null) {
             publishUpdateService(sessionKey, boardId, session.service)
             return
         }
-        if (!hasSmpService(peripheral)) {
+        if (session == null && !hasSmpService(peripheral)) {
             log.d { "Board $boardId has no SMP service, so it gets no firmware update" }
             publishUpdateService(sessionKey, boardId, BoardUpdateService(UpdateServiceStatus.ABSENT))
             return
         }
         publishUpdateService(sessionKey, boardId, BoardUpdateService(UpdateServiceStatus.CHECKING))
+        // The job goes into the map before it starts, so the read always finds itself there.
+        val read = coroutineScope.launch(start = CoroutineStart.LAZY) {
+            if (session != null) {
+                // A session whose image list failed reads it again, so a verify after an update
+                // can see the image that runs.
+                readAgain(sessionKey, boardId, session)
+            } else {
+                readNewSession(sessionKey, boardId, peripheral)
+            }
+        }
+        updateServiceJobs[sessionKey] = read
+        read.start()
+    }
+
+    /** Opens a session on [peripheral], probes it, and keeps it when the board has the service. */
+    private suspend fun readNewSession(sessionKey: String, boardId: String, peripheral: BluetoothPeripheral) {
+        var opened: BoardFirmwareSession? = null
         val service = try {
-            withTimeoutOrNull(UPDATE_SERVICE_READ_LIMIT_MILLIS) { openUpdateService(sessionKey, peripheral) }
-                ?: BoardUpdateService(UpdateServiceStatus.FAILED).also {
-                    log.d { "The SMP read of $boardId did not end in $UPDATE_SERVICE_READ_LIMIT_MILLIS ms" }
+            withTimeoutOrNull(UPDATE_SERVICE_READ_LIMIT_MILLIS) {
+                when (val transport = BlueFalconSmpTransport.open(blueFalcon, peripheral) { seams.awaitSubscribed(peripheral, it) }) {
+                    SmpOpenResult.NoSmpService -> BoardUpdateService(UpdateServiceStatus.ABSENT)
+                    is SmpOpenResult.Opened -> {
+                        val session = BoardFirmwareSession(transport.transport) {
+                            withTimeoutOrNull(SMP_CLOSE_LIMIT_MILLIS) { transport.transport.close() }
+                        }
+                        opened = session
+                        session.probe()
+                    }
                 }
+            } ?: BoardUpdateService(UpdateServiceStatus.FAILED).also {
+                log.d { "The board $boardId did not answer the SMP read in $UPDATE_SERVICE_READ_LIMIT_MILLIS ms" }
+            }
         } catch (cancelled: CancellationException) {
-            withContext(NonCancellable) { closeUpdateService(sessionKey) }
+            // A teardown or a new connect cancelled the read. Do not leave a subscription open.
+            withContext(NonCancellable) { opened?.close() }
             throw cancelled
         } catch (error: SmpWriteUnsupported) {
             log.d { "The Bluetooth engine cannot write to SMP: ${error.message}" }
@@ -1170,13 +1206,22 @@ class BluetoothConnectionEngine(
             log.d { "The SMP read of $boardId failed: ${error::class.simpleName}: ${error.message}" }
             BoardUpdateService(UpdateServiceStatus.FAILED)
         }
-        if (service.status != UpdateServiceStatus.AVAILABLE) smpSessions.remove(sessionKey)?.close()
+        val session = opened
+        val kept = connectionLock.withLock {
+            val sameLink = connectedBoardIds[sessionKey] == boardId && isCurrentRead(sessionKey)
+            if (sameLink) {
+                if (session != null && service.status == UpdateServiceStatus.AVAILABLE) smpSessions[sessionKey] = session
+                publishUpdateService(sessionKey, boardId, service)
+                updateServiceJobs.remove(sessionKey)
+            }
+            sameLink && session != null && service.status == UpdateServiceStatus.AVAILABLE
+        }
         log.d { "Update service of $boardId: $service" }
-        publishUpdateService(sessionKey, boardId, service)
+        if (!kept) withContext(NonCancellable) { session?.close() }
     }
 
     /** Probes [session] again. A failure keeps the last result, with a log line. */
-    private suspend fun probeAgain(boardId: String, session: BoardFirmwareSession) {
+    private suspend fun readAgain(sessionKey: String, boardId: String, session: BoardFirmwareSession) {
         try {
             withTimeoutOrNull(UPDATE_SERVICE_READ_LIMIT_MILLIS) { session.probe() }
         } catch (cancelled: CancellationException) {
@@ -1184,25 +1229,17 @@ class BluetoothConnectionEngine(
         } catch (error: Exception) {
             log.d { "The second SMP read of $boardId failed: ${error::class.simpleName}: ${error.message}" }
         }
-    }
-
-    /** Opens the SMP transport of [peripheral], keeps the session for [sessionKey], and probes it. */
-    private suspend fun openUpdateService(sessionKey: String, peripheral: BluetoothPeripheral): BoardUpdateService {
-        val opened = BlueFalconSmpTransport.open(blueFalcon, peripheral) { characteristic ->
-            seams.awaitSubscribed(peripheral, characteristic)
-        }
-        return when (opened) {
-            SmpOpenResult.NoSmpService -> BoardUpdateService(UpdateServiceStatus.ABSENT)
-            is SmpOpenResult.Opened -> {
-                val session = BoardFirmwareSession(opened.transport) {
-                    withTimeoutOrNull(SMP_CLOSE_LIMIT_MILLIS) { opened.transport.close() }
-                }
-                // Keep the session first, so a cancelled read still closes it.
-                smpSessions[sessionKey] = session
-                session.probe()
+        connectionLock.withLock {
+            if (smpSessions[sessionKey] === session && isCurrentRead(sessionKey)) {
+                publishUpdateService(sessionKey, boardId, session.service)
+                updateServiceJobs.remove(sessionKey)
             }
         }
     }
+
+    /** True when the coroutine that calls this is the read of [sessionKey]. Must be called while [connectionLock] is held. */
+    private suspend fun isCurrentRead(sessionKey: String): Boolean =
+        updateServiceJobs[sessionKey] === currentCoroutineContext()[Job]
 
     /** Must be called while [connectionLock] is held. */
     private fun publishUpdateService(sessionKey: String, boardId: String, service: BoardUpdateService) {
@@ -1210,8 +1247,12 @@ class BluetoothConnectionEngine(
         bluetoothStateManager.recordUpdateService(boardId, service)
     }
 
-    /** Closes the SMP session of [sessionKey] and removes its entry. Must be called while [connectionLock] is held. */
+    /**
+     * Stops the read of [sessionKey], closes its SMP session and removes its entry. Must be called
+     * while [connectionLock] is held. A cancelled read closes the session that it opened itself.
+     */
     private suspend fun closeUpdateService(sessionKey: String) {
+        updateServiceJobs.remove(sessionKey)?.cancel()
         smpSessions.remove(sessionKey)?.close()
         updateServiceBoardIds.remove(sessionKey)?.let(bluetoothStateManager::clearUpdateService)
     }
@@ -1317,7 +1358,11 @@ class BluetoothConnectionEngine(
             log.d { "Firmware request for $deviceId, but the board is not connected" }
             null
         } else {
-            FirmwareLink(key, peripheral, smpSessions[key]?.takeIf { it.service.status == UpdateServiceStatus.AVAILABLE })
+            // A read in progress uses the session, so no firmware step can start before it ends.
+            val session = smpSessions[key]?.takeIf {
+                it.service.status == UpdateServiceStatus.AVAILABLE && updateServiceJobs[key]?.isActive != true
+            }
+            FirmwareLink(key, peripheral, session)
         }
     }
 
