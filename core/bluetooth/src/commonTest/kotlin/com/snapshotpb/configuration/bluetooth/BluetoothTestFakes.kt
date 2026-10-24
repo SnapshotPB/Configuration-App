@@ -10,6 +10,10 @@ import dev.bluefalcon.core.BluetoothPeripheralState
 import dev.bluefalcon.core.BluetoothService
 import dev.bluefalcon.core.BluetoothSocket
 import dev.bluefalcon.core.CharacteristicNotification
+import dev.bluefalcon.core.CharacteristicWriteCapability
+import dev.bluefalcon.core.CharacteristicWriteKey
+import dev.bluefalcon.core.CharacteristicWriteResult
+import dev.bluefalcon.core.CharacteristicWriteType
 import dev.bluefalcon.core.ConnectionPriority
 import dev.bluefalcon.core.ServiceDiscoveryUpdate
 import dev.bluefalcon.core.ServiceFilter
@@ -116,11 +120,45 @@ internal class FakeBlueFalconEngine(
     ) {
         onWriteCharacteristic?.invoke(characteristic, value)
     }
+
+    /**
+     * Answers each typed write (BlueFalcon 3.7). Null keeps the default of the engine interface,
+     * `Unsupported`, as `JsEngine` has it.
+     */
+    var onTypedWrite: (suspend (BluetoothCharacteristic, ByteArray, CharacteristicWriteType) -> CharacteristicWriteResult)? = null
+
+    override suspend fun writeCharacteristic(
+        peripheral: BluetoothPeripheral,
+        characteristic: BluetoothCharacteristic,
+        value: ByteArray,
+        writeType: CharacteristicWriteType,
+    ): CharacteristicWriteResult =
+        onTypedWrite?.invoke(characteristic, value, writeType) ?: CharacteristicWriteResult.Unsupported
+
+    /** The write state of each peripheral and write type. A test sets it to model backpressure. */
+    val writeCapabilities = MutableStateFlow<Map<CharacteristicWriteKey, CharacteristicWriteCapability>>(emptyMap())
+    override val characteristicWriteCapabilities: StateFlow<Map<CharacteristicWriteKey, CharacteristicWriteCapability>>
+        get() = writeCapabilities
+
+    /**
+     * The value of `maximumWriteValueLength`. When null, the limit comes from [writeCapabilities],
+     * as in the engine interface; with no entry there, it is null as for an engine that reports no
+     * limit.
+     */
+    var maximumWriteLength: Int? = null
+    override fun maximumWriteValueLength(peripheral: BluetoothPeripheral, writeType: CharacteristicWriteType): Int? =
+        maximumWriteLength ?: writeCapabilities.value[CharacteristicWriteKey(peripheral.uuid, writeType)]?.maximumLength
+
+    /** Each `notifyCharacteristic` call: the characteristic and the requested state. */
+    val notifyCalls: MutableList<Pair<BluetoothCharacteristic, Boolean>> = mutableListOf()
+
     override suspend fun notifyCharacteristic(
         peripheral: BluetoothPeripheral,
         characteristic: BluetoothCharacteristic,
         notify: Boolean
-    ) {}
+    ) {
+        notifyCalls += characteristic to notify
+    }
     override suspend fun indicateCharacteristic(
         peripheral: BluetoothPeripheral,
         characteristic: BluetoothCharacteristic,
