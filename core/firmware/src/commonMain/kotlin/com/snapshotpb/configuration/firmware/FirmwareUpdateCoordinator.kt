@@ -97,11 +97,12 @@ interface FirmwareUpdateCoordinator {
          * milliseconds. The screen shows it in the "do not remove the battery" step, and the
          * coordinator waits this time before it connects.
          *
-         * THIS IS A PLACEHOLDER. Nobody has measured the swap on the bench yet (work item 2 of the
-         * firmware update plan). The bench must measure the swap using move of a full image on a
-         * `snapshot_v2` board, and this value must then change to the measured time with a margin.
+         * The bench measured about 18 s from the reset to the boot of the new image: a swap using
+         * move of a 900 KB image on an `esp32c3_devkitm`, three runs on 2026-10-24. The value adds a
+         * margin for a larger image and a slower flash part. Measure the swap again on a
+         * `snapshot_v2` board, and change this value if that board is slower.
          */
-        const val EXPECTED_SWAP_MILLIS: Long = 90_000L
+        const val EXPECTED_SWAP_MILLIS: Long = 30_000L
 
         /** The detail of [FirmwareUpdateFailure.NO_RELEASE] when the board runs the newest release. */
         const val UP_TO_DATE_DETAIL: String = "UpToDate"

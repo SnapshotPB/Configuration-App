@@ -87,7 +87,7 @@ class FirmwareUpdateStateTest {
         assertEquals("0:00", formatMinutesSeconds(-5))
         assertEquals("0:09", formatMinutesSeconds(9_999))
         assertEquals("1:05", formatMinutesSeconds(65_000))
-        assertEquals("1:30", formatMinutesSeconds(FirmwareUpdateCoordinator.EXPECTED_SWAP_MILLIS))
+        assertEquals("0:30", formatMinutesSeconds(FirmwareUpdateCoordinator.EXPECTED_SWAP_MILLIS))
     }
 
     @Test

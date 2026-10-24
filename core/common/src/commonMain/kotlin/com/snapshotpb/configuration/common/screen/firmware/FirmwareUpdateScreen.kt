@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +45,7 @@ import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.firmware.FirmwareStatus
 import com.snapshotpb.configuration.firmware.FirmwareUpdateCoordinator
+import com.snapshotpb.configuration.model.FirmwareVersion
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.button_cancel
 import com.snapshotpb.core.resources.firmware_update_cancel_button
@@ -215,9 +217,15 @@ private fun Header(status: FirmwareStatus?, deviceName: String?) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    val from = status?.boardVersion
-    val to = status?.latest?.version
-    if (from != null && to != null) {
+    // The board version changes after the verify step. Keep the first version that this screen
+    // saw, so that the line still shows the version before the update. Hide the line when the
+    // release is not newer than that version, for example on a screen that opens after the end.
+    var firstBoardVersion by remember { mutableStateOf<FirmwareVersion?>(null) }
+    if (firstBoardVersion == null) firstBoardVersion = status?.boardVersion
+    val from = firstBoardVersion
+    val latest = status?.latest
+    val to = latest?.version
+    if (from != null && to != null && latest.isNewerThan(from)) {
         Space(4.dp)
         Text(
             text = stringResource(Res.string.firmware_update_versions, from.toString(), to),

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug only. A bench test of the firmware update reads a local firmware site through
+  `adb reverse` at http://localhost (see DebugModule.kt of the debug source set). Android 9 and
+  later refuse plain HTTP, so this file permits it for localhost only. A release APK has no such
+  file and keeps the default: HTTPS only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
