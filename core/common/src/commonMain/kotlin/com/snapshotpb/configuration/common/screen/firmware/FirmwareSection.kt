@@ -32,8 +32,8 @@ import com.snapshotpb.core.resources.firmware_section_show_update_button
 import com.snapshotpb.core.resources.firmware_section_target
 import com.snapshotpb.core.resources.firmware_section_update_button
 import com.snapshotpb.core.resources.firmware_target_unknown
-import com.snapshotpb.core.resources.firmware_update_percent
 import com.snapshotpb.core.resources.firmware_version_unknown
+import com.snapshotpb.core.resources.profile_value_percent
 import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.viewmodel.rememberViewModel
 import kotlin.math.roundToInt
@@ -113,7 +113,7 @@ internal fun FirmwareSectionContent(
                         if (fraction == null) {
                             stepText
                         } else {
-                            "$stepText " + stringResource(Res.string.firmware_update_percent, (fraction * 100).roundToInt())
+                            "$stepText " + stringResource(Res.string.profile_value_percent, (fraction * 100).roundToInt())
                         },
                     ),
                     style = MaterialTheme.typography.bodyMedium,

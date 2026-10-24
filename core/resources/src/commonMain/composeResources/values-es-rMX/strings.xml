@@ -363,8 +363,6 @@
     <string name="firmware_step_reset">Reiniciar la placa</string>
     <string name="firmware_step_swap">Instalar el firmware</string>
     <string name="firmware_step_verify">Conectar y verificar el nuevo firmware</string>
-    <!-- The part of a step that is complete, e.g. "45%" -->
-    <string name="firmware_update_percent">%1$d%%</string>
     <!-- The time since the restart and the expected time, e.g. "0:45 of about 1:30" -->
     <string name="firmware_update_swap_time">%1$s de unos %2$s</string>
     <string name="firmware_update_swap_battery">No quite la batería.</string>

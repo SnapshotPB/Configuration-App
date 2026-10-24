@@ -58,7 +58,6 @@ import com.snapshotpb.core.resources.firmware_update_done_body_unknown
 import com.snapshotpb.core.resources.firmware_update_done_title
 import com.snapshotpb.core.resources.firmware_update_failed_detail
 import com.snapshotpb.core.resources.firmware_update_failed_title
-import com.snapshotpb.core.resources.firmware_update_percent
 import com.snapshotpb.core.resources.firmware_update_retry_button
 import com.snapshotpb.core.resources.firmware_update_start_button
 import com.snapshotpb.core.resources.firmware_update_swap_battery
@@ -73,6 +72,7 @@ import com.snapshotpb.core.resources.firmware_update_warning_radio
 import com.snapshotpb.core.resources.firmware_update_warning_restart
 import com.snapshotpb.core.resources.firmware_update_warning_still
 import com.snapshotpb.core.resources.firmware_update_warnings_title
+import com.snapshotpb.core.resources.profile_value_percent
 import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.viewmodel.rememberViewModel
 import kotlin.math.roundToInt
@@ -386,7 +386,7 @@ private fun stepDetail(running: FirmwareUpdatePhase.Running): String? {
     val elapsed = running.elapsedMillis
     val expected = running.expectedMillis
     return when {
-        fraction != null -> stringResource(Res.string.firmware_update_percent, (fraction * 100).roundToInt())
+        fraction != null -> stringResource(Res.string.profile_value_percent, (fraction * 100).roundToInt())
         elapsed != null && expected != null -> stringResource(
             Res.string.firmware_update_swap_time,
             formatMinutesSeconds(elapsed),
