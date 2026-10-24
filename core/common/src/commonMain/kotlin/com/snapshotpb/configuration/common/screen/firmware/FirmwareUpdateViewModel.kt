@@ -39,7 +39,9 @@ class FirmwareUpdateViewModel(
     /**
      * The progress and the board of the update, with the last running step of that board, so a
      * failure can mark the step where it stopped. A new board or [FirmwareUpdateProgress.Idle]
-     * clears the last step. The fold drops its seed, so the first value is the real progress.
+     * clears the last step. The coordinator shows [FirmwareUpdateProgress.Idle] between two boards,
+     * but a collector can miss that step, so a new board must also clear it. The fold drops its
+     * seed, so the first value is the real progress.
      */
     private val trackedProgress = combine(coordinator.progress, coordinator.deviceId, ::Pair)
         .runningFold(TrackedProgress()) { last, (progress, updatingId) ->

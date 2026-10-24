@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -544,6 +545,37 @@ class FirmwareUpdateCoordinatorTest {
     }
 
     @Test
+    fun startAndDismiss_neverShowABoardWithTheProgressOfAnotherBoard() = runTest {
+        val f = newFixture()
+        f.board.connectNow()
+        // The update of a board that is not connected fails at the check.
+        f.coordinator.start(OTHER_BOARD_ID)
+        runAll()
+        val otherFailure = FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NOT_CONNECTED)
+        assertEquals(otherFailure, f.coordinator.progress.value)
+
+        // An unconfined collector runs at each write, so it sees each pair that a screen can see.
+        val pairs = mutableListOf<Pair<String?, FirmwareUpdateProgress>>()
+        val unconfined = UnconfinedTestDispatcher(testScheduler)
+        backgroundScope.launch(unconfined) { f.coordinator.progress.collect { pairs += f.coordinator.deviceId.value to it } }
+        backgroundScope.launch(unconfined) { f.coordinator.deviceId.collect { pairs += it to f.coordinator.progress.value } }
+
+        f.coordinator.start(BOARD_ID)
+        runAll()
+        assertIs<FirmwareUpdateProgress.Done>(f.coordinator.progress.value)
+        assertTrue(BOARD_ID to otherFailure !in pairs, "the new board never shows the failure of the other board: $pairs")
+
+        pairs.clear()
+        f.coordinator.dismiss()
+        runAll()
+        assertEquals(null to FirmwareUpdateProgress.Idle, pairs.last())
+        assertTrue(
+            pairs.none { (id, progress) -> id == null && progress != FirmwareUpdateProgress.Idle },
+            "no board id and a result of an update never show together: $pairs",
+        )
+    }
+
+    @Test
     fun status_duringAnUpdate_isUpdateInProgress() = runTest {
         val f = newFixture()
         f.board.connectNow()
@@ -556,6 +588,7 @@ class FirmwareUpdateCoordinatorTest {
 
     private companion object {
         const val BOARD_ID = "00112233-4455-6677-8899-aabbccddeeff"
+        const val OTHER_BOARD_ID = "ffeeddcc-bbaa-9988-7766-554433221100"
         const val OLD_HASH = "1111111111111111111111111111111111111111111111111111111111111111"
         const val NEW_HASH = "2222222222222222222222222222222222222222222222222222222222222222"
         const val CONNECT_DELAY_MILLIS = 1_000L

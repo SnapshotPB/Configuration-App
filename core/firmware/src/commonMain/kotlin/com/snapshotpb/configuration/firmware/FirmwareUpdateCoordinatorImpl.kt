@@ -71,6 +71,10 @@ class FirmwareUpdateCoordinatorImpl(
     private val _deviceId = MutableStateFlow<String?>(null)
     override val deviceId: StateFlow<String?> = _deviceId.asStateFlow()
 
+    // ORDER OF WRITES: a screen combines [deviceId] and [progress], and it sees each write. Change
+    // [deviceId] only through [showRun], so that a collector never sees a board id with the
+    // progress of another board.
+
     /** The releases that the coordinator read, by board name and channel. */
     private val releases = MutableStateFlow<Map<ReleaseKey, ReleaseLookup>>(emptyMap())
 
@@ -122,7 +126,7 @@ class FirmwareUpdateCoordinatorImpl(
             }
             val newRun = Run(deviceId, channel)
             currentRun = newRun
-            _deviceId.value = deviceId
+            showRun(deviceId, FirmwareUpdateProgress.Checking)
             job = scope.launch { execute(newRun) }
         }
     }
@@ -162,6 +166,8 @@ class FirmwareUpdateCoordinatorImpl(
                 Phase.SWAP, Phase.VERIFY -> send(BluetoothRequest.StopScan)
                 Phase.CHECK, Phase.DOWNLOAD, Phase.PREPARE -> Unit
             }
+            // The send can wait for a collector, and a start or a dismiss can come in that time.
+            if (currentRun !== current) return@launch
             _progress.value = FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.CANCELLED)
         }
     }
@@ -170,9 +176,21 @@ class FirmwareUpdateCoordinatorImpl(
         scope.launch {
             if (job?.isCompleted == false) return@launch
             currentRun = null
-            _deviceId.value = null
-            _progress.value = FirmwareUpdateProgress.Idle
+            showRun(null, FirmwareUpdateProgress.Idle)
         }
+    }
+
+    /**
+     * Sets [deviceId] to [runDeviceId] and [progress] to [step]. When the board changes, [progress]
+     * is first [FirmwareUpdateProgress.Idle], which is the progress of no board. Thus each pair that
+     * a collector sees has the progress of its board, or no progress.
+     */
+    private fun showRun(runDeviceId: String?, step: FirmwareUpdateProgress) {
+        if (_deviceId.value != runDeviceId) {
+            _progress.value = FirmwareUpdateProgress.Idle
+            _deviceId.value = runDeviceId
+        }
+        _progress.value = step
     }
 
     /** Steps 1 to 8 of the update. */
