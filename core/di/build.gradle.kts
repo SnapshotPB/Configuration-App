@@ -4,6 +4,11 @@ import com.snapshotpb.composite.util.configureOptIns
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    // The module has no Compose code. The wasm test binary links core:common, which imports the
+    // skiko runtime, and only the Compose plugin puts skiko.mjs next to the test binary. Without
+    // it, wasmJsBrowserTest cannot load the bundle and stops after the Karma time limit.
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
