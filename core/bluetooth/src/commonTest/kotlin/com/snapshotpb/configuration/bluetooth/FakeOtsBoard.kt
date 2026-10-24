@@ -41,6 +41,8 @@ internal class FakeOtsCharacteristic(override val uuid: Uuid) : BluetoothCharact
 internal class FakeOtsBoard(
     peripheralUuid: String = "board-peripheral",
     peripheralName: String? = "Snapshot PB",
+    /** More services of the board, for example the SMP service of [FakeSmpBoard]. */
+    extraServices: List<BluetoothService> = emptyList(),
 ) {
     class BoardObject(val name: String, var content: ByteArray, val writable: Boolean)
 
@@ -69,8 +71,8 @@ internal class FakeOtsBoard(
     val peripheral = FakeBluetoothPeripheral(
         uuid = peripheralUuid,
         name = peripheralName,
-        services = listOf(service),
-        characteristics = service.characteristics,
+        services = listOf(service) + extraServices,
+        characteristics = service.characteristics + extraServices.flatMap { it.characteristics },
     )
 
     /** Index of the object that the OLCP cursor selects. */

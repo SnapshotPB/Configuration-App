@@ -106,4 +106,34 @@ class BluetoothStateManager {
     fun deviceDisconnected(deviceId: String) {
         _connectedDevices.update { it - deviceId }
     }
+
+    private val _updateServices: MutableStateFlow<Map<String, BoardUpdateService>> = MutableStateFlow(emptyMap())
+
+    /**
+     * The firmware update service of each connected board, by board id. The engine (or the
+     * simulated board) adds an entry after the 4-step connect and removes it when the link closes.
+     * A board with no entry is not connected, or its connect did not finish.
+     */
+    val updateServices: StateFlow<Map<String, BoardUpdateService>> get() = _updateServices
+
+    fun recordUpdateService(boardId: String, service: BoardUpdateService) {
+        _updateServices.update { services -> services + (boardId to service) }
+    }
+
+    fun clearUpdateService(boardId: String) {
+        _updateServices.update { services -> services - boardId }
+    }
+
+    private val _firmwareUpload: MutableStateFlow<FirmwareUploadState> = MutableStateFlow(FirmwareUploadState())
+
+    /**
+     * The state of the last firmware request ([BluetoothRequest.UpdateFirmware] or
+     * [BluetoothRequest.ConfirmFirmware]). One update runs at a time. Shared code reads the update
+     * flow from `FirmwareUpdateCoordinator` in `core:firmware`, not from here.
+     */
+    val firmwareUpload: StateFlow<FirmwareUploadState> get() = _firmwareUpload
+
+    fun updateFirmwareUpload(state: FirmwareUploadState) {
+        _firmwareUpload.value = state
+    }
 }

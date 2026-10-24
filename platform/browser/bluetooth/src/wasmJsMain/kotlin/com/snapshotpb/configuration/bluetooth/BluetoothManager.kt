@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.FirmwareImage
 import com.toxicbakery.logging.Arbor
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothPeripheral
@@ -140,4 +141,9 @@ class BluetoothManager(
 
     suspend fun writeDeviceConfiguration(deviceId: String, domainDevice: Device, requestId: Long = 0L) =
         engine.writeDeviceConfiguration(deviceId, domainDevice, requestId)
+
+    fun updateFirmware(deviceId: String, image: FirmwareImage, requestId: Long = 0L) =
+        engine.updateFirmware(deviceId, image, requestId)
+
+    fun confirmFirmware(deviceId: String, requestId: Long = 0L) = engine.confirmFirmware(deviceId, requestId)
 }

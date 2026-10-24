@@ -67,6 +67,10 @@ class Application : BaseApplication() {
             is BluetoothRequest.Disconnect -> bluetoothManager.disconnect(request.deviceId)
             is BluetoothRequest.WriteDevice ->
                 bluetoothManager.writeDeviceConfiguration(request.deviceId, request.device, request.requestId)
+            is BluetoothRequest.UpdateFirmware ->
+                bluetoothManager.updateFirmware(request.deviceId, request.image, request.requestId)
+            is BluetoothRequest.ConfirmFirmware ->
+                bluetoothManager.confirmFirmware(request.deviceId, request.requestId)
         }
     }
 

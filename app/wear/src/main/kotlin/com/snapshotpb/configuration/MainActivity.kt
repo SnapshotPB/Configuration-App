@@ -184,6 +184,11 @@ class MainActivity : ComponentActivity(), DIAware {
 
             is BluetoothRequest.WriteDevice ->
                 bluetoothManager.writeDeviceConfiguration(request.deviceId, request.device, request.requestId)
+
+            // The watch does not update firmware, and nothing on the watch sends these requests.
+            is BluetoothRequest.UpdateFirmware,
+            is BluetoothRequest.ConfirmFirmware ->
+                log.d { "The watch does not update firmware; it ignores $request" }
         }
     }
 
