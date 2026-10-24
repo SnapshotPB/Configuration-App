@@ -7,7 +7,8 @@ plugins {
 }
 
 // The firmware feed: it reads the firmware site and downloads and checks an update image. The
-// Ktor client core is here only. Each platform gives the engine (see KtorFirmwareHttp).
+// Ktor client core is here only. Each platform gives the engine (see KtorFirmwareHttp). The update
+// coordinator sends the Bluetooth requests of the update, so the module uses core:bluetooth.
 kotlin {
     configureOptIns()
     jvm()
@@ -17,7 +18,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(projects.core.model)
+                api(projects.core.bluetooth)
+                api(projects.core.model)
 
                 implementation(libs.arbor)
                 implementation(libs.kotlincrypto.hash.sha2)
