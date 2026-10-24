@@ -314,4 +314,84 @@
     <string name="updater_action_update_now">Actualizar ahora</string>
     <string name="updater_action_later">Más tarde</string>
     <string name="updater_action_close">Cerrar</string>
+    <!-- Firmware section of the Configure Device screen -->
+    <string name="firmware_section_label">Firmware</string>
+    <string name="firmware_section_details">El firmware de la placa y la versión más reciente para esta placa.</string>
+    <string name="firmware_section_board_version">Firmware de la placa: %1$s</string>
+    <string name="firmware_section_target">Tipo de placa: %1$s</string>
+    <string name="firmware_section_latest">Versión más reciente: %1$s</string>
+    <!-- The text after the colon comes from the firmware site, in English. -->
+    <string name="firmware_section_release_note">Nota de la versión: %1$s</string>
+    <string name="firmware_section_update_button">Actualizar</string>
+    <string name="firmware_section_show_update_button">Ver actualización</string>
+    <!-- The step of the update that runs now, e.g. "Update in progress: Download the firmware" -->
+    <string name="firmware_section_in_progress">Actualización en curso: %1$s</string>
+    <string name="firmware_section_check_again_button">Verificar de nuevo</string>
+    <!-- Shown in place of a board type that the board has not reported. -->
+    <string name="firmware_target_unknown">Desconocido</string>
+    <!-- Why the Firmware section offers no update -->
+    <string name="firmware_reason_update_in_progress">La aplicación está actualizando otra placa. Espere a que termine esa actualización.</string>
+    <string name="firmware_reason_not_connected">Conéctese a la placa para buscar una actualización.</string>
+    <string name="firmware_reason_checking">Buscando una actualización…</string>
+    <string name="firmware_reason_no_update_service">El firmware de esta placa no se puede actualizar por Bluetooth. Instale una vez un firmware más reciente por USB.</string>
+    <string name="firmware_reason_platform_unsupported">Esta versión de la aplicación no puede actualizar el firmware. Use la aplicación en Android, iOS, Windows o Linux.</string>
+    <string name="firmware_reason_update_service_error">El servicio de actualización de la placa no respondió. Vuelva a conectarse a la placa.</string>
+    <string name="firmware_reason_check_failed">La aplicación no pudo leer las versiones del firmware. Verifique su conexión a internet.</string>
+    <string name="firmware_reason_no_release">Todavía no hay ninguna versión de firmware para esta placa.</string>
+    <string name="firmware_reason_incompatible_hardware">La versión más reciente no es para el hardware de esta placa.</string>
+    <string name="firmware_reason_unknown_board_version">La aplicación no conoce la versión del firmware de la placa, así que no puede compararla con la versión más reciente.</string>
+    <string name="firmware_reason_up_to_date">La placa tiene el firmware más reciente.</string>
+    <string name="firmware_reason_not_yet_released">Las actualizaciones de firmware no están disponibles en esta versión de la aplicación.</string>
+    <!-- Firmware Update screen -->
+    <string name="firmware_update_title">Actualización de firmware</string>
+    <!-- The firmware version of the board and the version of the update, e.g. "From 2026.29.1 to 2026.43.1" -->
+    <string name="firmware_update_versions">De %1$s a %2$s</string>
+    <string name="firmware_update_warnings_title">Antes de empezar</string>
+    <string name="firmware_update_warning_still">Mantenga el marcador quieto y apúntelo en una dirección segura.</string>
+    <string name="firmware_update_warning_no_fire">El marcador no dispara mientras la placa recibe el firmware.</string>
+    <string name="firmware_update_warning_battery">No quite la batería durante la actualización ni mientras la pantalla de la placa esté apagada.</string>
+    <!-- The expected time of the dark screen, e.g. "1:30" -->
+    <string name="firmware_update_warning_restart">La placa se reinicia al final de la actualización. Su pantalla queda apagada durante unos %1$s.</string>
+    <string name="firmware_update_warning_radio">Después del reinicio, el Bluetooth de la placa está apagado. Actívelo en el menú de la placa para que la aplicación pueda volver a conectarse.</string>
+    <string name="firmware_update_warning_leave">Puede salir de esta pantalla. La actualización continúa.</string>
+    <string name="firmware_update_start_button">Iniciar actualización</string>
+    <!-- The steps of the firmware update -->
+    <string name="firmware_step_check">Buscar la versión más reciente</string>
+    <string name="firmware_step_download">Descargar el firmware</string>
+    <string name="firmware_step_prepare">Preparar la placa</string>
+    <string name="firmware_step_upload">Enviar el firmware a la placa</string>
+    <string name="firmware_step_reset">Reiniciar la placa</string>
+    <string name="firmware_step_swap">Instalar el firmware</string>
+    <string name="firmware_step_verify">Conectar y verificar el nuevo firmware</string>
+    <!-- The part of a step that is complete, e.g. "45%" -->
+    <string name="firmware_update_percent">%1$d%%</string>
+    <!-- The time since the restart and the expected time, e.g. "0:45 of about 1:30" -->
+    <string name="firmware_update_swap_time">%1$s de unos %2$s</string>
+    <string name="firmware_update_swap_battery">No quite la batería.</string>
+    <string name="firmware_update_swap_radio">Cuando se encienda la pantalla de la placa, active el Bluetooth en el menú de la placa.</string>
+    <string name="firmware_update_cancel_button">Detener actualización</string>
+    <string name="firmware_update_cancel_title">¿Detener la actualización?</string>
+    <string name="firmware_update_cancel_stops_update">La placa detiene la actualización y conserva su firmware actual. Puede intentarlo de nuevo más tarde.</string>
+    <string name="firmware_update_cancel_stops_wait">La placa sigue instalando el firmware. No quite la batería. La aplicación deja de esperar a la placa.</string>
+    <string name="firmware_update_cancel_confirm">Detener</string>
+    <string name="firmware_update_cancel_keep">Continuar</string>
+    <string name="firmware_update_done_title">Actualización completada</string>
+    <string name="firmware_update_done_body">La placa ahora usa el firmware %1$s.</string>
+    <string name="firmware_update_done_body_unknown">La placa ahora usa el nuevo firmware.</string>
+    <string name="firmware_update_failed_title">Actualización detenida</string>
+    <!-- A code for support, e.g. "Details: NoAnswer" -->
+    <string name="firmware_update_failed_detail">Detalles: %1$s</string>
+    <string name="firmware_update_retry_button">Intentar de nuevo</string>
+    <string name="firmware_update_close_button">Cerrar</string>
+    <!-- Why the firmware update stopped -->
+    <string name="firmware_failure_network">La descarga se detuvo. Verifique su conexión a internet e inténtelo de nuevo.</string>
+    <string name="firmware_failure_no_release">No hay un firmware más reciente para esta placa.</string>
+    <string name="firmware_failure_bad_image">El firmware descargado está dañado. Inténtelo de nuevo.</string>
+    <string name="firmware_failure_not_connected">La placa no está conectada. Conéctese a la placa e inténtelo de nuevo.</string>
+    <string name="firmware_failure_link_lost">Se perdió la conexión Bluetooth. La placa conserva su firmware actual. Acérquese a la placa e inténtelo de nuevo.</string>
+    <string name="firmware_failure_board_refused">La placa rechazó la actualización. Inténtelo de nuevo.</string>
+    <string name="firmware_failure_reverted">El nuevo firmware no arrancó, así que la placa volvió a su firmware anterior.</string>
+    <string name="firmware_failure_not_copied">La placa no instaló el nuevo firmware. Sigue usando su firmware anterior.</string>
+    <string name="firmware_failure_no_advertisement">La aplicación no encontró la placa después del reinicio. Active el Bluetooth en el menú de la placa e inténtelo de nuevo.</string>
+    <string name="firmware_failure_cancelled">Usted detuvo la actualización.</string>
 </resources>

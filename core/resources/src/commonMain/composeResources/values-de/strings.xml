@@ -314,4 +314,84 @@
     <string name="updater_action_update_now">Jetzt aktualisieren</string>
     <string name="updater_action_later">Später</string>
     <string name="updater_action_close">Schließen</string>
+    <!-- Firmware section of the Configure Device screen -->
+    <string name="firmware_section_label">Firmware</string>
+    <string name="firmware_section_details">Die Firmware der Platine und die neueste Version für diese Platine.</string>
+    <string name="firmware_section_board_version">Firmware der Platine: %1$s</string>
+    <string name="firmware_section_target">Platinentyp: %1$s</string>
+    <string name="firmware_section_latest">Neueste Version: %1$s</string>
+    <!-- The text after the colon comes from the firmware site, in English. -->
+    <string name="firmware_section_release_note">Hinweis zur Version: %1$s</string>
+    <string name="firmware_section_update_button">Aktualisieren</string>
+    <string name="firmware_section_show_update_button">Update anzeigen</string>
+    <!-- The step of the update that runs now, e.g. "Update in progress: Download the firmware" -->
+    <string name="firmware_section_in_progress">Update läuft: %1$s</string>
+    <string name="firmware_section_check_again_button">Erneut prüfen</string>
+    <!-- Shown in place of a board type that the board has not reported. -->
+    <string name="firmware_target_unknown">Unbekannt</string>
+    <!-- Why the Firmware section offers no update -->
+    <string name="firmware_reason_update_in_progress">Die App aktualisiert gerade eine andere Platine. Warten Sie, bis dieses Update abgeschlossen ist.</string>
+    <string name="firmware_reason_not_connected">Verbinden Sie sich mit der Platine, um nach einem Update zu suchen.</string>
+    <string name="firmware_reason_checking">Suche nach einem Update…</string>
+    <string name="firmware_reason_no_update_service">Die Firmware dieser Platine kann nicht über Bluetooth aktualisiert werden. Installieren Sie einmalig eine neuere Firmware über USB.</string>
+    <string name="firmware_reason_platform_unsupported">Diese Version der App kann die Firmware nicht aktualisieren. Verwenden Sie die App unter Android, iOS, Windows oder Linux.</string>
+    <string name="firmware_reason_update_service_error">Der Update-Dienst der Platine hat nicht geantwortet. Verbinden Sie sich erneut mit der Platine.</string>
+    <string name="firmware_reason_check_failed">Die App konnte die Firmware-Versionen nicht lesen. Prüfen Sie Ihre Internetverbindung.</string>
+    <string name="firmware_reason_no_release">Für diese Platine gibt es noch keine Firmware-Version.</string>
+    <string name="firmware_reason_incompatible_hardware">Die neueste Version ist nicht für die Hardware dieser Platine.</string>
+    <string name="firmware_reason_unknown_board_version">Die App kennt die Firmware-Version der Platine nicht und kann sie daher nicht mit der neuesten Version vergleichen.</string>
+    <string name="firmware_reason_up_to_date">Die Platine hat die neueste Firmware.</string>
+    <string name="firmware_reason_not_yet_released">Firmware-Updates sind in dieser Version der App nicht verfügbar.</string>
+    <!-- Firmware Update screen -->
+    <string name="firmware_update_title">Firmware-Update</string>
+    <!-- The firmware version of the board and the version of the update, e.g. "From 2026.29.1 to 2026.43.1" -->
+    <string name="firmware_update_versions">Von %1$s auf %2$s</string>
+    <string name="firmware_update_warnings_title">Bevor Sie beginnen</string>
+    <string name="firmware_update_warning_still">Halten Sie den Markierer ruhig und richten Sie ihn in eine sichere Richtung.</string>
+    <string name="firmware_update_warning_no_fire">Der Markierer feuert nicht, während die Platine die Firmware empfängt.</string>
+    <string name="firmware_update_warning_battery">Entfernen Sie den Akku nicht während des Updates oder solange der Bildschirm der Platine dunkel ist.</string>
+    <!-- The expected time of the dark screen, e.g. "1:30" -->
+    <string name="firmware_update_warning_restart">Die Platine startet am Ende des Updates neu. Ihr Bildschirm ist etwa %1$s lang dunkel.</string>
+    <string name="firmware_update_warning_radio">Nach dem Neustart ist Bluetooth auf der Platine aus. Schalten Sie es im Menü der Platine ein, damit sich die App wieder verbinden kann.</string>
+    <string name="firmware_update_warning_leave">Sie können diesen Bildschirm verlassen. Das Update läuft weiter.</string>
+    <string name="firmware_update_start_button">Update starten</string>
+    <!-- The steps of the firmware update -->
+    <string name="firmware_step_check">Nach der neuesten Version suchen</string>
+    <string name="firmware_step_download">Firmware herunterladen</string>
+    <string name="firmware_step_prepare">Platine vorbereiten</string>
+    <string name="firmware_step_upload">Firmware an die Platine senden</string>
+    <string name="firmware_step_reset">Platine neu starten</string>
+    <string name="firmware_step_swap">Firmware installieren</string>
+    <string name="firmware_step_verify">Verbinden und neue Firmware prüfen</string>
+    <!-- The part of a step that is complete, e.g. "45%" -->
+    <string name="firmware_update_percent">%1$d%%</string>
+    <!-- The time since the restart and the expected time, e.g. "0:45 of about 1:30" -->
+    <string name="firmware_update_swap_time">%1$s von etwa %2$s</string>
+    <string name="firmware_update_swap_battery">Entfernen Sie den Akku nicht.</string>
+    <string name="firmware_update_swap_radio">Wenn der Bildschirm der Platine angeht, schalten Sie Bluetooth im Menü der Platine ein.</string>
+    <string name="firmware_update_cancel_button">Update stoppen</string>
+    <string name="firmware_update_cancel_title">Update stoppen?</string>
+    <string name="firmware_update_cancel_stops_update">Die Platine stoppt das Update und behält ihre aktuelle Firmware. Sie können es später erneut versuchen.</string>
+    <string name="firmware_update_cancel_stops_wait">Die Platine installiert die Firmware weiter. Entfernen Sie den Akku nicht. Die App wartet nicht mehr auf die Platine.</string>
+    <string name="firmware_update_cancel_confirm">Stoppen</string>
+    <string name="firmware_update_cancel_keep">Fortfahren</string>
+    <string name="firmware_update_done_title">Update abgeschlossen</string>
+    <string name="firmware_update_done_body">Die Platine verwendet jetzt die Firmware %1$s.</string>
+    <string name="firmware_update_done_body_unknown">Die Platine verwendet jetzt die neue Firmware.</string>
+    <string name="firmware_update_failed_title">Update gestoppt</string>
+    <!-- A code for support, e.g. "Details: NoAnswer" -->
+    <string name="firmware_update_failed_detail">Einzelheiten: %1$s</string>
+    <string name="firmware_update_retry_button">Erneut versuchen</string>
+    <string name="firmware_update_close_button">Schließen</string>
+    <!-- Why the firmware update stopped -->
+    <string name="firmware_failure_network">Der Download wurde unterbrochen. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.</string>
+    <string name="firmware_failure_no_release">Für diese Platine gibt es keine neuere Firmware.</string>
+    <string name="firmware_failure_bad_image">Die heruntergeladene Firmware ist beschädigt. Versuchen Sie es erneut.</string>
+    <string name="firmware_failure_not_connected">Die Platine ist nicht verbunden. Verbinden Sie sich mit der Platine und versuchen Sie es erneut.</string>
+    <string name="firmware_failure_link_lost">Die Bluetooth-Verbindung wurde unterbrochen. Die Platine behält ihre aktuelle Firmware. Gehen Sie näher an die Platine und versuchen Sie es erneut.</string>
+    <string name="firmware_failure_board_refused">Die Platine hat das Update abgelehnt. Versuchen Sie es erneut.</string>
+    <string name="firmware_failure_reverted">Die neue Firmware ist nicht gestartet, daher ist die Platine zu ihrer vorherigen Firmware zurückgekehrt.</string>
+    <string name="firmware_failure_not_copied">Die Platine hat die neue Firmware nicht installiert. Sie verwendet weiterhin ihre vorherige Firmware.</string>
+    <string name="firmware_failure_no_advertisement">Die App hat die Platine nach dem Neustart nicht gefunden. Schalten Sie Bluetooth im Menü der Platine ein und versuchen Sie es erneut.</string>
+    <string name="firmware_failure_cancelled">Sie haben das Update gestoppt.</string>
 </resources>
