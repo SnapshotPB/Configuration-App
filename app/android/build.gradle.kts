@@ -105,6 +105,7 @@ dependencies {
     implementation(projects.core.common)
     implementation(projects.core.debugBoard)
     implementation(projects.core.di)
+    implementation(projects.core.firmware)
     implementation(projects.core.media)
     implementation(projects.core.model)
     implementation(projects.core.protocol)
@@ -142,6 +143,9 @@ dependencies {
     implementation(libs.kotlinx.io)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.protobuf)
+    // The engine of the firmware feed. It is here and not in platform:android:di, because the
+    // Wear app also uses that module and does not update firmware.
+    implementation(libs.ktor.client.android)
 
     debugImplementation(libs.compose.ui.tooling)
 

@@ -97,6 +97,7 @@ include(
     ":core:debug-board",
     ":core:di",
     ":core:fake-board",
+    ":core:firmware",
     ":core:media",
     ":core:model",
     ":core:protocol",

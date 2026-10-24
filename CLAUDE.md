@@ -78,6 +78,7 @@ core/
   bluetooth/        - BLE abstractions: RequestManager, StateManager, DeviceReadResultBus, OTS GATT client + protocol mappers
   debug-board/      - DebugBoard seam (+ inert NoDebugBoard); always on the classpath, both platforms
   fake-board/       - FakeBoard, the simulated board behind that seam; debug configurations only
+  firmware/         - FirmwareFeed: reads the firmware site, downloads and checks an update image (Ktor behind FirmwareHttp)
   media/            - Media permission types (MediaRequestManager + MediaStateManager); no shared screen reads them
   protocol/         - Protobuf protocol module (consumes generated Kotlin)
   protocol/builder/ - Protobuf codegen toolchain; schemas live in the Configuration-Protocol git submodule
@@ -123,6 +124,11 @@ ViewModels stay thin; logic lives in delegate interfaces with `Impl` classes tha
 - Abstractions in `core/bluetooth`; implementations in `platform/android/bluetooth` and `platform/desktop/bluetooth` (BlueFalcon). Desktop picks the engine at runtime by `os.name` (macOS → MacosJvm, Windows → Windows, Linux → Rpi).
 - `core/bluetooth/.../ots/OtsClient.kt` is a **GATT-only** Object Transfer Service client (OACP/OLCP handshake, vendor "Object Data" characteristic for chunked transfer — not L2CAP CoC). `OtsModelMapper` converts protocol messages → domain models; `DeviceReadResultBus` decouples BLE reads from store persistence.
 - The board sends **no notification** when the user edits it in its menu. Its only notifications are the OTS control-point responses, the object data and the log lines (`observeForDebug` only logs them). So before each write, `BluetoothConnectionEngine` reads `profiles` and `device_config` again and compares the fields that the app edits with its last read (`showsABoardEdit`). For a difference, it does not write: it sends the board state on `DeviceReadResultBus` (the sync rules then raise the conflict) and reports `BoardChangedBeforeWriteException`. After a write, it records what the board reads back, so its own write does not look like a menu edit.
+
+### Firmware Feed
+`core:firmware` reads the firmware site that the `Firmware` repository publishes on GitHub Pages (`FIRMWARE_SITE_URL`; the constructor of `FirmwareFeed` takes another URL for a local site). `FirmwareFeed.latest()` reads `<board>/latest.json` for the stable channel and `<board>/index.json` for the beta channel. `download()` gives an image only when its size and its SHA-256 agree with the site, and it keeps the last good image in memory for a second attempt. The JSON types are in `core:model` (`FirmwareManifest`, `FirmwareBoardIndex`, `FirmwareSiteIndex`), and they must parse the output of `scripts/pages_index.py` in the `Firmware` repository. The feed ignores unknown keys and refuses a newer `schema`. The fixtures in `core/firmware/src/jvmTest/resources/pages` are copies of the generator fixtures, so copy them again when the generator changes.
+
+The offer rule is `FirmwareManifest.isOfferFor()`: the `compatible_hardware` of the release must hold the board of the `HardwareTarget` (the answer of `os info -f i`), and the release must be newer than the `FirmwareVersion` of the board. Ktor is in `core:firmware` only, behind `FirmwareHttp`. `core:di` binds `FirmwareFeed`, and each app binds the engine: CIO (`platform:desktop:di`), Darwin (`platform:ios:di`), Js (`platform:browser:di`) and Android (`app:android`). The Android binding is not in `platform:android:di`, because the Wear app shares that module and does not update firmware. The OkHttp engine of Ktor 3.6.0 needs `compileSdk` 37, so Android uses the `HttpURLConnection` engine, and only the Android app has the `INTERNET` permission. No screen uses the feed yet: the SMP upload over Bluetooth and the update coordinator come later (`docs/firmware-update-plan.md`).
 
 ### Simulated Board (running without hardware)
 `core:debug-board` holds the `DebugBoard` seam — it wraps the scan flow, claims the Bluetooth
@@ -182,7 +188,7 @@ Kodein. `coreDiModule` (`core:di`) is the root, importing bluetooth/media/store/
 - Logging uses Arbor: `private val log = Arbor.tag("ClassName")`, then `log.d {}`/`log.e {}` (lambda form). No `println`/`android.util.Log`.
 - New strings go in `core/resources`, not hardcoded. Add the English string to `values/strings.xml` **and** the translation to every `values-*` locale in the same change — `localizationCheck` warns for each locale you leave behind.
 - Version catalog: `gradle/libs.versions.toml`. Android `compileSdk`/`targetSdk` 36, `minSdk` 24 (Wear overrides to 30). Android/Wear compile to JVM 11.
-- Key libraries: Compose Multiplatform, Kodein (DI), BlueFalcon (BLE), Arbor (logging), Coil (images), Nucleus (desktop packaging), kotlinx serialization/coroutines/datetime, androidx.navigation3, play-services-wearable.
+- Key libraries: Compose Multiplatform, Kodein (DI), BlueFalcon (BLE), Arbor (logging), Coil (images), Nucleus (desktop packaging), kotlinx serialization/coroutines/datetime, androidx.navigation3, play-services-wearable, Ktor client and kotlincrypto `sha2` (`core:firmware` only).
 
 ## Claude Code Tooling (`.claude/`)
 
