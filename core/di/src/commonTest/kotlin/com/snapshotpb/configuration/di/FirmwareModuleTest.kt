@@ -2,6 +2,8 @@ package com.snapshotpb.configuration.di
 
 import com.snapshotpb.configuration.bluetooth.BluetoothDeviceState
 import com.snapshotpb.configuration.bluetooth.BluetoothDeviceStateSource
+import com.snapshotpb.configuration.common.screen.firmware.FirmwareSectionViewModel
+import com.snapshotpb.configuration.common.screen.firmware.FirmwareUpdateViewModel
 import com.snapshotpb.configuration.firmware.FIRMWARE_SITE_URL
 import com.snapshotpb.configuration.firmware.FirmwareFeed
 import com.snapshotpb.configuration.firmware.FirmwareHttp
@@ -11,10 +13,12 @@ import kotlinx.coroutines.flow.flowOf
 import org.kodein.di.DI
 import org.kodein.di.bindSingleton
 import org.kodein.di.direct
+import org.kodein.di.factoryOrNull
 import org.kodein.di.instance
 import org.kodein.di.instanceOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 
@@ -65,6 +69,15 @@ class FirmwareModuleTest {
     }
 
     @Test
+    fun theAppGraphGivesTheFirmwareViewModels() {
+        // The test does not make a view model: its scope needs a main dispatcher.
+        val di = appGraph()
+
+        assertNotNull(di.direct.factoryOrNull<String, FirmwareSectionViewModel>())
+        assertNotNull(di.direct.factoryOrNull<String, FirmwareUpdateViewModel>())
+    }
+
+    @Test
     fun theCoreGraphOfTheWearAppHasNoFirmwareUpdate() {
         // The Wear app imports coreDiModule and binds no FirmwareHttp, so the core graph must not
         // hold the feed or the coordinator.
@@ -72,5 +85,7 @@ class FirmwareModuleTest {
 
         assertNull(di.direct.instanceOrNull<FirmwareFeed>())
         assertNull(di.direct.instanceOrNull<FirmwareUpdateCoordinator>())
+        assertNull(di.direct.factoryOrNull<String, FirmwareSectionViewModel>())
+        assertNull(di.direct.factoryOrNull<String, FirmwareUpdateViewModel>())
     }
 }
