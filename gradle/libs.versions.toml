@@ -22,11 +22,15 @@ image-picker = "1.0.39"
 jna = "5.14.0"
 kodein = "7.31.0"
 kotlin = "2.3.20"
+kotlincrypto-hash = "0.8.0"
 kotlinx-browser = "0.5.0"
-kotlinx-coroutines = "1.10.2"
+# Ktor 3.6.0 needs kotlinx-coroutines 1.11.0 and kotlinx-io 0.9.1. The catalog names these
+# versions, so each module compiles and tests against the versions that the apps run with.
+kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.7.1"
-kotlinx-io = "0.9.0"
+kotlinx-io = "0.9.1"
 kotlinx-serialization = "1.11.0"
+ktor = "3.6.0"
 material3 = "1.10.0-alpha05"
 protobuf = "0.9.6"
 protobufSchema = "4.34.0"
@@ -99,6 +103,19 @@ protobuf-kotlin-gen = { module = "io.github.dogacel:kotlinx-protobuf-gen", versi
 androidx-wear-compose-material = { module = "androidx.wear.compose:compose-material", version.ref = "androidx-wear-compose" }
 androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "androidx-wear-compose" }
 play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "play-services-wearable" }
+
+# Ktor: the HTTP client of core:firmware. Each platform picks its engine. Android uses the
+# Android engine (HttpURLConnection), not OkHttp: the OkHttp 5.5.0 of Ktor 3.6.0 needs
+# compileSdk 37.
+ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+
+# SHA-256 in common code, for the check of a firmware download
+kotlincrypto-hash-sha2 = { module = "org.kotlincrypto.hash:sha2", version.ref = "kotlincrypto-hash" }
 
 # Kodein
 kodein = { module = "org.kodein.di:kodein-di", version.ref = "kodein" }

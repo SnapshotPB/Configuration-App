@@ -12,3 +12,7 @@
 
 # The encrypted upload keystore is binary data. Do not let Git change its bytes.
 /signing/upload.keystore.gpg binary
+
+# The firmware site fixtures hold the SHA-256 of each image file. Do not let Git change the
+# bytes of an image.
+/core/firmware/src/jvmTest/resources/pages/**/*.bin binary

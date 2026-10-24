@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "generated": "2027-01-05T12:00:00Z",
+  "repository": "SnapshotPB/Firmware",
+  "boards": {
+    "snapshot_reva": {
+      "index": "snapshot_reva/index.json",
+      "latest": "snapshot_reva/latest.json",
+      "channels": {
+        "stable": "2026.52.1",
+        "beta": null
+      }
+    },
+    "snapshot_v2": {
+      "index": "snapshot_v2/index.json",
+      "latest": "snapshot_v2/latest.json",
+      "channels": {
+        "stable": "2026.52.1",
+        "beta": "2027.1.1"
+      }
+    }
+  }
+}
