@@ -1,16 +1,44 @@
 package com.snapshotpb.configuration.di
 
 import com.snapshotpb.configuration.firmware.FirmwareFeed
+import com.snapshotpb.configuration.firmware.FirmwareFeedOverride
+import com.snapshotpb.configuration.firmware.FirmwareUpdateCoordinator
+import com.snapshotpb.configuration.firmware.FirmwareUpdateCoordinatorImpl
+import com.snapshotpb.configuration.firmware.FirmwareUpdatePolicy
 import org.kodein.di.DI
 import org.kodein.di.bindSingleton
 import org.kodein.di.instance
+import org.kodein.di.instanceOrNull
 
 /**
- * Binds the firmware feed. The feed needs a `FirmwareHttp`, which each app binds with the Ktor
- * engine of its platform: `platform:desktop:di`, `platform:ios:di` and `platform:browser:di` in
- * their platform module, and `app:android` in its app module. The Wear app binds none, because it
- * does not update firmware. Kodein makes the feed only when a caller asks for it.
+ * Binds the firmware feed and the firmware update coordinator. [coreDiModule] does not import this
+ * module: the four apps that update firmware (Android, desktop, iOS, browser) import it, and the
+ * Wear app does not.
+ *
+ * An app that imports it binds three values:
+ *
+ * - `FirmwareHttp`, with the Ktor engine of its platform: `platform:desktop:di`, `platform:ios:di`
+ *   and `platform:browser:di` in their platform module, and `app:android` in its app module.
+ * - [FirmwareUpdatePolicy]: the release gate and the firmware site of the build.
+ * - `BluetoothDeviceStateSource`: the discovered devices of its Bluetooth manager.
+ *
+ * A debug build of Android and iOS can bind a [FirmwareFeedOverride] (`core:fake-board`). The
+ * coordinator then reads the simulated site while the simulated board is active.
+ *
+ * Kodein makes each value only when a caller asks for it.
  */
-internal val firmwareModule = DI.Module("firmwareModule") {
-    bindSingleton { FirmwareFeed(http = instance()) }
+val firmwareModule = DI.Module("firmwareModule") {
+    bindSingleton { FirmwareFeed(http = instance(), siteUrl = instance<FirmwareUpdatePolicy>().siteUrl) }
+
+    bindSingleton<FirmwareUpdateCoordinator> {
+        val siteFeed = instance<FirmwareFeed>()
+        val override = instanceOrNull<FirmwareFeedOverride>()
+        FirmwareUpdateCoordinatorImpl(
+            feed = { override?.feedOrNull() ?: siteFeed },
+            policy = instance(),
+            bluetoothRequestManager = instance(),
+            bluetoothStateManager = instance(),
+            deviceStateSource = instance(),
+        )
+    }
 }

@@ -38,7 +38,13 @@ import org.kodein.di.DI
 import org.kodein.di.compose.withDI
 import org.kodein.di.instance
 
-class Application : BaseApplication() {
+/**
+ * The desktop app.
+ *
+ * @param firmwareSiteUrl The URL of a local firmware site for a bench test, or `null` for the public
+ *   site (see [firmwareSiteUrlOf]).
+ */
+class Application(private val firmwareSiteUrl: String? = null) : BaseApplication() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private val isUpdateAvailable = MutableStateFlow<UpdateInfo?>(null)
 
@@ -46,6 +52,7 @@ class Application : BaseApplication() {
         import(appModule)
         import(platformModule)
         import(screenModule)
+        import(firmwareUpdateModule(firmwareSiteUrl))
     }
 
     private val bluetoothManager: BluetoothManager by instance()
