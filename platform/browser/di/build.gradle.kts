@@ -14,11 +14,13 @@ kotlin {
             dependencies {
                 implementation(projects.platform.browser.bluetooth)
                 implementation(projects.core.bluetooth)
+                implementation(projects.core.firmware)
 
                 implementation(libs.arbor)
                 implementation(libs.blue.falcon)
                 implementation(libs.blue.falcon.js)
                 implementation(libs.kodein)
+                implementation(libs.ktor.client.js)
             }
         }
     }

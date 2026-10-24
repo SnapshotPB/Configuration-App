@@ -11,6 +11,7 @@ kotlin {
         jvmMain {
             dependencies {
                 implementation(projects.core.bluetooth)
+                implementation(projects.core.firmware)
                 implementation(projects.core.store)
                 implementation(projects.platform.desktop.bluetooth)
 
@@ -20,6 +21,7 @@ kotlin {
                 implementation(libs.blue.falcon.linux)
                 implementation(libs.blue.falcon.windows)
                 implementation(libs.kodein)
+                implementation(libs.ktor.client.cio)
             }
         }
     }
