@@ -752,11 +752,10 @@ jobs:
           workload_identity_provider: projects/166424708306/locations/global/workloadIdentityPools/github/providers/github-actions
           service_account: play-publisher@snapshotpb-play-store.iam.gserviceaccount.com
 
-      # The phone and Wear AABs share a versionCode but are DISTINCT Play apps
-      # (com.snapshotpb.configuration vs ...configuration.wear), each with its own listing
-      # and its own edit. Each step must therefore name exactly ONE file: `dist/*.aab`
-      # matches both, and the action uploads every match into the single edit opened for
-      # `packageName`, which Play rejects on a package-name mismatch.
+      # Phone and Wear share the com.snapshotpb.configuration Play listing (required for
+      # Wearable Data Layer sync) with distinct versionCodes (projectVersionCode vs
+      # wearVersionCode) and separate tracks (`internal` vs `wear:internal`). Each step
+      # names its own AAB and track explicitly.
       - name: Upload phone AAB to Play (internal)
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
@@ -766,18 +765,18 @@ jobs:
           track: internal
           status: completed
 
-      # Gated separately on WEAR_PLAY_ENABLED rather than riding on has_play: the Wear app
-      # needs its own Play listing to exist first, and uploading to a package Play has
-      # never seen fails the whole job — which would also strand an otherwise-successful
-      # phone upload behind a red run.
-      - name: Upload Wear AAB to Play (internal)
+      # Gated separately on WEAR_PLAY_ENABLED rather than riding on has_play: the Wear OS
+      # form factor and first AAB upload must be enabled in Play Console first, and
+      # uploading to `wear:internal` before that is configured would fail the whole job —
+      # stranding an otherwise-successful phone upload behind a red run.
+      - name: Upload Wear AAB to Play (wear:internal)
         if: needs.preflight.outputs.has_wear_play == 'true'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
-          packageName: com.snapshotpb.configuration.wear
+          packageName: com.snapshotpb.configuration
           releaseFiles: dist/wear-release.aab
-          track: internal
+          track: wear:internal
           status: completed
 
   # ---------------------------------------------------------------------------------

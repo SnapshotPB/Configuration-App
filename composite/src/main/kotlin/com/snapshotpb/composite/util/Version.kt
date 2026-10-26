@@ -60,6 +60,26 @@ fun projectVersionCode(version: String): Int {
 }
 
 /**
+ * Form-factor offset added to [projectVersionCode] for `:app:wear` (`100_000_000`).
+ *
+ * Phone (`:app:android`) and watch (`:app:wear`) share the `com.snapshotpb.configuration`
+ * `applicationId` and Google Play listing so Google Play Services' Wearable Data Layer
+ * (`DataClient` / `WearableListenerService`) delivers sync events between them. Google
+ * Play rejects two `.aab`s with the same `versionCode` inside one app listing, so the
+ * watch bundle adds `100_000_000` (`26.29.1` -> phone `2629001`, watch `102629001`),
+ * keeping the two ranges disjoint (`[1..9_953_999]` vs `[100_000_001..109_953_999]`) and
+ * well below Play's `2_100_000_000` ceiling.
+ */
+const val WEAR_VERSION_CODE_OFFSET: Int = 100_000_000
+
+/**
+ * Monotonic `versionCode` for `:app:wear`, offset by [WEAR_VERSION_CODE_OFFSET] from
+ * [projectVersionCode] so phone and watch bundles never collide in the shared
+ * `com.snapshotpb.configuration` Play listing.
+ */
+fun wearVersionCode(version: String): Int = WEAR_VERSION_CODE_OFFSET + projectVersionCode(version)
+
+/**
  * The version as the desktop native packagers will accept it: the plain `major.minor.patch`
  * core with any `-dev+<metadata>` suffix stripped.
  *

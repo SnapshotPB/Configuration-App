@@ -1,5 +1,5 @@
 import com.snapshotpb.composite.util.configureOptIns
-import com.snapshotpb.composite.util.projectVersionCode
+import com.snapshotpb.composite.util.wearVersionCode
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -12,11 +12,16 @@ android {
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.snapshotpb.configuration.wear"
+        // Matches :app:android so Google Play Services' Wearable Data Layer (DataClient /
+        // WearableListenerService) delivers phone <-> watch sync events, and both AABs
+        // publish under the single com.snapshotpb.configuration Play listing.
+        applicationId = "com.snapshotpb.configuration"
         minSdk = 30 // Wear OS 3+ requires API 30 (Android 11)
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        // Driven from the resolved project version (docs/versioning-and-release-plan.md).
-        versionCode = projectVersionCode(project.version.toString())
+        // Driven from the resolved project version with the Wear form-factor offset
+        // (docs/versioning-and-release-plan.md §3) so phone and watch AABs do not collide
+        // on versionCode in the shared Play listing.
+        versionCode = wearVersionCode(project.version.toString())
         versionName = project.version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -27,8 +32,8 @@ android {
         compose = true
     }
 
-    // Same dormant upload-keystore wiring as app/android (plan §7) — Wear is a separate Play
-    // app (…configuration.wear) but is signed with the same upload key.
+    // Same dormant upload-keystore wiring as app/android (plan §7) — phone and Wear share
+    // the com.snapshotpb.configuration Play listing and upload key.
     val releaseKeystore: String? = System.getenv("ANDROID_KEYSTORE_FILE")
     signingConfigs {
         if (!releaseKeystore.isNullOrBlank()) {
