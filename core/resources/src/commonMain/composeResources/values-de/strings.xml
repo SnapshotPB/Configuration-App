@@ -20,6 +20,10 @@
     <string name="device_screen_no_saved_devices">Keine gespeicherten Geräte.</string>
     <string name="device_screen_bluetooth_options">Bluetooth-Optionen</string>
     <string name="app_version_label">Version %1$s</string>
+    <string name="device_screen_menu_description">Weitere Optionen</string>
+    <string name="device_screen_add_demo_device">Demogerät hinzufügen</string>
+    <string name="device_screen_privacy_policy">Datenschutzerklärung</string>
+    <string name="device_screen_terms_of_service">Nutzungsbedingungen</string>
     <string name="device_default_name">SnapshotPB</string>
     <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->
     <string name="device_tap_to_connect">Zum Verbinden tippen &#8226; [#%1$s]</string>

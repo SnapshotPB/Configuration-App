@@ -19,6 +19,10 @@
     <string name="device_screen_no_saved_devices">No saved devices.</string>
     <string name="device_screen_bluetooth_options">Bluetooth Options</string>
     <string name="app_version_label">Version %1$s</string>
+    <string name="device_screen_menu_description">More options</string>
+    <string name="device_screen_add_demo_device">Add demo device</string>
+    <string name="device_screen_privacy_policy">Privacy Policy</string>
+    <string name="device_screen_terms_of_service">Terms of Service</string>
     <!-- The name of a new device. Use a maximum of 10 characters (Device.MAX_NAME_LENGTH). -->
     <string name="device_default_name">SnapshotPB</string>
     <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->

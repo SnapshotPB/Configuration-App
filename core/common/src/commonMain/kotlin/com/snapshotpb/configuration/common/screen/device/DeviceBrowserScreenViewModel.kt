@@ -6,10 +6,22 @@ import com.snapshotpb.configuration.bluetooth.BluetoothRequest
 import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
 import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
+import com.snapshotpb.configuration.bluetooth.ots.getProfileUuid
 import com.snapshotpb.configuration.bluetooth.resolveBoardId
 import com.snapshotpb.configuration.bluetooth.toDeviceUuid
+import com.snapshotpb.configuration.model.AdvertisementData
+import com.snapshotpb.configuration.model.BoardLanguage
+import com.snapshotpb.configuration.model.BoardModel
+import com.snapshotpb.configuration.model.BoardScreenBrightness
+import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.DisplayWindow
+import com.snapshotpb.configuration.model.FirmwareVersion
+import com.snapshotpb.configuration.model.MarkerEyeMode
+import com.snapshotpb.configuration.model.MarkerFireMode
+import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.SystemConfig
+import com.snapshotpb.configuration.model.newDeviceName
 import com.snapshotpb.configuration.store.DeviceStore
 import com.snapshotpb.configuration.store.devicePhotoStoreName
 import com.snapshotpb.configuration.store.storedDevicePhotoName
@@ -19,6 +31,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 /**
  * The name the board advertises over BLE.
@@ -28,6 +41,13 @@ import kotlin.time.Clock
  * only as the name of a board that reports none, and the simulated boards advertise it.
  */
 const val BOARD_ADVERTISED_NAME = "Snapshot PB"
+
+/**
+ * Deterministic UUID of the demo device created by [DeviceBrowserScreenViewModel.addDemoDevice].
+ * Matches `FAKE_DEVICE_ID` in `:core:fake-board` so a debug build's simulated board services the
+ * same device seamlessly.
+ */
+const val DEMO_DEVICE_ID = "5350425f-4f54-4000-8000-000000000001"
 
 abstract class DeviceBrowserScreenViewModel(
     private val bluetoothRequestManager: BluetoothRequestManager,
@@ -111,5 +131,71 @@ abstract class DeviceBrowserScreenViewModel(
         storedDevicePhotoName(deviceId, device.photoPath)?.let(deviceStore::deleteStoredFile)
         deviceStore.deleteStoredFile(devicePhotoStoreName(deviceId))
         deviceStore.update { current -> current.filter { it.id != device.id } }
+    }
+
+    /**
+     * Hook invoked when [addDemoDevice] creates the demo device. Debug builds override this to
+     * also turn on the in-process simulated board so connecting to the demo device works live.
+     */
+    open fun onDemoDeviceAdded() = Unit
+
+    /**
+     * Populates [deviceStore] with a pre-configured demo device so a user without a physical board
+     * can explore device configuration, profiles, display window layout, and Wear sync.
+     */
+    fun addDemoDevice(defaultName: String = "SnapshotPB") {
+        onDemoDeviceAdded()
+        val deviceUuid = Uuid.parse(DEMO_DEVICE_ID)
+        val profiles = listOf(
+            MarkerProfile(
+                id = getProfileUuid(deviceUuid, 0),
+                name = "Semi",
+                fireMode = MarkerFireMode.SEMI,
+                sourceSlot = 0,
+            ),
+            MarkerProfile(
+                id = getProfileUuid(deviceUuid, 1),
+                name = "Ramp",
+                fireMode = MarkerFireMode.RAMPING_NXL_2026,
+                eyeMode = MarkerEyeMode.REFLECTIVE,
+                sourceSlot = 1,
+            ),
+        )
+        val activeProfileId = profiles.first().id
+        val bootText = "FAKE BOARD"
+        val demoDevice = Device(
+            id = deviceUuid,
+            name = newDeviceName(BOARD_ADVERTISED_NAME, defaultName),
+            lastSeen = Clock.System.todayIn(TimeZone.currentSystemDefault()),
+            lastModified = Clock.System.now().toEpochMilliseconds(),
+            knownProfiles = profiles,
+            bootText = bootText,
+            activeProfileId = activeProfileId,
+            lockoutEnabled = false,
+            language = BoardLanguage.EN,
+            screenBrightness = BoardScreenBrightness.DEFAULT,
+            screenOffDelay = 30,
+            displayWindow = DisplayWindow.FULL_PANEL,
+            boardModel = BoardModel.AUTOCOCKER,
+            supportedProfileCount = Device.DEFAULT_PROFILE_COUNT,
+            boardState = BoardState(
+                bootText = bootText,
+                activeProfileId = activeProfileId,
+                lockoutEnabled = false,
+                knownProfiles = profiles,
+                language = BoardLanguage.EN,
+                screenBrightness = BoardScreenBrightness.DEFAULT,
+                screenOffDelay = 30,
+                displayWindow = DisplayWindow.FULL_PANEL,
+            ),
+            advertisementData = AdvertisementData(
+                boardType = "FAKE",
+                fwVersion = "2026.29.0-dev",
+                firmwareVersion = FirmwareVersion(year = 2026, week = 29, count = 0, dev = true),
+            ),
+        )
+        deviceStore.update { current ->
+            if (current.any { it.id == deviceUuid }) current else current + demoDevice
+        }
     }
 }

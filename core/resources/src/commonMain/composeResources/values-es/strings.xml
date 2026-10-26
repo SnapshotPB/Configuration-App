@@ -20,6 +20,10 @@
     <string name="device_screen_no_saved_devices">No hay marcadores guardados.</string>
     <string name="device_screen_bluetooth_options">Opciones de Bluetooth</string>
     <string name="app_version_label">Version %1$s</string>
+    <string name="device_screen_menu_description">Más opciones</string>
+    <string name="device_screen_add_demo_device">Añadir marcador de demostración</string>
+    <string name="device_screen_privacy_policy">Política de privacidad</string>
+    <string name="device_screen_terms_of_service">Términos de servicio</string>
     <string name="device_default_name">SnapshotPB</string>
     <!-- Tap-to-connect hint: bullet then short device id, e.g. "Tap to connect • [#A1B2]" -->
     <string name="device_tap_to_connect">Toca para conectar • [#%1$s]</string>

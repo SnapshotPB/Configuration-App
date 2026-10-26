@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.common.screen.device
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,8 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import org.jetbrains.compose.resources.painterResource
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +33,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
@@ -62,10 +71,14 @@ import com.snapshotpb.core.resources.delete_device_dialog_message
 import com.snapshotpb.core.resources.delete_device_dialog_title
 import com.snapshotpb.core.resources.device_discovered_card_info
 import com.snapshotpb.core.resources.device_fallback_name
+import com.snapshotpb.core.resources.device_screen_add_demo_device
 import com.snapshotpb.core.resources.device_screen_bluetooth_options
 import com.snapshotpb.core.resources.device_screen_list_discovered_devices
+import com.snapshotpb.core.resources.device_screen_menu_description
 import com.snapshotpb.core.resources.device_screen_no_saved_devices
+import com.snapshotpb.core.resources.device_screen_privacy_policy
 import com.snapshotpb.core.resources.device_screen_saved_configurations
+import com.snapshotpb.core.resources.device_screen_terms_of_service
 import com.snapshotpb.core.resources.device_screen_title
 import com.snapshotpb.core.resources.device_tap_to_connect
 import com.snapshotpb.core.resources.firmware_version_unknown
@@ -76,6 +89,14 @@ import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.rememberInstance
 
 private val log = Arbor.tag("DeviceScreen")
+
+const val DEVICE_SCREEN_OVERFLOW_MENU_TAG = "deviceScreenOverflowMenu"
+const val DEVICE_SCREEN_ADD_DEMO_DEVICE_TAG = "deviceScreenAddDemoDevice"
+const val DEVICE_SCREEN_PRIVACY_POLICY_TAG = "deviceScreenPrivacyPolicy"
+const val DEVICE_SCREEN_TERMS_OF_SERVICE_TAG = "deviceScreenTermsOfService"
+
+private const val PRIVACY_POLICY_URL = "https://snapshotpb.com/privacy"
+private const val TERMS_OF_SERVICE_URL = "https://snapshotpb.com/terms-and-conditions"
 
 @Composable
 fun DeviceBrowserScreen(
@@ -172,24 +193,38 @@ fun DeviceBrowserScreen(
         modifier = Modifier
             .fillMaxSize(),
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(horizontal = 4.dp, vertical = 8.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                stringResource(Res.string.device_screen_title),
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            // The app's version surface (docs/versioning-and-release-plan.md §4).
-            // This screen is the shared entry point on every platform, so one line here
-            // covers Android, desktop, iOS and web without a per-platform About screen.
-            // Dev builds show the `-dev` marker. Build with
-            // `-Psnapshotpb.stampBuildMetadata=true` to also show the `+<sha>` of the commit.
-            Text(
-                stringResource(Res.string.app_version_label, AppVersion.NAME),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    stringResource(Res.string.device_screen_title),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                // The app's version surface (docs/versioning-and-release-plan.md §4).
+                // This screen is the shared entry point on every platform, so one line here
+                // covers Android, desktop, iOS and web without a per-platform About screen.
+                // Dev builds show the `-dev` marker. Build with
+                // `-Psnapshotpb.stampBuildMetadata=true` to also show the `+<sha>` of the commit.
+                Text(
+                    stringResource(Res.string.app_version_label, AppVersion.NAME),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            val defaultDeviceName = stringResource(Res.string.device_default_name)
+            DeviceScreenOverflowMenu(
+                showAddDemoDevice = knownDevices.isEmpty(),
+                onAddDemoDevice = {
+                    log.d { "Add demo device requested." }
+                    deviceScreenViewModel.addDemoDevice(defaultDeviceName)
+                },
             )
         }
 
@@ -631,4 +666,72 @@ private fun DiscoveredDeviceCard(
         }
     }
 }
+
+@Composable
+private fun DeviceScreenOverflowMenu(
+    showAddDemoDevice: Boolean,
+    onAddDemoDevice: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
+    val menuDescription = stringResource(Res.string.device_screen_menu_description)
+    val dotColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier
+                .semantics { contentDescription = menuDescription }
+                .testTag(DEVICE_SCREEN_OVERFLOW_MENU_TAG),
+        ) {
+            Canvas(modifier = Modifier.size(24.dp)) {
+                val radius = 2.dp.toPx()
+                val centerX = size.width / 2f
+                drawCircle(color = dotColor, radius = radius, center = Offset(centerX, 6.dp.toPx()))
+                drawCircle(color = dotColor, radius = radius, center = Offset(centerX, 12.dp.toPx()))
+                drawCircle(color = dotColor, radius = radius, center = Offset(centerX, 18.dp.toPx()))
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            if (showAddDemoDevice) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.device_screen_add_demo_device)) },
+                    onClick = {
+                        expanded = false
+                        onAddDemoDevice()
+                    },
+                    modifier = Modifier.testTag(DEVICE_SCREEN_ADD_DEMO_DEVICE_TAG),
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.device_screen_privacy_policy)) },
+                onClick = {
+                    expanded = false
+                    openExternalUri(uriHandler, PRIVACY_POLICY_URL)
+                },
+                modifier = Modifier.testTag(DEVICE_SCREEN_PRIVACY_POLICY_TAG),
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.device_screen_terms_of_service)) },
+                onClick = {
+                    expanded = false
+                    openExternalUri(uriHandler, TERMS_OF_SERVICE_URL)
+                },
+                modifier = Modifier.testTag(DEVICE_SCREEN_TERMS_OF_SERVICE_TAG),
+            )
+        }
+    }
+}
+
+private fun openExternalUri(uriHandler: UriHandler, uri: String) {
+    runCatching {
+        uriHandler.openUri(uri)
+    }.onFailure { error ->
+        log.e(error) { "Failed to open external URI: $uri" }
+    }
+}
+
 

@@ -56,7 +56,7 @@ private class DeviceBrowserScreenViewModelImpl(
     bluetoothManagerProvider: () -> BluetoothManager,
     bluetoothStateManager: BluetoothStateManager,
     bluetoothRequestManager: BluetoothRequestManager,
-    debugBoard: DebugBoard,
+    private val debugBoard: DebugBoard,
     deviceStore: DeviceStore,
     systemConfig: SystemConfig,
 ) : DeviceBrowserScreenViewModel(
@@ -67,7 +67,9 @@ private class DeviceBrowserScreenViewModelImpl(
     deviceState = debugBoard.deviceState(
         gatedDeviceState(bluetoothStateManager, bluetoothManagerProvider, debugBoard)
     ),
-)
+) {
+    override fun onDemoDeviceAdded() = debugBoard.applySwitch(true)
+}
 
 /**
  * The device state of the [BluetoothManager], gated so that no subscription constructs the manager
