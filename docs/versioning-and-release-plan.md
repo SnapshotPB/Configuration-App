@@ -301,8 +301,11 @@ installer, checks its `sha512`, and runs `installAndRestart()`.
   Without them, the builds are unsigned.
 - The job attaches the AABs and the APKs to the GitHub Release. The APKs are for
   sideload and QA, because a device cannot install an `.aab` directly.
-- `publish-play` uploads to the `internal` track with `r0adkll/upload-google-play`. It
-  runs only when both `has_play` and `has_android_signing` are true.
+- `publish-play` authenticates to Google Cloud through Workload Identity Federation
+  (`google-github-actions/auth`, service account
+  `play-publisher@snapshotpb-play-store.iam.gserviceaccount.com`) and uploads to the
+  `internal` track with `r0adkll/upload-google-play`. It runs only when both `has_play`
+  (`PLAY_ENABLED`) and `has_android_signing` are true.
 - The phone and Wear apps have the same `versionCode`, but they are two Play apps
   (`com.snapshotpb.configuration` and `com.snapshotpb.configuration.wear`). Each upload
   step names exactly one file (`dist/android-release.aab`, `dist/wear-release.aab`).
@@ -434,7 +437,7 @@ can read them.
 
 | Group | Secrets | Gate (preflight output) | Without the secrets |
 |---|---|---|---|
-| Play upload | `PLAY_SERVICE_ACCOUNT_JSON` | `has_play` | No Play upload |
+| Play upload | `PLAY_ENABLED` (a flag, not a credential; auth uses Workload Identity Federation) | `has_play` | No Play upload. Set it after the phone listing exists and `play-publisher@snapshotpb-play-store.iam.gserviceaccount.com` has release permissions in Play Console. |
 | Android signing (organization secrets) | `ANDROID_KEYSTORE_GPG_PASSPHRASE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | `has_android_signing` (also needs `signing/upload.keystore.gpg` in the tag) | Unsigned AAB and APK, no Play upload |
 | Wear on Play | `WEAR_PLAY_ENABLED` (a flag, not a credential) | `has_wear_play` | No Wear upload. Set it only after the Wear listing exists. |
 | iOS | `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_KEYCHAIN_PASSWORD`, `APP_STORE_CONNECT_API_KEY_BASE64`, `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_API_ISSUER_ID` | `has_ios` | The iOS job does not start |
