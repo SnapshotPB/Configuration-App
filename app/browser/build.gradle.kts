@@ -24,6 +24,7 @@ kotlin {
                 implementation(projects.core.common)
                 implementation(projects.core.di)
                 implementation(projects.core.bluetooth)
+                implementation(projects.core.firmware)
                 implementation(projects.core.media)
                 implementation(projects.core.model)
                 implementation(projects.core.resources)

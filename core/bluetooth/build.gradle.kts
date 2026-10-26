@@ -22,6 +22,7 @@ kotlin {
                 implementation(projects.core.model)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.protobuf)
+                implementation(libs.kotlinx.serialization.cbor)
                 implementation(libs.arbor)
             }
         }

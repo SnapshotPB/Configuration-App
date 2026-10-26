@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import com.snapshotpb.core.resources.Res
+import com.snapshotpb.core.resources.profile_value_percent
 import com.snapshotpb.core.resources.updater_action_close
 import com.snapshotpb.core.resources.updater_action_later
 import com.snapshotpb.core.resources.updater_action_update_now
@@ -38,7 +39,13 @@ import org.kodein.di.DI
 import org.kodein.di.compose.withDI
 import org.kodein.di.instance
 
-class Application : BaseApplication() {
+/**
+ * The desktop app.
+ *
+ * @param firmwareSiteUrl The URL of a local firmware site for a bench test, or `null` for the public
+ *   site (see [firmwareSiteUrlOf]).
+ */
+class Application(private val firmwareSiteUrl: String? = null) : BaseApplication() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private val isUpdateAvailable = MutableStateFlow<UpdateInfo?>(null)
 
@@ -46,6 +53,7 @@ class Application : BaseApplication() {
         import(appModule)
         import(platformModule)
         import(screenModule)
+        import(firmwareUpdateModule(firmwareSiteUrl))
     }
 
     private val bluetoothManager: BluetoothManager by instance()
@@ -67,6 +75,10 @@ class Application : BaseApplication() {
             is BluetoothRequest.Disconnect -> bluetoothManager.disconnect(request.deviceId)
             is BluetoothRequest.WriteDevice ->
                 bluetoothManager.writeDeviceConfiguration(request.deviceId, request.device, request.requestId)
+            is BluetoothRequest.UpdateFirmware ->
+                bluetoothManager.updateFirmware(request.deviceId, request.image, request.requestId)
+            is BluetoothRequest.ConfirmFirmware ->
+                bluetoothManager.confirmFirmware(request.deviceId, request.requestId)
         }
     }
 
@@ -160,12 +172,10 @@ fun UpdatePromptDialog(
                 } else if (isDownloading) {
                     val progress = downloadProgress
                     if (progress != null) {
-                        Text(
-                            text = stringResource(
-                                Res.string.updater_downloading,
-                                (progress.percent * 100).toInt(),
-                            )
-                        )
+                        // Compose Resources does not change `%%` to one sign, so the percent
+                        // text comes from the shared percent format of each locale.
+                        val percent = stringResource(Res.string.profile_value_percent, (progress.percent * 100).toInt())
+                        Text(text = stringResource(Res.string.updater_downloading, percent))
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
                             progress = { progress.percent.toFloat() },

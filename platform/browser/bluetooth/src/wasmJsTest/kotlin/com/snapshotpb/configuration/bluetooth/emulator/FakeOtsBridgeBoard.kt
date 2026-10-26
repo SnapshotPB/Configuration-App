@@ -6,14 +6,19 @@ import com.snapshotpb.configuration.bluetooth.ots.ObjectPropertyBit
 import com.snapshotpb.configuration.bluetooth.ots.OlcpOpcode
 import com.snapshotpb.configuration.bluetooth.ots.OlcpResult
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
+import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
 
 /**
  * An OTS server at the ATT level, on a [FakeBoardBridge]. It answers OLCP First/Next/Go To, the
  * object metadata reads, OACP READ (content chunks as notifications on ObjectData) and OACP WRITE
  * (content chunks written to ObjectData) over one OLCP cursor, as the board firmware does. The GATT
  * table also has a Device Information service, which the scan filters of the app do not name.
+ *
+ * With [smpService], the table also has the SMP service of a board with the update firmware. The
+ * board does not answer SMP requests: the web engines have no write without response with a result,
+ * so the app sends none.
  */
-internal class FakeOtsBridgeBoard {
+internal class FakeOtsBridgeBoard(smpService: Boolean = false) {
     class BoardObject(val name: String, var content: ByteArray, val writable: Boolean)
 
     val objects: List<BoardObject> = listOf(
@@ -48,6 +53,13 @@ internal class FakeOtsBridgeBoard {
                     BoardCharacteristic(MANUFACTURER_NAME, MANUFACTURER, GattProperty.READ, null),
                 ),
             ),
+        ) + listOfNotNull(
+            BoardService(
+                uuid = SmpUuids.Service.toString(),
+                characteristics = listOf(
+                    BoardCharacteristic(SmpUuids.Characteristic.toString(), SMP, SMP_PROPERTIES, SMP + 1),
+                ),
+            ).takeIf { smpService },
         ),
     )
 
@@ -187,12 +199,14 @@ internal class FakeOtsBridgeBoard {
         const val PROPERTIES = 0x11
         const val OBJECT_DATA = 0x13
         const val MANUFACTURER = 0x17
+        const val SMP = 0x1A
 
         const val DEVICE_INFORMATION_SERVICE = "0000180a-0000-1000-8000-00805f9b34fb"
         const val MANUFACTURER_NAME = "00002a29-0000-1000-8000-00805f9b34fb"
 
         private const val CONTROL_POINT = GattProperty.WRITE or GattProperty.INDICATE
         private const val OBJECT_DATA_PROPERTIES = GattProperty.WRITE_WITHOUT_RESPONSE or GattProperty.NOTIFY
+        private const val SMP_PROPERTIES = GattProperty.WRITE_WITHOUT_RESPONSE or GattProperty.NOTIFY
         private const val CHUNK_SIZE = 20
         private const val FIRST_OBJECT_ID = 0x100L
     }

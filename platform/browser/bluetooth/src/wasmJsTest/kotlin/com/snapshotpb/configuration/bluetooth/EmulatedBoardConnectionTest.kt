@@ -34,8 +34,8 @@ class EmulatedBoardConnectionTest {
         val writes: List<DeviceWriteResult>,
     )
 
-    private fun TestScope.newFixture(): Fixture {
-        val board = FakeOtsBridgeBoard().apply {
+    private fun TestScope.newFixture(smpService: Boolean = false): Fixture {
+        val board = FakeOtsBridgeBoard(smpService).apply {
             setContent("device", DEVICE_WITH_ID)
             setContent("device_config", BOOT_TEXT_HI)
             // The engine refuses a write with no profiles, so the board holds one profile.
@@ -84,6 +84,34 @@ class EmulatedBoardConnectionTest {
         assertEquals(deviceId, read.scanKey)
         assertTrue(BOARD_ID in f.stateManager.connectedDevices.value)
         assertEquals("HI", read.device.bootText)
+    }
+
+    @Test
+    fun connect_toTheViewerBoard_recordsNoUpdateService() = runTest(UnconfinedTestDispatcher()) {
+        // The model of the board in the viewer has no SMP service.
+        val f = newFixture()
+
+        scanAndConnect(f)
+
+        assertEquals(BoardUpdateService(UpdateServiceStatus.ABSENT), f.stateManager.updateServices.value[BOARD_ID])
+    }
+
+    @Test
+    fun connect_toABoardWithTheUpdateService_recordsAnUnsupportedPlatform() = runTest(UnconfinedTestDispatcher()) {
+        // The scan filters put the SMP service in the allowlist, so the page gets the service. The
+        // engine, as JsEngine, has no write without response with a result, so the first SMP
+        // request stops with SmpWriteUnsupported, and the connect still succeeds.
+        val f = newFixture(smpService = true)
+
+        scanAndConnect(f)
+
+        assertTrue(f.stateManager.connectionProgress.value.isCompleted)
+        assertTrue(BOARD_ID in f.stateManager.connectedDevices.value)
+        assertEquals(
+            BoardUpdateService(UpdateServiceStatus.UNSUPPORTED_PLATFORM),
+            f.stateManager.updateServices.value[BOARD_ID],
+        )
+        assertTrue(f.board.bridge.writes.none { it.handle == FakeOtsBridgeBoard.SMP }, "no SMP byte goes to the board")
     }
 
     @Test

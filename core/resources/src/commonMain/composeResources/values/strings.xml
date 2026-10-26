@@ -307,11 +307,90 @@
     <!-- Desktop auto-updater dialog -->
     <string name="updater_dialog_title">Update Available</string>
     <string name="updater_message">A new version (%1$s) is available. Would you like to update now?</string>
-    <string name="updater_downloading">Downloading update: %1$d%%</string>
+    <!-- %1$s is the percent text of profile_value_percent. Compose Resources shows a double percent sign as two signs. -->
+    <string name="updater_downloading">Downloading update: %1$s</string>
     <string name="updater_starting_download">Starting download...</string>
     <string name="updater_error">Error: %1$s</string>
     <string name="updater_error_unknown">Unknown error</string>
     <string name="updater_action_update_now">Update Now</string>
     <string name="updater_action_later">Later</string>
     <string name="updater_action_close">Close</string>
+    <!-- Firmware section of the Configure Device screen -->
+    <string name="firmware_section_label">Firmware</string>
+    <string name="firmware_section_details">The firmware on the board, and the newest release for this board.</string>
+    <string name="firmware_section_board_version">Board firmware: %1$s</string>
+    <string name="firmware_section_target">Board type: %1$s</string>
+    <string name="firmware_section_latest">Newest release: %1$s</string>
+    <!-- The text after the colon comes from the firmware site, in English. -->
+    <string name="firmware_section_release_note">Release note: %1$s</string>
+    <string name="firmware_section_update_button">Update</string>
+    <string name="firmware_section_show_update_button">Show Update</string>
+    <!-- The step of the update that runs now, e.g. "Update in progress: Download the firmware" -->
+    <string name="firmware_section_in_progress">Update in progress: %1$s</string>
+    <string name="firmware_section_check_again_button">Check Again</string>
+    <!-- Shown in place of a board type that the board has not reported. -->
+    <string name="firmware_target_unknown">Unknown</string>
+    <!-- Why the Firmware section offers no update -->
+    <string name="firmware_reason_update_in_progress">The app is updating another board. Wait until that update is complete.</string>
+    <string name="firmware_reason_not_connected">Connect to the board to check for an update.</string>
+    <string name="firmware_reason_checking">Checking for an update…</string>
+    <string name="firmware_reason_no_update_service">The firmware on this board cannot update over Bluetooth. Install a newer firmware one time over USB.</string>
+    <string name="firmware_reason_platform_unsupported">This version of the app cannot update the firmware. Use the app on Android, iOS, Windows or Linux.</string>
+    <string name="firmware_reason_update_service_error">The update service of the board did not answer. Connect to the board again.</string>
+    <string name="firmware_reason_check_failed">The app could not read the firmware releases. Check your internet connection.</string>
+    <string name="firmware_reason_no_release">There is no firmware release for this board yet.</string>
+    <string name="firmware_reason_incompatible_hardware">The newest release is not for the hardware of this board.</string>
+    <string name="firmware_reason_unknown_board_version">The app does not know the firmware version of the board, so it cannot compare it with the newest release.</string>
+    <string name="firmware_reason_up_to_date">The board has the newest firmware.</string>
+    <string name="firmware_reason_not_yet_released">Firmware updates are not available in this version of the app.</string>
+    <!-- Firmware Update screen -->
+    <string name="firmware_update_title">Firmware Update</string>
+    <!-- The firmware version of the board and the version of the update, e.g. "From 2026.29.1 to 2026.43.1" -->
+    <string name="firmware_update_versions">From %1$s to %2$s</string>
+    <string name="firmware_update_warnings_title">Before you start</string>
+    <string name="firmware_update_warning_still">Keep the marker still and point it in a safe direction.</string>
+    <string name="firmware_update_warning_no_fire">The marker does not fire while the board gets the firmware.</string>
+    <string name="firmware_update_warning_battery">Do not remove the battery during the update, or while the board screen is dark.</string>
+    <!-- The expected time of the dark screen, e.g. "1:30" -->
+    <string name="firmware_update_warning_restart">The board restarts at the end of the update. Its screen is dark for about %1$s.</string>
+    <string name="firmware_update_warning_radio">Bluetooth on the board is off after the restart. Turn it on in the board menu, so the app can connect again.</string>
+    <string name="firmware_update_warning_leave">You can leave this screen. The update continues.</string>
+    <string name="firmware_update_start_button">Start Update</string>
+    <!-- The steps of the firmware update -->
+    <string name="firmware_step_check">Check for the newest release</string>
+    <string name="firmware_step_download">Download the firmware</string>
+    <string name="firmware_step_prepare">Prepare the board</string>
+    <string name="firmware_step_upload">Send the firmware to the board</string>
+    <string name="firmware_step_reset">Restart the board</string>
+    <string name="firmware_step_swap">Install the firmware</string>
+    <string name="firmware_step_verify">Connect and check the new firmware</string>
+    <!-- The time since the restart and the expected time, e.g. "0:45 of about 1:30" -->
+    <string name="firmware_update_swap_time">%1$s of about %2$s</string>
+    <string name="firmware_update_swap_battery">Do not remove the battery.</string>
+    <string name="firmware_update_swap_radio">When the board screen comes on, turn on Bluetooth in the board menu.</string>
+    <string name="firmware_update_cancel_button">Stop Update</string>
+    <string name="firmware_update_cancel_title">Stop the update?</string>
+    <string name="firmware_update_cancel_stops_update">The board stops the update and keeps its current firmware. You can try again later.</string>
+    <string name="firmware_update_cancel_stops_wait">The board continues to install the firmware. Do not remove the battery. The app stops waiting for the board.</string>
+    <string name="firmware_update_cancel_confirm">Stop</string>
+    <string name="firmware_update_cancel_keep">Continue</string>
+    <string name="firmware_update_done_title">Update complete</string>
+    <string name="firmware_update_done_body">The board now runs firmware %1$s.</string>
+    <string name="firmware_update_done_body_unknown">The board now runs the new firmware.</string>
+    <string name="firmware_update_failed_title">Update stopped</string>
+    <!-- A code for support, e.g. "Details: NoAnswer" -->
+    <string name="firmware_update_failed_detail">Details: %1$s</string>
+    <string name="firmware_update_retry_button">Try Again</string>
+    <string name="firmware_update_close_button">Close</string>
+    <!-- Why the firmware update stopped -->
+    <string name="firmware_failure_network">The download stopped. Check your internet connection, then try again.</string>
+    <string name="firmware_failure_no_release">There is no newer firmware for this board.</string>
+    <string name="firmware_failure_bad_image">The downloaded firmware is damaged. Try again.</string>
+    <string name="firmware_failure_not_connected">The board is not connected. Connect to the board, then try again.</string>
+    <string name="firmware_failure_link_lost">The Bluetooth connection stopped. The board keeps its current firmware. Move nearer to the board, then try again.</string>
+    <string name="firmware_failure_board_refused">The board refused the update. Try again.</string>
+    <string name="firmware_failure_reverted">The new firmware did not start, so the board went back to its previous firmware.</string>
+    <string name="firmware_failure_not_copied">The board did not install the new firmware. It still runs its previous firmware.</string>
+    <string name="firmware_failure_no_advertisement">The app did not find the board after the restart. Turn on Bluetooth in the board menu, then try again.</string>
+    <string name="firmware_failure_cancelled">You stopped the update.</string>
 </resources>

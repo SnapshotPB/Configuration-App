@@ -89,7 +89,14 @@ val localizationCheck = tasks.register<LocalizationCheckTask>("localizationCheck
         // `Error` is the same word in Spanish.
         "values-es:updater_error",
         "values-es-rMX:updater_error",
-        "values-es-rUS:updater_error"
+        "values-es-rUS:updater_error",
+        // `Firmware` is the same word in German, Spanish and French. French in Canada writes
+        // `Micrologiciel`.
+        "values-de:firmware_section_label",
+        "values-es:firmware_section_label",
+        "values-es-rMX:firmware_section_label",
+        "values-es-rUS:firmware_section_label",
+        "values-fr:firmware_section_label"
     )
     reportFile = layout.buildDirectory.file("reports/localization/strings.txt")
 }

@@ -69,8 +69,13 @@ private class DeviceBrowserScreenViewModelImpl(
     ),
 )
 
+/**
+ * The device state of the [BluetoothManager], gated so that no subscription constructs the manager
+ * before the user engages Bluetooth (see [DeviceBrowserScreenViewModelImpl]). The firmware update
+ * reads the advertisements through the same gate.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
-private fun gatedDeviceState(
+internal fun gatedDeviceState(
     bluetoothStateManager: BluetoothStateManager,
     bluetoothManagerProvider: () -> BluetoothManager,
     debugBoard: DebugBoard,

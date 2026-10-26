@@ -2,7 +2,9 @@ package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
+import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.FirmwareImage
 import com.toxicbakery.logging.Arbor
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothPeripheral
@@ -21,6 +23,12 @@ private val log = Arbor.tag("BluetoothManager")
  * vendor UUIDs are characteristic and type values in that service. They are in the list too, so
  * the list stays correct if a later firmware moves the vendor `ObjectData` to a service of its own.
  *
+ * The SMP service [SmpUuids.Service] (firmware update) is in the list too. The board does not
+ * advertise it, and `JsEngine` does not filter the chooser with this list, so the entry hides no
+ * board. A board on an older firmware has no SMP service; the engine then lists only the services
+ * that the board has. `EmulatorEngine` does the same: it gives only the services that the model of
+ * the board has, so the viewer is not changed.
+ *
  * The board filter UUID 0xFFE2 comes first, as on every other target (#128). `JsEngine` 3.7.14
  * does not filter its chooser with it: it puts the list in `optionalServices` only and asks
  * for all devices. So on the web the user picks the board in the chooser, and the name plays no
@@ -30,6 +38,7 @@ private val scanFilters: List<ServiceFilter> = SnapshotAdvertisement.scanFilters
     ServiceFilter(OtsUuids.Service),
     ServiceFilter(OtsUuids.DeviceObjectType),
     ServiceFilter(OtsUuids.ObjectData),
+    ServiceFilter(SmpUuids.Service),
 )
 
 /**
@@ -132,4 +141,9 @@ class BluetoothManager(
 
     suspend fun writeDeviceConfiguration(deviceId: String, domainDevice: Device, requestId: Long = 0L) =
         engine.writeDeviceConfiguration(deviceId, domainDevice, requestId)
+
+    fun updateFirmware(deviceId: String, image: FirmwareImage, requestId: Long = 0L) =
+        engine.updateFirmware(deviceId, image, requestId)
+
+    fun confirmFirmware(deviceId: String, requestId: Long = 0L) = engine.confirmFirmware(deviceId, requestId)
 }

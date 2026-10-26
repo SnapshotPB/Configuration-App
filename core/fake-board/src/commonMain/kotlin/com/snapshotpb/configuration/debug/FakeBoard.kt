@@ -4,13 +4,17 @@ import com.snapshotpb.configuration.bluetooth.BluetoothDeviceState
 import com.snapshotpb.configuration.bluetooth.BluetoothRequest
 import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
+import com.snapshotpb.configuration.bluetooth.BoardImage
+import com.snapshotpb.configuration.bluetooth.BoardUpdateService
 import com.snapshotpb.configuration.bluetooth.ConnectionProgress
 import com.snapshotpb.configuration.bluetooth.DeviceReadResult
 import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.bluetooth.FirmwareUploadState
 import com.snapshotpb.configuration.bluetooth.SnapshotAdvertisement
 import com.snapshotpb.configuration.bluetooth.StepStatus
+import com.snapshotpb.configuration.bluetooth.UpdateServiceStatus
 import com.snapshotpb.configuration.bluetooth.ots.getCurrentLocalDate
 import com.snapshotpb.configuration.bluetooth.ots.getProfileUuid
 import com.snapshotpb.configuration.bluetooth.ots.toDomainDevice
@@ -22,6 +26,10 @@ import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
+import com.snapshotpb.configuration.model.FirmwareUpdateFailure
+import com.snapshotpb.configuration.model.FirmwareUpdateProgress
+import com.snapshotpb.configuration.model.FirmwareVersion
+import com.snapshotpb.configuration.model.HardwareTarget
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -30,6 +38,7 @@ import com.toxicbakery.logging.Arbor
 import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothService
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -69,6 +78,13 @@ import kotlin.uuid.Uuid
  * adb shell am start -S -n com.snapshotpb.configuration/.activity.MainActivity
  * ```
  * The switch does not persist. Each launch carries its own, so the entry you tap decides the mode.
+ *
+ * FIRMWARE UPDATE: the board reports the hardware target `snapshot_v2/esp32c3` after each connect.
+ * It answers [BluetoothRequest.UpdateFirmware] with a fake upload of a few seconds and a fake reset:
+ * the link drops, and the board is off the air for [FAKE_SWAP_MILLIS]. After that "swap", it
+ * advertises the version of the image, and its running image is the uploaded one, not confirmed,
+ * until a [BluetoothRequest.ConfirmFirmware]. With the simulated firmware site of
+ * [fakeBoardModule], the Demo entry shows the whole update with no hardware and no network.
  *
  * THREADING: [handle] gives the slow work to [scope] and returns at once. The request bus has no
  * buffer, so work done in the caller would hold the bus and block the Cancel affordance, and an
@@ -110,6 +126,23 @@ internal class FakeBoard(
     private var stateGuard: Job? = null
 
     private var connectionJob: Job? = null
+
+    /** The fake upload in flight. A Disconnect cancels it, as a lost link stops a real upload. */
+    private var firmwareJob: Job? = null
+
+    /** The fake swap after the fake reset. */
+    private var swapJob: Job? = null
+
+    /** The firmware that the board runs. The advertisement and `image list` report it. */
+    private var firmwareVersion: FirmwareVersion = FAKE_FIRMWARE_VERSION
+
+    /** The fake MCUboot hash of the running image. */
+    private var imageHash: String = FAKE_IMAGE_HASH
+
+    private var imageConfirmed: Boolean = true
+
+    /** True while the board is dark after the fake reset: it neither advertises nor connects. */
+    private var offAir: Boolean = false
 
     override fun applySwitch(on: Boolean?) {
         if (on != null && on != enabled) {
@@ -165,6 +198,11 @@ internal class FakeBoard(
             bluetoothStateManager.connectedDevices.value.contains(FAKE_DEVICE_ID)
         connectionJob?.cancel()
         connectionJob = null
+        firmwareJob?.cancel()
+        firmwareJob = null
+        swapJob?.cancel()
+        swapJob = null
+        offAir = false
         stateGuard?.cancel()
         stateGuard = null
         discovered.value = BluetoothDeviceState()
@@ -198,13 +236,26 @@ internal class FakeBoard(
 
             is BluetoothRequest.Disconnect -> {
                 // Cancel the attempt first: it holds the board lock, so the disconnect below would
-                // otherwise wait for the whole connect to finish.
+                // otherwise wait for the whole connect to finish. A lost link also stops an upload.
                 connectionJob?.cancel()
                 connectionJob = null
+                firmwareJob?.cancel()
+                firmwareJob = null
                 onBoard { disconnect(request.deviceId) }
             }
             is BluetoothRequest.WriteDevice ->
                 onBoard { write(request.deviceId, request.device, request.requestId) }
+
+            is BluetoothRequest.UpdateFirmware -> {
+                // The first state goes out at once, as the engine sends it before its write lock.
+                bluetoothStateManager.updateFirmwareUpload(
+                    FirmwareUploadState(request.requestId, request.deviceId, FirmwareUpdateProgress.Preparing)
+                )
+                firmwareJob?.cancel()
+                firmwareJob = onBoard { updateFirmware(request) }
+            }
+
+            is BluetoothRequest.ConfirmFirmware -> onBoard { confirmFirmware(request) }
         }
         return true
     }
@@ -225,7 +276,7 @@ internal class FakeBoard(
         if (bluetoothStateManager.bluetoothState.value != BluetoothState.Ready) return
         bluetoothStateManager.update(BluetoothState.Scanning)
         delay(SCAN_DELAY_MILLIS)
-        discovered.value = advertisedState()
+        if (!offAir) discovered.value = advertisedState()
     }
 
     /**
@@ -252,6 +303,15 @@ internal class FakeBoard(
                         failureCode = "UnknownDevice",
                     )
                 )
+                bluetoothStateManager.update(BluetoothState.Ready)
+                return
+            }
+
+            if (offAir) {
+                // The board is dark during the fake swap. Fail like the real engine does when the
+                // peripheral does not answer.
+                log.d { "Fake board is off the air; the connect fails" }
+                bluetoothStateManager.updateProgress(ConnectionProgress(step1 = StepStatus.FAILED))
                 bluetoothStateManager.update(BluetoothState.Ready)
                 return
             }
@@ -292,7 +352,8 @@ internal class FakeBoard(
                 )
             )
             // Like the real engine, mark the board connected only after the read, so Save stays
-            // off until the board state is known.
+            // off until the board state is known. The update service is known from then on too.
+            bluetoothStateManager.recordUpdateService(deviceId, updateService())
             bluetoothStateManager.deviceConnected(deviceId)
             deviceReadResultBus.emit(DeviceReadResult(readBoard(), scanKey = deviceId))
             bluetoothStateManager.update(BluetoothState.Ready)
@@ -309,9 +370,90 @@ internal class FakeBoard(
 
     /** Runs under [boardLock] (see [onBoard]), so it cannot interleave with a write. */
     private fun disconnect(deviceId: String) {
+        bluetoothStateManager.clearUpdateService(deviceId)
         bluetoothStateManager.deviceDisconnected(deviceId)
         bluetoothStateManager.resetProgress()
     }
+
+    /**
+     * A fake upload of [request]: the steps of the real engine over a few seconds, then a fake
+     * reset. The board drops the link and is dark for [FAKE_SWAP_MILLIS]; then it runs the image,
+     * not confirmed, and advertises its version. The fake MCUboot hash of the image is the SHA-256
+     * of the file, so the verify step of the coordinator finds the uploaded image.
+     */
+    private suspend fun updateFirmware(request: BluetoothRequest.UpdateFirmware) {
+        fun report(progress: FirmwareUpdateProgress, hash: String? = null) =
+            bluetoothStateManager.updateFirmwareUpload(
+                FirmwareUploadState(request.requestId, request.deviceId, progress, hash)
+            )
+        report(FirmwareUpdateProgress.Preparing)
+        if (request.deviceId != FAKE_DEVICE_ID ||
+            !bluetoothStateManager.connectedDevices.value.contains(request.deviceId)
+        ) {
+            report(FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NOT_CONNECTED))
+            return
+        }
+        try {
+            delay(PREPARE_DELAY_MILLIS)
+            val total = request.image.bytes.size.toLong()
+            for (step in 1..UPLOAD_STEPS) {
+                delay(UPLOAD_STEP_DELAY_MILLIS)
+                report(FirmwareUpdateProgress.Uploading(total * step / UPLOAD_STEPS, total))
+            }
+            report(FirmwareUpdateProgress.Resetting)
+            delay(RESET_DELAY_MILLIS)
+        } catch (cancelled: CancellationException) {
+            report(FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.LINK_LOST, "Cancelled"))
+            throw cancelled
+        }
+        val newHash = request.image.manifest.assets.image.sha256.lowercase()
+        val newVersion = request.image.version ?: firmwareVersion
+        report(FirmwareUpdateProgress.AwaitingSwap(), newHash)
+        log.d { "Fake board resets to $newVersion" }
+        offAir = true
+        discovered.value = BluetoothDeviceState()
+        disconnect(FAKE_DEVICE_ID)
+        swapJob?.cancel()
+        swapJob = scope.launch {
+            delay(FAKE_SWAP_MILLIS)
+            firmwareVersion = newVersion
+            imageHash = newHash
+            imageConfirmed = false
+            offAir = false
+            discovered.value = advertisedState()
+            log.d { "Fake board runs $newVersion after the fake swap" }
+        }
+    }
+
+    /** Confirms the running image, as `image confirm` does. */
+    private suspend fun confirmFirmware(request: BluetoothRequest.ConfirmFirmware) {
+        fun report(progress: FirmwareUpdateProgress) =
+            bluetoothStateManager.updateFirmwareUpload(FirmwareUploadState(request.requestId, request.deviceId, progress))
+        report(FirmwareUpdateProgress.Verifying)
+        if (request.deviceId != FAKE_DEVICE_ID ||
+            !bluetoothStateManager.connectedDevices.value.contains(request.deviceId)
+        ) {
+            report(FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NOT_CONNECTED))
+            return
+        }
+        delay(CONFIRM_DELAY_MILLIS)
+        imageConfirmed = true
+        bluetoothStateManager.recordUpdateService(FAKE_DEVICE_ID, updateService())
+        report(FirmwareUpdateProgress.Done(firmwareVersion))
+    }
+
+    /** The update service that a `snapshot_v2` board with the update firmware reports. */
+    private fun updateService(): BoardUpdateService = BoardUpdateService(
+        status = UpdateServiceStatus.AVAILABLE,
+        target = FAKE_TARGET,
+        bufferSize = FAKE_SMP_BUFFER_SIZE,
+        activeImage = BoardImage(
+            // The MCUboot version of the firmware: the year minus 2000, the week and the count.
+            version = "${firmwareVersion.year - 2000}.${firmwareVersion.week}.${firmwareVersion.count}",
+            hash = imageHash,
+            confirmed = imageConfirmed,
+        ),
+    )
 
     /**
      * Stores a write the way the board stores one. The value goes out through the same protocol
@@ -384,11 +526,18 @@ internal class FakeBoard(
         // The real read path names a device after the peripheral, so the fake does the same.
         deviceName = BOARD_ADVERTISED_NAME,
         lastSeenDate = getCurrentLocalDate(),
-    ).copy(advertisementData = FAKE_ADVERTISEMENT) // The engine attaches the advertisement the same way.
+    ).copy(advertisementData = advertisement()) // The engine attaches the advertisement the same way.
 
     private fun advertisedState(): BluetoothDeviceState = BluetoothDeviceState(
         devices = mapOf(FAKE_DEVICE_ID to FakePeripheral),
-        advertisementData = mapOf(FAKE_DEVICE_ID to FAKE_ADVERTISEMENT),
+        advertisementData = mapOf(FAKE_DEVICE_ID to advertisement()),
+    )
+
+    /** The 0xFFE0 service data of the board, as the parser makes it from the firmware bytes (#129). */
+    private fun advertisement(): AdvertisementData = AdvertisementData(
+        boardType = FAKE_BOARD_TYPE,
+        fwVersion = firmwareVersion.toString(),
+        firmwareVersion = firmwareVersion,
     )
 
     private companion object {
@@ -397,6 +546,15 @@ internal class FakeBoard(
         private const val SCAN_DELAY_MILLIS = 600L
         private const val STEP_DELAY_MILLIS = 250L
         private const val WRITE_DELAY_MILLIS = 400L
+
+        private const val PREPARE_DELAY_MILLIS = 300L
+        private const val UPLOAD_STEPS = 20
+        private const val UPLOAD_STEP_DELAY_MILLIS = 200L
+        private const val RESET_DELAY_MILLIS = 400L
+        private const val CONFIRM_DELAY_MILLIS = 300L
+
+        /** The fake swap time: short, so the Demo does not wait for the real swap time. */
+        private const val FAKE_SWAP_MILLIS = 5_000L
 
         private val log = Arbor.tag("FakeBoard")
     }
@@ -413,12 +571,20 @@ internal class FakeBoard(
  */
 private const val FAKE_DEVICE_ID = "5350425f-4f54-4000-8000-000000000001"
 
-/**
- * The 0xFFE0 service data of the fake, in the form that the firmware sends: the board type, then the
- * 4 version bytes `[year - 2000, week, count, flags]` (#129). The parser makes the version text.
- */
-private val FAKE_ADVERTISEMENT: AdvertisementData =
-    checkNotNull(AdvertisementData.parse(byteArrayOf(4, *"FAKE".encodeToByteArray(), 4, 26, 29, 0, 0x01)))
+/** The board type of the fake in its advertisement. */
+private const val FAKE_BOARD_TYPE = "FAKE"
+
+/** The firmware that the fake runs at the start: an older dev build, so the simulated site has an update. */
+private val FAKE_FIRMWARE_VERSION = FirmwareVersion(year = 2026, week = 29, count = 0, dev = true)
+
+/** The fake MCUboot hash of the image that the fake runs at the start. */
+private const val FAKE_IMAGE_HASH = "0000000000000000000000000000000000000000000000000000000000000000"
+
+/** The hardware target that the fake reports in `os info -f i`. */
+private val FAKE_TARGET = HardwareTarget(board = SIMULATED_BOARD, qualifiers = "esp32c3")
+
+/** The SMP buffer of the board firmware (`CONFIG_MCUMGR_TRANSPORT_NETBUF_SIZE` in `app/ota.conf`). */
+private const val FAKE_SMP_BUFFER_SIZE = 2475
 
 /** The read-only facts the board reports about itself. */
 private val BOARD_DEVICE = snapshotpb.v1.Device(

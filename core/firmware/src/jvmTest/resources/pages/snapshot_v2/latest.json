@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "board": "snapshot_v2",
+  "generated": "2027-01-05T12:00:00Z",
+  "base_url": "https://snapshotpb.github.io/Firmware/",
+  "version": "2026.52.1",
+  "tag": "v2026.52.1",
+  "channel": "stable",
+  "published_at": "2026-12-21T10:05:00Z",
+  "built": "2026-12-21T10:00:00Z",
+  "commit": "2222222222222222222222222222222222222222",
+  "compatible_hardware": [
+    "snapshot_v2"
+  ],
+  "warning": "MARKER-REVISION SPECIFIC -- flash only to snapshot_v2.",
+  "assets": {
+    "image": {
+      "name": "snapshot_v2-2026.52.1-app.signed.bin",
+      "path": "snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-app.signed.bin",
+      "url": "https://snapshotpb.github.io/Firmware/snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-app.signed.bin",
+      "size": 43,
+      "sha256": "f54293faeea163ee474b21c5ae7188bafd1fff82243d2f8e10fafa12f7749bef"
+    },
+    "manifest": {
+      "name": "snapshot_v2-2026.52.1-manifest.json",
+      "path": "snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-manifest.json",
+      "url": "https://snapshotpb.github.io/Firmware/snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-manifest.json",
+      "size": 584,
+      "sha256": "021a15eb16e4efe066b5ff4b5fdce0d9df67ae344895f0fc4d25775dd61f9f29"
+    },
+    "sha256sums": {
+      "name": "snapshot_v2-2026.52.1-SHA256SUMS",
+      "path": "snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-SHA256SUMS",
+      "url": "https://snapshotpb.github.io/Firmware/snapshot_v2/2026.52.1/snapshot_v2-2026.52.1-SHA256SUMS",
+      "size": 202,
+      "sha256": "b45dcaf45a99c28988ae75e2d700b4bf931df4bb1ae664bdfbe3c6790cfd5635"
+    }
+  }
+}

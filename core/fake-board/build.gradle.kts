@@ -15,6 +15,7 @@ kotlin {
                 api(projects.core.debugBoard)
                 implementation(projects.core.bluetooth)
                 implementation(projects.core.common)
+                implementation(projects.core.firmware)
                 implementation(projects.core.model)
                 implementation(projects.core.protocol)
                 implementation(libs.arbor)
@@ -22,6 +23,12 @@ kotlin {
                 implementation(libs.kodein)
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
             }
         }
     }
