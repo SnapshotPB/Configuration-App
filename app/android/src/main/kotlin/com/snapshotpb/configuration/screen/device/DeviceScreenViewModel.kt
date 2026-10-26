@@ -27,7 +27,7 @@ val deviceScreenViewModelModule = DI.Module("deviceScreenViewModelModule") {
  */
 private class DeviceBrowserScreenViewModelImpl(
     bluetoothManager: BluetoothManager,
-    debugBoard: DebugBoard,
+    private val debugBoard: DebugBoard,
     bluetoothStateManager: BluetoothStateManager,
     bluetoothRequestManager: BluetoothRequestManager,
     deviceStore: DeviceStore,
@@ -38,4 +38,6 @@ private class DeviceBrowserScreenViewModelImpl(
     deviceStore = deviceStore,
     systemConfig = systemConfig,
     deviceState = debugBoard.deviceState(bluetoothManager.deviceState),
-)
+) {
+    override fun onDemoDeviceAdded() = debugBoard.applySwitch(true)
+}
