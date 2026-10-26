@@ -2,6 +2,7 @@ package com.snapshotpb.configuration
 
 import com.snapshotpb.configuration.bluetooth.BluetoothDeviceStateSource
 import com.snapshotpb.configuration.bluetooth.BluetoothManager
+import com.snapshotpb.configuration.camera.cameraModule
 import com.snapshotpb.configuration.debug.DebugBoard
 import com.snapshotpb.configuration.debug.debugModule
 import com.snapshotpb.configuration.di.coreDiModule
@@ -20,6 +21,7 @@ import org.kodein.di.instance
 internal val appModule = DI.Module("appModule") {
     import(coreDiModule)
     import(platformModule)
+    import(cameraModule)
     import(screenModule)
     // Binds DebugBoard and FirmwareUpdatePolicy. The debug source set binds the simulated board;
     // release binds an inert one, so a release APK holds none of it.

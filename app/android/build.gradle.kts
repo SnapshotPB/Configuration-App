@@ -102,6 +102,7 @@ baselineProfile {
 
 dependencies {
     implementation(projects.core.bluetooth)
+    implementation(projects.core.camera)
     implementation(projects.core.common)
     implementation(projects.core.debugBoard)
     implementation(projects.core.di)

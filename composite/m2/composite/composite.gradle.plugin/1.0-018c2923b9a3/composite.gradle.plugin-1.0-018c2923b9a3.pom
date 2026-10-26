@@ -3,14 +3,14 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>composite</groupId>
   <artifactId>composite.gradle.plugin</artifactId>
-  <version>1.0-f421c1f3f88e</version>
+  <version>1.0-018c2923b9a3</version>
   <packaging>pom</packaging>
   <name>Composite Plugin</name>
   <dependencies>
     <dependency>
       <groupId>com.snapshotpb.composite</groupId>
       <artifactId>composite</artifactId>
-      <version>1.0-f421c1f3f88e</version>
+      <version>1.0-018c2923b9a3</version>
     </dependency>
   </dependencies>
 </project>

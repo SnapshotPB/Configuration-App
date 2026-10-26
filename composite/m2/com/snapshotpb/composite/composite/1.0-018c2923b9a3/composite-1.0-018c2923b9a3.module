@@ -3,7 +3,7 @@
   "component": {
     "group": "com.snapshotpb.composite",
     "module": "composite",
-    "version": "1.0-f421c1f3f88e",
+    "version": "1.0-018c2923b9a3",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -27,13 +27,13 @@
       },
       "files": [
         {
-          "name": "composite-1.0-f421c1f3f88e.jar",
-          "url": "composite-1.0-f421c1f3f88e.jar",
-          "size": 30242,
-          "sha512": "0df7f7a7ba1a636c50c2fc296008fa49da01dd95378cfcdd372af18bc5583bd6895f4ab9400707bdab3843e205f7de9d2e8fc6652b206e2701678ee807a89637",
-          "sha256": "0aae59221f38baca07fa115b9c87e480fe123b22e3a10a979a4b3d6e00f7933c",
-          "sha1": "8d50ae337beb753b8ac5b88b891cf7c990eb5171",
-          "md5": "cc77d83cdaa16d4c86c63b297552d601"
+          "name": "composite-1.0-018c2923b9a3.jar",
+          "url": "composite-1.0-018c2923b9a3.jar",
+          "size": 30369,
+          "sha512": "ab4971c195c5ad587442b9ef484be0e5703200545389bf5957131110da9574d29bbc62533bc5055a219161fdf53fe71a857a2fdfaf5b46734576a6ea7e78ef43",
+          "sha256": "121fa34c8d40eae155e579e61e612e79e36d51b81d78d8bd381bc6fec19ecde1",
+          "sha1": "9f731e94788e674c3aceeae583d44f0b5111a254",
+          "md5": "82de85f2cf69edefdfb791eb2465dd35"
         }
       ]
     },
@@ -50,13 +50,13 @@
       },
       "files": [
         {
-          "name": "composite-1.0-f421c1f3f88e.jar",
-          "url": "composite-1.0-f421c1f3f88e.jar",
-          "size": 30242,
-          "sha512": "0df7f7a7ba1a636c50c2fc296008fa49da01dd95378cfcdd372af18bc5583bd6895f4ab9400707bdab3843e205f7de9d2e8fc6652b206e2701678ee807a89637",
-          "sha256": "0aae59221f38baca07fa115b9c87e480fe123b22e3a10a979a4b3d6e00f7933c",
-          "sha1": "8d50ae337beb753b8ac5b88b891cf7c990eb5171",
-          "md5": "cc77d83cdaa16d4c86c63b297552d601"
+          "name": "composite-1.0-018c2923b9a3.jar",
+          "url": "composite-1.0-018c2923b9a3.jar",
+          "size": 30369,
+          "sha512": "ab4971c195c5ad587442b9ef484be0e5703200545389bf5957131110da9574d29bbc62533bc5055a219161fdf53fe71a857a2fdfaf5b46734576a6ea7e78ef43",
+          "sha256": "121fa34c8d40eae155e579e61e612e79e36d51b81d78d8bd381bc6fec19ecde1",
+          "sha1": "9f731e94788e674c3aceeae583d44f0b5111a254",
+          "md5": "82de85f2cf69edefdfb791eb2465dd35"
         }
       ]
     }

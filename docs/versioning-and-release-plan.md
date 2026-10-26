@@ -131,7 +131,10 @@ build metadata. The resolver changes a `+` in that part to a `.`.
   removes all text from the first `-`, so `26.29.1-dev+7-gabc123` becomes `26.29.1`.
   The function is necessary: jpackage rejects a suffix at configuration time (§3).
 - **Android and Wear.** `versionName` is the full version, with the marker.
-  `versionCode` is `projectVersionCode(version)` (§3).
+  `:app:android` uses `versionCode = projectVersionCode(version)` and `:app:wear` uses
+  `versionCode = wearVersionCode(version)` (`100_000_000 + projectVersionCode(version)`)
+  so the phone and watch AABs do not collide in the shared `com.snapshotpb.configuration`
+  Play listing (§3, §6.2).
 - **iOS.** The release job gives `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` to
   `xcodebuild` as command-line build settings (§6.3). A command-line build setting
   overrides `iosApp/Configuration/Config.xcconfig`. The job does not edit that file. An
@@ -301,15 +304,20 @@ installer, checks its `sha512`, and runs `installAndRestart()`.
   Without them, the builds are unsigned.
 - The job attaches the AABs and the APKs to the GitHub Release. The APKs are for
   sideload and QA, because a device cannot install an `.aab` directly.
-- `publish-play` uploads to the `internal` track with `r0adkll/upload-google-play`. It
-  runs only when both `has_play` and `has_android_signing` are true.
-- The phone and Wear apps have the same `versionCode`, but they are two Play apps
-  (`com.snapshotpb.configuration` and `com.snapshotpb.configuration.wear`). Each upload
-  step names exactly one file (`dist/android-release.aab`, `dist/wear-release.aab`).
-  A glob that finds both files puts both into one edit, and Play rejects it.
-- The Wear upload has its own gate, `WEAR_PLAY_ENABLED`. Play rejects an upload for a
-  package that has no listing. That failure also makes the run fail after a good phone
-  upload.
+- `publish-play` authenticates to Google Cloud through Workload Identity Federation
+  (`google-github-actions/auth`, service account
+  `play-publisher@snapshotpb-play-store.iam.gserviceaccount.com`) and uploads to the
+  `internal` track with `r0adkll/upload-google-play`. It runs only when both `has_play`
+  (`PLAY_ENABLED`) and `has_android_signing` are true.
+- The phone and Wear apps share the `com.snapshotpb.configuration` `applicationId` and
+  Google Play listing so Google Play Services' Wearable Data Layer delivers sync events
+  between them. `:app:android` uses `projectVersionCode` (`internal` track) and
+  `:app:wear` uses `wearVersionCode` (`100_000_000 + projectVersionCode`, `wear:internal`
+  track) so the two AABs do not collide on `versionCode`. Each upload step names its own
+  file (`dist/android-release.aab`, `dist/wear-release.aab`) and track explicitly.
+- The Wear upload has its own gate, `WEAR_PLAY_ENABLED`. Play rejects an upload to
+  `wear:internal` before the Wear OS form factor is enabled in Play Console. That failure
+  would also make the run fail after a good phone upload.
 
 ### 6.3 iOS: App Store Connect
 
@@ -434,9 +442,9 @@ can read them.
 
 | Group | Secrets | Gate (preflight output) | Without the secrets |
 |---|---|---|---|
-| Play upload | `PLAY_SERVICE_ACCOUNT_JSON` | `has_play` | No Play upload |
+| Play upload | `PLAY_ENABLED` (a flag, not a credential; auth uses Workload Identity Federation) | `has_play` | No Play upload. Set it after the phone listing exists and `play-publisher@snapshotpb-play-store.iam.gserviceaccount.com` has release permissions in Play Console. |
 | Android signing (organization secrets) | `ANDROID_KEYSTORE_GPG_PASSPHRASE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | `has_android_signing` (also needs `signing/upload.keystore.gpg` in the tag) | Unsigned AAB and APK, no Play upload |
-| Wear on Play | `WEAR_PLAY_ENABLED` (a flag, not a credential) | `has_wear_play` | No Wear upload. Set it only after the Wear listing exists. |
+| Wear on Play | `WEAR_PLAY_ENABLED` (a flag, not a credential) | `has_wear_play` | No Wear upload. Set it only after the Wear OS form factor is enabled on `com.snapshotpb.configuration` in Play Console. |
 | iOS | `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_KEYCHAIN_PASSWORD`, `APP_STORE_CONNECT_API_KEY_BASE64`, `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_API_ISSUER_ID` | `has_ios` | The iOS job does not start |
 | macOS signing | `MACOS_CERTIFICATE_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_SIGNING_IDENTITY`, `MACOS_KEYCHAIN_PASSWORD` | `has_macos_signing` | Unsigned `.dmg` and `.zip` |
 | macOS notarization | `MACOS_NOTARY_APPLE_ID`, `MACOS_NOTARY_PASSWORD`, `MACOS_NOTARY_TEAM_ID` | `has_macos_notarization` (used only with signing) | Signed but not notarized |

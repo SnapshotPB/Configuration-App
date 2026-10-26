@@ -49,7 +49,7 @@ permissions:
 # environment can still read them, so nothing changes yet.
 # MAINTAINER ACTION: move these secrets from the repository into the `release` environment
 # (Settings > Environments > release). Then only a job in that environment can read them:
-#   PLAY_SERVICE_ACCOUNT_JSON, WEAR_PLAY_ENABLED,
+#   PLAY_ENABLED, WEAR_PLAY_ENABLED,
 #   MACOS_CERTIFICATE_BASE64, MACOS_CERTIFICATE_PASSWORD, MACOS_SIGNING_IDENTITY,
 #   MACOS_KEYCHAIN_PASSWORD, MACOS_NOTARY_APPLE_ID, MACOS_NOTARY_PASSWORD, MACOS_NOTARY_TEAM_ID,
 #   MSI_SIGNING_PFX_BASE64, MSI_SIGNING_STORE_PASS,
@@ -143,7 +143,7 @@ jobs:
       - name: Probe optional secrets
         id: secrets
         env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_ENABLED: ${{ secrets.PLAY_ENABLED }}
           ANDROID_KEYSTORE_GPG_PASSPHRASE: ${{ secrets.ANDROID_KEYSTORE_GPG_PASSPHRASE }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -169,7 +169,10 @@ jobs:
           emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
           all_set() { for v in "$@"; do [ -n "$v" ] || return 1; done; }
 
-          all_set "${PLAY_SERVICE_ACCOUNT_JSON:-}" && emit has_play true || emit has_play false
+          # Opt-in flag, not a credential: publish-play authenticates to Google Cloud via
+          # Workload Identity Federation (keyless OIDC), so the upload stays off until the
+          # phone listing exists and the service account is invited in Play Console.
+          all_set "${PLAY_ENABLED:-}" && emit has_play true || emit has_play false
           # The upload keystore is a GPG-encrypted file in the repository. The gate needs the
           # file and all four secrets: a tag from before the file has no keystore to decrypt,
           # and an absent password stops the build late, in the Gradle signing task.
@@ -722,8 +725,9 @@ jobs:
           files: release-assets/*
 
   # ---------------------------------------------------------------------------------
-  # Publish Android + Wear to Google Play (internal track). Dormant until the Play
-  # service-account secret exists and the build is signed with the upload keystore (§6.2, §7).
+  # Publish Android + Wear to Google Play (internal track). Dormant until PLAY_ENABLED
+  # is set and the build is signed with the upload keystore (§6.2, §7). Authenticates to
+  # Google Cloud via Workload Identity Federation (keyless OIDC) — no JSON key is stored.
   # ---------------------------------------------------------------------------------
   publish-play:
     name: Publish to Google Play
@@ -731,6 +735,9 @@ jobs:
     if: needs.preflight.outputs.has_play == 'true' && needs.preflight.outputs.has_android_signing == 'true'
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: read
+      id-token: write   # exchange GitHub's OIDC token via Workload Identity Federation
     steps:
       - name: Download Android artifacts
         uses: actions/download-artifact@v8
@@ -738,37 +745,38 @@ jobs:
           name: android
           path: dist
 
-      - name: Write Play service account
-        env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/play.json"
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: projects/166424708306/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: play-publisher@snapshotpb-play-store.iam.gserviceaccount.com
 
-      # The phone and Wear AABs share a versionCode but are DISTINCT Play apps
-      # (com.snapshotpb.configuration vs ...configuration.wear), each with its own listing
-      # and its own edit. Each step must therefore name exactly ONE file: `dist/*.aab`
-      # matches both, and the action uploads every match into the single edit opened for
-      # `packageName`, which Play rejects on a package-name mismatch.
+      # Phone and Wear share the com.snapshotpb.configuration Play listing (required for
+      # Wearable Data Layer sync) with distinct versionCodes (projectVersionCode vs
+      # wearVersionCode) and separate tracks (`internal` vs `wear:internal`). Each step
+      # names its own AAB and track explicitly.
       - name: Upload phone AAB to Play (internal)
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
-          serviceAccountJson: ${{ runner.temp }}/play.json
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: com.snapshotpb.configuration
           releaseFiles: dist/android-release.aab
           track: internal
           status: completed
 
-      # Gated separately on WEAR_PLAY_ENABLED rather than riding on has_play: the Wear app
-      # needs its own Play listing to exist first, and uploading to a package Play has
-      # never seen fails the whole job — which would also strand an otherwise-successful
-      # phone upload behind a red run.
-      - name: Upload Wear AAB to Play (internal)
+      # Gated separately on WEAR_PLAY_ENABLED rather than riding on has_play: the Wear OS
+      # form factor and first AAB upload must be enabled in Play Console first, and
+      # uploading to `wear:internal` before that is configured would fail the whole job —
+      # stranding an otherwise-successful phone upload behind a red run.
+      - name: Upload Wear AAB to Play (wear:internal)
         if: needs.preflight.outputs.has_wear_play == 'true'
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
         with:
-          serviceAccountJson: ${{ runner.temp }}/play.json
-          packageName: com.snapshotpb.configuration.wear
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: com.snapshotpb.configuration
           releaseFiles: dist/wear-release.aab
-          track: internal
+          track: wear:internal
           status: completed
 
   # ---------------------------------------------------------------------------------

@@ -5,17 +5,18 @@ description: Use this agent for build system issues, dependency upgrades, unders
 
 You are a Gradle and build system specialist for the SnapshotPB KMP monorepo. You understand the full dependency graph, the code generation pipeline, and the non-obvious constraints that govern how this project builds.
 
-## Module Graph (29 Gradle projects)
+## Module Graph (30 Gradle projects)
 
 The authoritative list is the `include(...)` block in `settings.gradle.kts`. `composite/` is a separate build, and `app/zepp` and `iosApp/` are not Gradle projects.
 
 ```
-app/android          → core/{bluetooth,common,di,media,model,protocol,resources,store}, platform/android/*
+app/android          → core/{bluetooth,camera,common,di,media,model,protocol,resources,store}, platform/android/*
 app/android/baseline → (com.android.test module; targets app/android for baseline profiles)
 app/wear             → core/{bluetooth,common,di,model,protocol,resources,store,util}, platform/android/{bluetooth,di,store}
-app/desktop          → core/{bluetooth,common,di,media,model,protocol,resources,store}, platform/desktop/*
+app/desktop          → core/{bluetooth,camera,common,di,media,model,protocol,resources,store}, platform/desktop/*
 app/browser          → core/{bluetooth,common,di,media,model,resources,store}, platform/browser/*
-app/ios              → core/{bluetooth,common,di,media,model,resources,store}, platform/ios/*
+app/ios              → core/{bluetooth,camera,common,di,media,model,resources,store}, platform/ios/*
+core/camera          → core/{common,model,resources}
 core/di              → core/{bluetooth,common,media,store}   (core:di depends on core:common, not the reverse)
 core/common          → core/{app-version,bluetooth,media,model,resources,store,util}
 core/bluetooth       → core/{model,protocol}
@@ -53,7 +54,7 @@ A `Copy` task copies the BASE locale only (`core/resources/src/commonMain/compos
 
 - `resolveProjectVersion()` (`composite/.../util/Version.kt`) runs `git describe --tags --always --dirty` once, in a configuration-cache-safe `ValueSource`, and the root `build.gradle.kts` sets it on `allprojects`.
 - The scheme is `<2-digit ISO week-year>.<ISO week>.<count>` (for example `26.30.1`). A build that is not exactly on a tag gets a `-dev+<metadata>` suffix. A dirty tree gives `-dev+dirty`.
-- Android and Wear use `projectVersionCode(project.version)` and `versionName = project.version`. Desktop uses `packagingVersion()`, which removes the suffix, because the native packagers accept only numbers.
+- Android uses `projectVersionCode(project.version)`, Wear uses `wearVersionCode(project.version)` (`100_000_000 + projectVersionCode`), and both set `versionName = project.version`. Desktop uses `packagingVersion()`, which removes the suffix, because the native packagers accept only numbers.
 - `scripts/cut_version.py` computes the next tag. `release.yml` cuts the tag and dispatches `build-release.yml`.
 - In CI, do not edit a tracked file before Gradle runs: `--dirty` then stamps a `-dev` version into a release. The iOS job gives the version to `xcodebuild` as build settings for this reason.
 
@@ -69,7 +70,7 @@ In `gradle/libs.versions.toml`:
 `composite/src/main/kotlin/com/snapshotpb/composite/`:
 - `CompositePlugin.kt` — the plugin entry point. It is empty; the helpers below are plain functions that build scripts import.
 - `util/OptIn.kt` — `configureOptIns()`. Add a new experimental API opt-in here, not as `@OptIn` at call sites.
-- `util/Version.kt` — `resolveProjectVersion()`, `projectVersionCode()`, `packagingVersion()`.
+- `util/Version.kt` — `resolveProjectVersion()`, `projectVersionCode()`, `wearVersionCode()`, `packagingVersion()`.
 - `task/LocalizationCheckTask.kt` + `util/StringResource.kt` — `:core:resources:localizationCheck`.
 
 The root build consumes composite as a published jar from `composite/m2`, not with `includeBuild` (that breaks the build cache that CI depends on). The version carries a SHA-256 digest of `composite/build.gradle.kts`, `composite/gradle.properties`, `composite/settings.gradle.kts` and `composite/src/main`. The root `settings.gradle.kts` computes the same digest and asks for exactly that version, so an edit without a republish fails at once with "plugin not found".

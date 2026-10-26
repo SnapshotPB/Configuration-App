@@ -92,6 +92,21 @@ class VersionTest {
         assertEquals(projectVersionCode("26.29.1"), projectVersionCode("2026.29.1"))
     }
 
+    // --- wearVersionCode --------------------------------------------------------------
+
+    @Test
+    fun `wear version code prefixes the base version code with the form factor offset`() {
+        assertEquals(102630001, wearVersionCode("26.30.1"))
+        assertEquals(102629001, wearVersionCode("26.29.1"))
+        assertEquals(100000001, wearVersionCode("0.0.0-dev"))
+    }
+
+    @Test
+    fun `wear version code is disjoint from phone version code and under the Play ceiling`() {
+        assert(wearVersionCode("0.0.0-dev") > projectVersionCode("99.53.999"))
+        assert(wearVersionCode("99.53.999") < 2_100_000_000)
+    }
+
     // --- packagingVersion -------------------------------------------------------------
 
     @Test

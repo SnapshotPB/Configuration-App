@@ -41,7 +41,7 @@ class WearConnectivityE2ETest {
 
     private lateinit var device: UiDevice
     private lateinit var context: Context
-    private val packageName = "com.snapshotpb.configuration.wear"
+    private val packageName = "com.snapshotpb.configuration"
 
     @Before
     fun setUp() {
