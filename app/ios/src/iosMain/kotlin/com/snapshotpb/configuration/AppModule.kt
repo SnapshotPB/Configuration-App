@@ -3,6 +3,7 @@ package com.snapshotpb.configuration
 import com.snapshotpb.configuration.bluetooth.BluetoothDeviceStateSource
 import com.snapshotpb.configuration.bluetooth.BluetoothManager
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
+import com.snapshotpb.configuration.camera.cameraModule
 import com.snapshotpb.configuration.debug.DebugBoard
 import com.snapshotpb.configuration.debug.debugModule
 import com.snapshotpb.configuration.di.coreDiModule
@@ -15,6 +16,7 @@ import org.kodein.di.instance
 
 val appModule = DI.Module("appModule") {
     import(coreDiModule)
+    import(cameraModule)
 
     // Binds DebugBoard and FirmwareUpdatePolicy. The iosDebug source set imports the simulated
     // board's module; iosRelease binds an inert one. Which is compiled depends on the framework's

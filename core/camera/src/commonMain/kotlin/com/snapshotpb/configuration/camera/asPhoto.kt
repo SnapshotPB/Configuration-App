@@ -1,9 +1,9 @@
-package com.snapshotpb.configuration.common.media
+package com.snapshotpb.configuration.camera
 
 import com.snapshotpb.configuration.model.Photo
 import io.github.ismoy.imagepickerkmp.domain.models.PhotoResult
 
-fun PhotoResult.asPhoto() = Photo(
+internal fun PhotoResult.asPhoto() = Photo(
     uri = uri,
     width = width,
     height = height,

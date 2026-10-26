@@ -77,6 +77,7 @@ core/
   store/            - State & persistence (DeviceStore, StoreIOProvider; jvmMain has StoreIOProviderJvm)
   di/               - Kodein DI root (coreDiModule imports bluetooth/media/store/viewmodel submodules)
   bluetooth/        - BLE abstractions: RequestManager, StateManager, DeviceReadResultBus, OTS GATT client + protocol mappers
+  camera/           - imagepickerkmp implementation of ImagePicker (camera + gallery launchers); Android, desktop and iOS only, so Wear and browser never pull CameraX
   debug-board/      - DebugBoard seam (+ inert NoDebugBoard); always on the classpath, both platforms
   fake-board/       - FakeBoard, the simulated board behind that seam; debug configurations only
   firmware/         - FirmwareFeed (firmware site, image download and check; Ktor behind FirmwareHttp) + FirmwareUpdateCoordinator

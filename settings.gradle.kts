@@ -93,6 +93,7 @@ include(
     ":app:wear",
     ":core:app-version",
     ":core:bluetooth",
+    ":core:camera",
     ":core:common",
     ":core:debug-board",
     ":core:di",

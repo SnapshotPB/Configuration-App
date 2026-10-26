@@ -5,17 +5,18 @@ description: Use this agent for build system issues, dependency upgrades, unders
 
 You are a Gradle and build system specialist for the SnapshotPB KMP monorepo. You understand the full dependency graph, the code generation pipeline, and the non-obvious constraints that govern how this project builds.
 
-## Module Graph (29 Gradle projects)
+## Module Graph (30 Gradle projects)
 
 The authoritative list is the `include(...)` block in `settings.gradle.kts`. `composite/` is a separate build, and `app/zepp` and `iosApp/` are not Gradle projects.
 
 ```
-app/android          → core/{bluetooth,common,di,media,model,protocol,resources,store}, platform/android/*
+app/android          → core/{bluetooth,camera,common,di,media,model,protocol,resources,store}, platform/android/*
 app/android/baseline → (com.android.test module; targets app/android for baseline profiles)
 app/wear             → core/{bluetooth,common,di,model,protocol,resources,store,util}, platform/android/{bluetooth,di,store}
-app/desktop          → core/{bluetooth,common,di,media,model,protocol,resources,store}, platform/desktop/*
+app/desktop          → core/{bluetooth,camera,common,di,media,model,protocol,resources,store}, platform/desktop/*
 app/browser          → core/{bluetooth,common,di,media,model,resources,store}, platform/browser/*
-app/ios              → core/{bluetooth,common,di,media,model,resources,store}, platform/ios/*
+app/ios              → core/{bluetooth,camera,common,di,media,model,resources,store}, platform/ios/*
+core/camera          → core/{common,model,resources}
 core/di              → core/{bluetooth,common,media,store}   (core:di depends on core:common, not the reverse)
 core/common          → core/{app-version,bluetooth,media,model,resources,store,util}
 core/bluetooth       → core/{model,protocol}

@@ -43,6 +43,7 @@ kotlin {
                 } else {
                     implementation(projects.core.debugBoard)
                 }
+                implementation(projects.core.camera)
                 implementation(projects.core.common)
                 implementation(projects.core.di)
                 implementation(projects.core.bluetooth)

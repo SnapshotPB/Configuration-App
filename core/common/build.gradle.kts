@@ -47,15 +47,12 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
             }
         }
-        // imagepickerkmp publishes a wasmJs variant, but it is a stub without the
-        // ImagePickerLauncher / PhotoResult API this module uses, so it can only live on the
-        // non-web targets. Photo capture is implemented here and stubbed out on wasm via the
-        // expect/actual `MediaSelection`.
+        // Non-web targets share the nonWasmMain actuals (BrowserHistoryEffect, MediaSelection).
+        // The imagepickerkmp implementation of ImagePicker lives in :core:camera so its Android
+        // CameraX native libraries and manifest permissions only reach the apps that capture
+        // device photos, not :app:wear or :app:browser.
         val nonWasmMain by creating {
             dependsOn(commonMain)
-            dependencies {
-                implementation(libs.image.picker)
-            }
         }
         // Every non-wasm leaf target must depend on nonWasmMain so it gets the real (imagepickerkmp)
         // MediaSelection actual. Wired per-leaf rather than via the default `iosMain` intermediate

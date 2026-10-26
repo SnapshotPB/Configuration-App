@@ -35,6 +35,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(projects.core.bluetooth)
+                implementation(projects.core.camera)
                 implementation(projects.core.common)
                 implementation(projects.core.di)
                 implementation(projects.core.firmware)
