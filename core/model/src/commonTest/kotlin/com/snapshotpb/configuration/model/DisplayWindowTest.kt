@@ -65,6 +65,13 @@ class DisplayWindowTest {
     }
 
     @Test
+    fun gripFramePresetsMatchMeasuredCutouts() {
+        assertEquals(DisplayWindow(x = 24, y = 0, w = 104, h = 32), GripFrame.E1.window)
+        assertEquals(DisplayWindow(x = 26, y = 0, w = 102, h = 32), GripFrame.E2.window)
+        assertEquals(DisplayWindow.FULL_PANEL, GripFrame.FRAME_86.window)
+    }
+
+    @Test
     fun matchingGripFrame_namesAPresetAndReportsNoneForACustomRectangle() {
         assertEquals(GripFrame.E1, GripFrame.E1.window.matchingGripFrame())
         assertEquals(GripFrame.E2, GripFrame.E2.window.matchingGripFrame())

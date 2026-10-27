@@ -113,10 +113,10 @@ fun displayWindowDiverged(local: DisplayWindow?, baseline: DisplayWindow?): Bool
  */
 enum class GripFrame(val window: DisplayWindow) {
     /** Rectangle for the E1 frame. */
-    E1(DisplayWindow(x = 0, y = 3, w = 128, h = 26)),
+    E1(DisplayWindow(x = 24, y = 0, w = 104, h = 32)),
 
     /** Rectangle for the E2 frame. */
-    E2(DisplayWindow(x = 9, y = 3, w = 110, h = 26)),
+    E2(DisplayWindow(x = 26, y = 0, w = 102, h = 32)),
 
     /** Rectangle for the 86 frame, which reveals the entire screen. */
     FRAME_86(DisplayWindow.FULL_PANEL),
