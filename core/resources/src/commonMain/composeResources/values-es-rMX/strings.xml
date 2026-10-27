@@ -161,18 +161,17 @@
     <!-- Display Area section on the Configure Device screen -->
     <string name="configure_device_screen_display_window_label">Área de pantalla</string>
     <string name="configure_device_screen_display_window_details">La parte de la pantalla de la placa que muestra el marco de la empuñadura. Seleccione un marco, o defina su propia área.</string>
-    <string name="configure_device_screen_display_window_none">La placa no informó ningún área. Seleccione un marco, o seleccione un área personalizada.</string>
     <string name="configure_device_screen_display_window_unset">Sin definir</string>
-    <string name="configure_device_screen_display_window_custom">Área personalizada</string>
+    <string name="configure_device_screen_display_window_custom">Marco personalizado</string>
     <string name="configure_device_screen_display_window_drawing">Dibujo de la pantalla de la placa con el área visible marcada</string>
     <string name="configure_device_screen_display_window_hint">Arrastre el área marcada para moverla.</string>
     <string name="configure_device_screen_display_window_width_label">Ancho visible</string>
     <string name="configure_device_screen_display_window_height_label">Alto visible</string>
     <!-- Visible area readout: width, height, then the corner offsets -->
     <string name="configure_device_screen_display_window_summary">Ancho %1$s, alto %2$s, en %3$s, %4$s</string>
-    <string name="grip_frame_full_panel">Panel completo</string>
     <string name="grip_frame_e1">Marco E1</string>
     <string name="grip_frame_e2">Marco E2</string>
+    <string name="grip_frame_86">Marco 86</string>
     <string name="configure_device_screen_save_button">Guardar</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icono de Bluetooth</string>

@@ -110,40 +110,26 @@ fun displayWindowDiverged(local: DisplayWindow?, baseline: DisplayWindow?): Bool
  * The board firmware knows no frame by name, and a frame it has never heard of must still work. So
  * these are a convenience in the app only: each one names a rectangle, and the user picks a custom
  * rectangle when no entry fits.
- *
- * Only a frame with [measured] set is a preset: the picker offers it ([offered]), and
- * [matchingGripFrame] names it. A frame without [measured] stays in the enum, but the app does not
- * offer or name it, because its rectangle is not correct for the frame.
- *
- * TODO: [E1] and [E2] hold PLACEHOLDER rectangles, so [measured] is false for both. Measure the
- * cutout of each frame on the glass, map it through the 90 degree mount, replace the numbers below,
- * and set [measured] to true.
  */
-enum class GripFrame(val window: DisplayWindow, val measured: Boolean) {
-    /** The whole panel. Correct for a frame that hides nothing, and the way back from a bad window. */
-    FULL_PANEL(DisplayWindow.FULL_PANEL, measured = true),
+enum class GripFrame(val window: DisplayWindow) {
+    /** Rectangle for the E1 frame. */
+    E1(DisplayWindow(x = 0, y = 3, w = 128, h = 26)),
 
-    /** PLACEHOLDER rectangle for the E1 frame. Not measured, so the app hides it. */
-    E1(DisplayWindow(x = 0, y = 3, w = 128, h = 26), measured = false),
+    /** Rectangle for the E2 frame. */
+    E2(DisplayWindow(x = 9, y = 3, w = 110, h = 26)),
 
-    /** PLACEHOLDER rectangle for the E2 frame. Not measured, so the app hides it. */
-    E2(DisplayWindow(x = 9, y = 3, w = 110, h = 26), measured = false),
+    /** Rectangle for the 86 frame, which reveals the entire screen. */
+    FRAME_86(DisplayWindow.FULL_PANEL),
     ;
 
     companion object {
-        /**
-         * The frames the picker offers, in the order of the enum, so [FULL_PANEL] is first. Only a
-         * [measured] frame is in the list.
-         */
-        val offered: List<GripFrame> = entries.filter { it.measured }
+        /** The frames the picker offers, in the order of the enum. */
+        val offered: List<GripFrame> = entries
     }
 }
 
 /**
  * The offered frame that names this rectangle, or `null` when the user set a custom one.
- *
- * A frame that is not [GripFrame.measured] never matches. A device that stored the placeholder
- * rectangle of such a frame thus shows it as a custom rectangle, with the numbers in the editor.
  */
 fun DisplayWindow.matchingGripFrame(): GripFrame? =
     GripFrame.offered.firstOrNull { it.window == this }

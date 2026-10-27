@@ -34,7 +34,6 @@ import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_display_window_drawing
 import com.snapshotpb.core.resources.configure_device_screen_display_window_height_label
 import com.snapshotpb.core.resources.configure_device_screen_display_window_hint
-import com.snapshotpb.core.resources.configure_device_screen_display_window_none
 import com.snapshotpb.core.resources.configure_device_screen_display_window_summary
 import com.snapshotpb.core.resources.configure_device_screen_display_window_width_label
 import com.snapshotpb.core.resources.profile_button_decrement
@@ -80,7 +79,7 @@ private val WINDOW_MOVE_MARK_COLOR = Color(0xFF06303A)
 
 /**
  * The drawing of the board's panel with the visible window over it, and the controls that move and
- * size that window.
+ * size that window when a custom frame is selected.
  *
  * THE DRAWING IS IN THE PANEL'S OWN FRAME: [DISPLAY_PANEL_WIDTH] across by [DISPLAY_PANEL_HEIGHT]
  * down. So [DisplayWindow.x] and [DisplayWindow.w] run across the drawing, and [DisplayWindow.y]
@@ -91,74 +90,58 @@ private val WINDOW_MOVE_MARK_COLOR = Color(0xFF06303A)
  * always one the board accepts. The board rejects a whole message that carries an out-of-bounds
  * rectangle, so an illegal value must never reach the write.
  *
- * @param window the rectangle to draw and edit, or `null` when the app holds none. A `null` draws
- *   the bare panel, so the user sees the whole screen before they mark any part of it.
- * @param enabled whether the user can move and size the window. A ready-made frame draws only.
+ * @param window the rectangle to draw and edit.
  * @param onWindowChange receives each new rectangle, already clamped.
  */
 @Composable
 internal fun DisplayWindowEditor(
-    window: DisplayWindow?,
-    enabled: Boolean,
+    window: DisplayWindow,
     onWindowChange: (DisplayWindow) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         DisplayWindowDrawing(
             window = window,
-            enabled = enabled && window != null,
             onWindowChange = onWindowChange,
         )
 
         Space(12.dp)
 
-        if (window == null) {
-            Text(
-                text = stringResource(Res.string.configure_device_screen_display_window_none),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Text(
-                text = stringResource(
-                    Res.string.configure_device_screen_display_window_summary,
-                    window.w,
-                    window.h,
-                    window.x,
-                    window.y,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        Text(
+            text = stringResource(
+                Res.string.configure_device_screen_display_window_summary,
+                window.w,
+                window.h,
+                window.x,
+                window.y,
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
 
-            Space(8.dp)
+        Space(8.dp)
 
-            ExtentStepper(
-                label = stringResource(Res.string.configure_device_screen_display_window_width_label),
-                value = window.w,
-                minimum = DISPLAY_WINDOW_MIN_WIDTH,
-                maximum = DISPLAY_PANEL_WIDTH,
-                enabled = enabled,
-                onValueChange = { onWindowChange(window.copy(w = it).clampedToPanel()) },
-            )
+        ExtentStepper(
+            label = stringResource(Res.string.configure_device_screen_display_window_width_label),
+            value = window.w,
+            minimum = DISPLAY_WINDOW_MIN_WIDTH,
+            maximum = DISPLAY_PANEL_WIDTH,
+            onValueChange = { onWindowChange(window.copy(w = it).clampedToPanel()) },
+        )
 
-            ExtentStepper(
-                label = stringResource(Res.string.configure_device_screen_display_window_height_label),
-                value = window.h,
-                minimum = DISPLAY_WINDOW_MIN_HEIGHT,
-                maximum = DISPLAY_PANEL_HEIGHT,
-                enabled = enabled,
-                onValueChange = { onWindowChange(window.copy(h = it).clampedToPanel()) },
-            )
+        ExtentStepper(
+            label = stringResource(Res.string.configure_device_screen_display_window_height_label),
+            value = window.h,
+            minimum = DISPLAY_WINDOW_MIN_HEIGHT,
+            maximum = DISPLAY_PANEL_HEIGHT,
+            onValueChange = { onWindowChange(window.copy(h = it).clampedToPanel()) },
+        )
 
-            if (enabled) {
-                Text(
-                    text = stringResource(Res.string.configure_device_screen_display_window_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        Text(
+            text = stringResource(Res.string.configure_device_screen_display_window_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -168,8 +151,7 @@ internal fun DisplayWindowEditor(
  */
 @Composable
 private fun DisplayWindowDrawing(
-    window: DisplayWindow?,
-    enabled: Boolean,
+    window: DisplayWindow,
     onWindowChange: (DisplayWindow) -> Unit,
 ) {
     // The panel edge is the one theme colour here. It must read against the card behind it, which
@@ -179,7 +161,7 @@ private fun DisplayWindowDrawing(
 
     // The drag callback must see the rectangle of the current composition, not the one captured
     // when pointerInput started, or a second drag would resume from a stale position.
-    val currentWindow by rememberUpdatedState(window ?: DisplayWindow.FULL_PANEL)
+    val currentWindow by rememberUpdatedState(window)
     val currentOnWindowChange by rememberUpdatedState(onWindowChange)
 
     Canvas(
@@ -187,8 +169,7 @@ private fun DisplayWindowDrawing(
             .fillMaxWidth()
             .aspectRatio(PANEL_ASPECT)
             .semantics { contentDescription = drawingLabel }
-            .pointerInput(enabled) {
-                if (!enabled) return@pointerInput
+            .pointerInput(Unit) {
                 // The gesture carries its own rectangle and its own remainder. Compose delivers
                 // several pointer samples per frame, and a rectangle read from the composition
                 // would not move between them, so a fast drag would fall behind the finger.
@@ -233,29 +214,23 @@ private fun DisplayWindowDrawing(
         drawRect(color = PANEL_COVERED_COLOR)
         drawPanelGrid(strokeWidth = gridStrokePx)
 
-        // No rectangle means the app holds none. Draw the bare panel: a marked whole panel would
-        // claim a choice the user has not made.
-        if (window != null) {
-            val topLeft = Offset(x = window.x * across, y = window.y * down)
-            val windowSize = Size(width = window.w * across, height = window.h * down)
-            drawRect(color = WINDOW_FILL_COLOR, topLeft = topLeft, size = windowSize)
-            drawRect(
-                color = WINDOW_BORDER_COLOR,
-                topLeft = topLeft,
-                size = windowSize,
-                style = Stroke(width = borderStrokePx),
-            )
-            if (enabled) {
-                drawMoveMark(
-                    center = Offset(
-                        x = topLeft.x + windowSize.width / 2,
-                        y = topLeft.y + windowSize.height / 2,
-                    ),
-                    arm = moveMarkArmPx,
-                    strokeWidth = borderStrokePx,
-                )
-            }
-        }
+        val topLeft = Offset(x = window.x * across, y = window.y * down)
+        val windowSize = Size(width = window.w * across, height = window.h * down)
+        drawRect(color = WINDOW_FILL_COLOR, topLeft = topLeft, size = windowSize)
+        drawRect(
+            color = WINDOW_BORDER_COLOR,
+            topLeft = topLeft,
+            size = windowSize,
+            style = Stroke(width = borderStrokePx),
+        )
+        drawMoveMark(
+            center = Offset(
+                x = topLeft.x + windowSize.width / 2,
+                y = topLeft.y + windowSize.height / 2,
+            ),
+            arm = moveMarkArmPx,
+            strokeWidth = borderStrokePx,
+        )
 
         // The panel edge comes last, so no fill covers it. A stroke draws half of its width on
         // each side of the line, so the edge moves in by half, and the canvas clips none of it.
@@ -324,7 +299,6 @@ private fun ExtentStepper(
     value: Int,
     minimum: Int,
     maximum: Int,
-    enabled: Boolean,
     onValueChange: (Int) -> Unit,
 ) {
     Row(
@@ -335,39 +309,31 @@ private fun ExtentStepper(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (enabled) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
-        if (enabled) {
-            RepeatingIconButton(
-                onClick = { onValueChange((value - 1).coerceIn(minimum, maximum)) }
-            ) {
-                Text(
-                    text = stringResource(Res.string.profile_button_decrement),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
+        RepeatingIconButton(
+            onClick = { onValueChange((value - 1).coerceIn(minimum, maximum)) }
+        ) {
+            Text(
+                text = stringResource(Res.string.profile_button_decrement),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
         Text(
             text = value.toString(),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        if (enabled) {
-            RepeatingIconButton(
-                onClick = { onValueChange((value + 1).coerceIn(minimum, maximum)) }
-            ) {
-                Text(
-                    text = stringResource(Res.string.profile_button_increment),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
+        RepeatingIconButton(
+            onClick = { onValueChange((value + 1).coerceIn(minimum, maximum)) }
+        ) {
+            Text(
+                text = stringResource(Res.string.profile_button_increment),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }

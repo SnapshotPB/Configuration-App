@@ -473,16 +473,8 @@ private fun ScreenOffDelaySection(
 /**
  * The part of the board's panel that the marker's grip frame reveals.
  *
- * The list offers a rectangle for each measured grip frame ([GripFrame.offered]), and a custom
- * entry that unlocks the drawing for a frame the app has no measured rectangle for.
- * [GripFrame.FULL_PANEL] is always first: a legal rectangle in the wrong place shows the user
- * nothing at all, so there is always one tap back to the whole panel. The board offers the same
- * way back under `Setup > Full window`.
- *
- * The editor always shows, unlike the language and brightness sections above. Those settings exist
- * on every board that knows the field, but a board that has never been given a window reports none,
- * and the user must still be able to set one. So the drawing starts at the whole panel while
- * [value] is `null`, no entry is marked, and a save leaves the board's own window alone.
+ * The list offers a rectangle for each grip frame ([GripFrame.offered]), and a custom entry that
+ * reveals the drawing and dimensions editor for a custom area.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -555,13 +547,14 @@ private fun DisplayWindowSection(
                 }
             }
 
-            Space(12.dp)
+            if (isCustom) {
+                Space(12.dp)
 
-            DisplayWindowEditor(
-                window = value,
-                enabled = isCustom,
-                onWindowChange = onValueChange,
-            )
+                DisplayWindowEditor(
+                    window = shownWindow,
+                    onWindowChange = onValueChange,
+                )
+            }
         }
     }
 }
