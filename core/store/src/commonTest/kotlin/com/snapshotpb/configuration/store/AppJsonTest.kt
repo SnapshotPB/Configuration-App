@@ -103,10 +103,10 @@ class AppJsonTest {
         val stored = """
             [{"id":"00000000-0000-0000-0000-000000000001","name":"Old Device",
               "lastSeen":"2026-01-01","knownProfiles":[],"bootText":"Hello",
-              "displayWindow":{"x":0,"y":3,"w":128,"h":26},
+              "displayWindow":{"x":24,"y":0,"w":104,"h":32},
               "boardState":{"bootText":"Hello","activeProfileId":null,
                             "lockoutEnabled":false,"knownProfiles":[],
-                            "displayWindow":{"x":0,"y":3,"w":128,"h":26}}}]
+                            "displayWindow":{"x":24,"y":0,"w":104,"h":32}}}]
         """.trimIndent()
 
         val device = appJson.decodeFromString(deviceListSerializer, stored).single()
