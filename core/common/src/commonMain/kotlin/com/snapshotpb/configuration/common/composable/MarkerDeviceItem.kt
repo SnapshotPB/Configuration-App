@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.device_screen_active_profile
 import com.snapshotpb.core.resources.device_screen_no_profiles
@@ -62,7 +63,7 @@ fun MarkerDeviceItem(
                 Text(
                     stringResource(
                         Res.string.profile_marker_max_bps,
-                        activeProfile.maxBpsForTiming(),
+                        activeProfile.maxBpsForTiming(device.boltMode ?: MarkerBoltMode.CLOSED),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                 )

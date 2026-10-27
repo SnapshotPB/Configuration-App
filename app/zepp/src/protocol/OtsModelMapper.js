@@ -192,6 +192,16 @@ export const BoardScreenBrightness = {
   HIGH: 'HIGH'
 };
 
+// Bolt actuation order of the marker (proto BoltMode on DeviceConfig). The values are the KMP
+// MarkerBoltMode names. It is a BOARD setting and not a profile setting: whether a marker is
+// closed-bolt or open-bolt is a property of the marker hardware, so one setting serves every
+// profile slot. A device holds null when the board has not reported one.
+export const MarkerBoltMode = {
+  CLOSED: 'CLOSED',
+  OPEN: 'OPEN'
+};
+export const BoltMode = MarkerBoltMode;
+
 // Proto enums now carry a 0 = UNSPECIFIED value, so wire values are shifted by +1
 // relative to the old schema. The numbers are those of AutocockerFireMode in fire_mode.proto.
 export function fireModeToDomain(protoVal) {
@@ -283,6 +293,24 @@ export function screenBrightnessToProto(domainVal) {
   }
 }
 
+// A value this app does not know (a newer firmware bolt mode) also maps to null, so the watch
+// never shows or writes a bolt mode it cannot name. Mirrors the KMP BoltMode.toDomain().
+export function boltModeToDomain(protoVal) {
+  switch (protoVal) {
+    case 1: return MarkerBoltMode.CLOSED;
+    case 2: return MarkerBoltMode.OPEN;
+    default: return null; // incl. 0 (UNSPECIFIED)
+  }
+}
+
+export function boltModeToProto(domainVal) {
+  switch (domainVal) {
+    case MarkerBoltMode.CLOSED: return 1;
+    case MarkerBoltMode.OPEN: return 2;
+    default: return 0; // UNSPECIFIED: the board keeps its current bolt mode
+  }
+}
+
 // The screen-off delay is 1-999 seconds. On the wire 0 means that the board reported no delay, so
 // it maps to null rather than to a literal zero. Mirrors the KMP screenOffDelayToDomain().
 export function screenOffDelayToDomain(protoVal) {
@@ -324,6 +352,7 @@ export function toDomainDevice(protoDevice, protoDeviceConfig, protoProfiles, de
       eyeThreshold: autococker.eyeThreshold,
       eyeDebounce: autococker.eyeDebounce,
       searSolenoidDwell: autococker.searSolenoidDwell,
+      searSolenoidDelay: autococker.searSolenoidDelay,
       cockingSolenoidDelay: autococker.cockingSolenoidDelay,
       cockingSolenoidDwellOpen: autococker.cockingSolenoidDwellOpen,
       cockingSolenoidDwellClosed: autococker.cockingSolenoidDwellClosed,
@@ -359,6 +388,7 @@ export function toDomainDevice(protoDevice, protoDeviceConfig, protoProfiles, de
     language: languageToDomain(protoDeviceConfig.language),
     screenBrightness: screenBrightnessToDomain(protoDeviceConfig.screenBrightness),
     screenOffDelay: screenOffDelayToDomain(protoDeviceConfig.screenOffDelay),
+    boltMode: boltModeToDomain(protoDeviceConfig.boltMode),
     lockoutEnabled: protoDevice.lockoutEnabled,
     boardModel: boardModelToDomain(protoDevice.model),
     supportedProfileCount: protoDevice.supportedProfileCount || mappedProfiles.length
@@ -380,7 +410,8 @@ const EMPTY_AUTOCOCKER = Object.freeze({
   rampingCustomRofMinimum: 0,
   triggerDebounceOn: 0,
   triggerDebounceOff: 0,
-  cockingSolenoidTimeout: 0
+  cockingSolenoidTimeout: 0,
+  searSolenoidDelay: 0
 });
 
 // Bounds a value to [min, max], flooring undefined/NaN/negative inputs (a stale-proto
@@ -427,6 +458,7 @@ export function clampProfileToFirmwareRanges(p) {
     cockingSolenoidTimeout: clampWithDefault(p.cockingSolenoidTimeout, COCKING_TIMEOUT_DEFAULT, 0, TENTHS_MS_MAX),
     eyeDebounce: clampRange(p.eyeDebounce, 0, TENTHS_MS_MAX),
     searSolenoidDwell: clampRange(p.searSolenoidDwell, 0, TENTHS_MS_MAX),
+    searSolenoidDelay: clampRange(p.searSolenoidDelay, 0, TENTHS_MS_MAX),
     cockingSolenoidDelay: clampRange(p.cockingSolenoidDelay, 0, TENTHS_MS_MAX),
     cockingSolenoidDwellOpen: clampRange(p.cockingSolenoidDwellOpen, 0, TENTHS_MS_MAX),
     cockingSolenoidDwellClosed: clampRange(p.cockingSolenoidDwellClosed, 0, TENTHS_MS_MAX),
@@ -492,6 +524,7 @@ export const PROFILE_FIELD_DEFAULTS = Object.freeze({
   eyeThreshold: EYE_THRESHOLD_DEFAULT,
   eyeDebounce: EYE_DEBOUNCE_DEFAULT,
   searSolenoidDwell: 45,
+  searSolenoidDelay: 60,
   cockingSolenoidDelay: 60,
   cockingSolenoidDwellOpen: 50,
   cockingSolenoidDwellClosed: 300,
@@ -605,6 +638,9 @@ export function toProtocolConfig(domainDevice, lastReadProfiles = null) {
     deviceConfig.screenOffDelay = Math.min(delay, SCREEN_OFF_DELAY_MAX);
   }
 
+  const boltMode = boltModeToProto(domainDevice.boltMode);
+  if (boltMode !== 0) deviceConfig.boltMode = boltMode;
+
   const boardProfiles = (lastReadProfiles && lastReadProfiles.profiles) || [];
 
   const profiles = {
@@ -638,7 +674,8 @@ export function toProtocolConfig(domainDevice, lastReadProfiles = null) {
           rampingCustomRofMinimum: p.rampingCustomROFMinimum,
           triggerDebounceOn: p.triggerDebounceOn,
           triggerDebounceOff: p.triggerDebounceOff,
-          cockingSolenoidTimeout: p.cockingSolenoidTimeout
+          cockingSolenoidTimeout: p.cockingSolenoidTimeout,
+          searSolenoidDelay: p.searSolenoidDelay
         }
       };
     })

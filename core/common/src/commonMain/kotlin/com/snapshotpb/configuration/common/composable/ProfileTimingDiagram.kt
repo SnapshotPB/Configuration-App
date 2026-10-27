@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.snapshotpb.configuration.common.util.formatTenths
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.profile_timing_diagram_label_cdel
@@ -42,9 +43,11 @@ import com.snapshotpb.core.resources.profile_value_ms
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Renders a digital-style timing diagram for one firing cycle, scaled to `TON + CDEL + CON + COFF`.
- * `CON` is the breach-open phase, [MarkerProfile.cockingOpenTenthsMs], so the drawn cycle
- * `CDEL + CON + COFF` is [MarkerProfile.cycleTenthsMs], the cycle of the max BPS.
+ * Renders a digital-style timing diagram for one firing cycle, scaled to `TON + cycle` where
+ * `cycle` is `CDEL + CON + COFF` in closed-bolt mode and `max(CON + COFF, SDEL + SON)` in
+ * open-bolt mode ([MarkerProfile.usesOpenBolt]). `CON` is the breach-open phase,
+ * [MarkerProfile.cockingOpenTenthsMs], so the drawn cycle is [MarkerProfile.cycleTenthsMs], the
+ * cycle of the max BPS.
  * Each lane has its title right-aligned just above the wave, and each annotation has the timing
  * value (in milliseconds) above the arrow line and the segment label below. Each label stays fully
  * inside the canvas: a label that is centred on a short segment near an edge moves inward.
@@ -78,6 +81,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun ProfileTimingDiagram(
     profile: MarkerProfile,
+    boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
     modifier: Modifier = Modifier,
 ) {
     val signalColor = MaterialTheme.colorScheme.error
@@ -124,6 +128,7 @@ fun ProfileTimingDiagram(
     val tOnTime = msLabel(profile.triggerDebounceOn)
     val tOffTime = msLabel(profile.triggerDebounceOff)
     val sonTime = msLabel(profile.searSolenoidDwell)
+    val sdelTime = msLabel(profile.searSolenoidDelay)
     val cdelTime = msLabel(profile.cockingSolenoidDelay)
     val conTime = openPhaseLabel(profile)
     val coffTime = msLabel(profile.cockingSolenoidDwellClosed)
@@ -143,10 +148,14 @@ fun ProfileTimingDiagram(
         val arrowSize = with(density) { 6.dp.toPx() }
         val labelGap = with(density) { 3.dp.toPx() }
         val titleGap = with(density) { 2.dp.toPx() }
+        val signalLift = with(density) { 4.dp.toPx() }
+        val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
 
-        val phases = timingDiagramPhases(profile)
+        val phases = timingDiagramPhases(profile, boltMode)
         val cdel = phases.cdel
+        val sdel = phases.sdel
         val con = phases.con
+        val coff = phases.coff
         val son = phases.son
         val tOff = phases.tOff
         val cycleStart = phases.cycleStart
@@ -159,206 +168,400 @@ fun ProfileTimingDiagram(
 
         fun xForTime(t: Float) = plotLeft + (t / total) * plotWidth
 
-        val titleRowHeight = with(density) { 18.dp.toPx() }
-        val signalHeight = with(density) { 28.dp.toPx() }
-        val annotationRowHeight = with(density) { 38.dp.toPx() }
-        val laneGap = with(density) { 6.dp.toPx() }
+        if (!phases.isOpenBolt) {
+            val titleRowHeight = with(density) { 18.dp.toPx() }
+            val signalHeight = with(density) { 28.dp.toPx() }
+            val annotationRowHeight = with(density) { 38.dp.toPx() }
+            val laneGap = with(density) { 6.dp.toPx() }
 
-        val triggerTitleTop = 0f
-        // The trigger carries two annotations whose segments touch at TON — the press debounce ends
-        // exactly where the release debounce begins. Splitting them across an above row and a below
-        // row keeps the two labels from landing on top of each other, which one shared row cannot
-        // avoid at realistic values (both windows default to 2.0 ms of a ~43 ms axis).
-        val triggerAboveAnnoTop = triggerTitleTop + titleRowHeight
-        val triggerSignalTop = triggerAboveAnnoTop + annotationRowHeight
-        val triggerSignalBottom = triggerSignalTop + signalHeight
-        val triggerBelowAnnoTop = triggerSignalBottom
+            val triggerTitleTop = 0f
+            // The trigger carries two annotations whose segments touch at TON — the press debounce ends
+            // exactly where the release debounce begins. Splitting them across an above row and a below
+            // row keeps the two labels from landing on top of each other, which one shared row cannot
+            // avoid at realistic values (both windows default to 2.0 ms of a ~43 ms axis).
+            val triggerAboveAnnoTop = triggerTitleTop + titleRowHeight
+            val triggerSignalTop = triggerAboveAnnoTop + annotationRowHeight
+            val triggerSignalBottom = triggerSignalTop + signalHeight
+            val triggerBelowAnnoTop = triggerSignalBottom
 
-        val searTitleTop = triggerBelowAnnoTop + annotationRowHeight + laneGap
-        val searSignalTop = searTitleTop + titleRowHeight
-        val searSignalBottom = searSignalTop + signalHeight
-        val searBelowAnnoTop = searSignalBottom
+            val searTitleTop = triggerBelowAnnoTop + annotationRowHeight + laneGap
+            val searSignalTop = searTitleTop + titleRowHeight
+            val searSignalBottom = searSignalTop + signalHeight
+            val searBelowAnnoTop = searSignalBottom
 
-        val cockingTitleTop = searBelowAnnoTop + annotationRowHeight + laneGap
-        val cockingAboveAnnoTop = cockingTitleTop + titleRowHeight
-        val cockingSignalTop = cockingAboveAnnoTop + annotationRowHeight
-        val cockingSignalBottom = cockingSignalTop + signalHeight
-        val cockingBelowAnnoTop = cockingSignalBottom
+            val cockingTitleTop = searBelowAnnoTop + annotationRowHeight + laneGap
+            val cockingAboveAnnoTop = cockingTitleTop + titleRowHeight
+            val cockingSignalTop = cockingAboveAnnoTop + annotationRowHeight
+            val cockingSignalBottom = cockingSignalTop + signalHeight
+            val cockingBelowAnnoTop = cockingSignalBottom
 
-        val plotBottom = cockingBelowAnnoTop + annotationRowHeight
+            val plotBottom = cockingBelowAnnoTop + annotationRowHeight
 
-        val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f))
-        drawLine(
-            color = guideColor,
-            start = Offset(plotLeft, triggerAboveAnnoTop),
-            end = Offset(plotLeft, plotBottom),
-            strokeWidth = guideStroke,
-            pathEffect = dash,
-        )
-        drawLine(
-            color = guideColor,
-            start = Offset(plotRight, triggerAboveAnnoTop),
-            end = Offset(plotRight, plotBottom),
-            strokeWidth = guideStroke,
-            pathEffect = dash,
-        )
-        // The instant the board qualifies the pull. Every lane below starts from this line, which is
-        // what makes the trigger -> sear -> cocking order readable at a glance.
-        drawLine(
-            color = guideColor,
-            start = Offset(xForTime(cycleStart), triggerAboveAnnoTop),
-            end = Offset(xForTime(cycleStart), plotBottom),
-            strokeWidth = guideStroke,
-            pathEffect = dash,
-        )
+            drawLine(
+                color = guideColor,
+                start = Offset(plotLeft, triggerAboveAnnoTop),
+                end = Offset(plotLeft, plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
+            drawLine(
+                color = guideColor,
+                start = Offset(plotRight, triggerAboveAnnoTop),
+                end = Offset(plotRight, plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
+            // The instant the board qualifies the pull. Every lane below starts from this line, which is
+            // what makes the trigger -> sear -> cocking order readable at a glance.
+            drawLine(
+                color = guideColor,
+                start = Offset(xForTime(cycleStart), triggerAboveAnnoTop),
+                end = Offset(xForTime(cycleStart), plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
 
-        val signalLift = with(density) { 4.dp.toPx() }
+            drawDigitalSignal(
+                laneTop = triggerSignalTop,
+                laneBottom = triggerSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                // The shortest shot the firmware accepts: held for exactly the press debounce, then
+                // released. Drawing the raw switch line held any longer would stretch this lane across
+                // the chart for a value the profile does not set.
+                highSegments = listOf(0f to cycleStart),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
 
-        drawDigitalSignal(
-            laneTop = triggerSignalTop,
-            laneBottom = triggerSignalBottom,
-            plotLeft = plotLeft,
-            plotRight = plotRight,
-            signalLift = signalLift,
-            // The shortest shot the firmware accepts: held for exactly the press debounce, then
-            // released. Drawing the raw switch line held any longer would stretch this lane across
-            // the chart for a value the profile does not set.
-            highSegments = listOf(0f to cycleStart),
-            color = signalColor,
-            strokeWidth = signalStroke,
-            xForTime = ::xForTime,
-        )
+            drawDigitalSignal(
+                laneTop = searSignalTop,
+                laneBottom = searSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                highSegments = listOf(cycleStart to (cycleStart + son)),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
 
-        drawDigitalSignal(
-            laneTop = searSignalTop,
-            laneBottom = searSignalBottom,
-            plotLeft = plotLeft,
-            plotRight = plotRight,
-            signalLift = signalLift,
-            highSegments = listOf(cycleStart to (cycleStart + son)),
-            color = signalColor,
-            strokeWidth = signalStroke,
-            xForTime = ::xForTime,
-        )
+            drawDigitalSignal(
+                laneTop = cockingSignalTop,
+                laneBottom = cockingSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                highSegments = listOf((cycleStart + cdel) to (cycleStart + cdel + con)),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
 
-        drawDigitalSignal(
-            laneTop = cockingSignalTop,
-            laneBottom = cockingSignalBottom,
-            plotLeft = plotLeft,
-            plotRight = plotRight,
-            signalLift = signalLift,
-            highSegments = listOf((cycleStart + cdel) to (cycleStart + cdel + con)),
-            color = signalColor,
-            strokeWidth = signalStroke,
-            xForTime = ::xForTime,
-        )
+            drawLaneTitle(
+                text = triggerLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = triggerAboveAnnoTop - titleGap,
+            )
+            drawLaneTitle(
+                text = searLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = searSignalTop - titleGap,
+            )
+            drawLaneTitle(
+                text = cockingLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = cockingAboveAnnoTop - titleGap,
+            )
 
-        drawLaneTitle(
-            text = triggerLabel,
-            style = laneTitleStyle,
-            textMeasurer = textMeasurer,
-            rightX = plotRight,
-            bottomY = triggerAboveAnnoTop - titleGap,
-        )
-        drawLaneTitle(
-            text = searLabel,
-            style = laneTitleStyle,
-            textMeasurer = textMeasurer,
-            rightX = plotRight,
-            bottomY = searSignalTop - titleGap,
-        )
-        drawLaneTitle(
-            text = cockingLabel,
-            style = laneTitleStyle,
-            textMeasurer = textMeasurer,
-            rightX = plotRight,
-            bottomY = cockingAboveAnnoTop - titleGap,
-        )
+            drawSegmentAnnotation(
+                startX = xForTime(0f),
+                endX = xForTime(cycleStart),
+                arrowY = triggerAboveAnnoTop + annotationRowHeight / 2f,
+                label = tOnLabel,
+                msTime = tOnTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + tOff),
+                arrowY = triggerBelowAnnoTop + annotationRowHeight / 2f,
+                label = tOffLabel,
+                msTime = tOffTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + son),
+                arrowY = searBelowAnnoTop + annotationRowHeight / 2f,
+                label = sonLabel,
+                msTime = sonTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + cdel),
+                arrowY = cockingAboveAnnoTop + annotationRowHeight / 2f,
+                label = cdelLabel,
+                msTime = cdelTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart + cdel + con),
+                endX = xForTime(cycleEnd),
+                arrowY = cockingAboveAnnoTop + annotationRowHeight / 2f,
+                label = coffLabel,
+                msTime = coffTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart + cdel),
+                endX = xForTime(cycleStart + cdel + con),
+                arrowY = cockingBelowAnnoTop + annotationRowHeight / 2f,
+                label = conLabel,
+                msTime = conTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+        } else {
+            // In Open Bolt mode, both Cocking (COFF above, CON below) and Sear (SDEL above, SON below)
+            // split their two touching segments across an above row and a below row so short labels
+            // never collide, while fitting all three lanes inside the 360.dp canvas.
+            val titleRowHeight = with(density) { 16.dp.toPx() }
+            val signalHeight = with(density) { 22.dp.toPx() }
+            val annotationRowHeight = with(density) { 36.dp.toPx() }
+            val laneGap = with(density) { 6.dp.toPx() }
 
-        drawSegmentAnnotation(
-            startX = xForTime(0f),
-            endX = xForTime(cycleStart),
-            arrowY = triggerAboveAnnoTop + annotationRowHeight / 2f,
-            label = tOnLabel,
-            msTime = tOnTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
-        drawSegmentAnnotation(
-            startX = xForTime(cycleStart),
-            endX = xForTime(cycleStart + tOff),
-            arrowY = triggerBelowAnnoTop + annotationRowHeight / 2f,
-            label = tOffLabel,
-            msTime = tOffTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
-        drawSegmentAnnotation(
-            startX = xForTime(cycleStart),
-            endX = xForTime(cycleStart + son),
-            arrowY = searBelowAnnoTop + annotationRowHeight / 2f,
-            label = sonLabel,
-            msTime = sonTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
-        drawSegmentAnnotation(
-            startX = xForTime(cycleStart),
-            endX = xForTime(cycleStart + cdel),
-            arrowY = cockingAboveAnnoTop + annotationRowHeight / 2f,
-            label = cdelLabel,
-            msTime = cdelTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
-        drawSegmentAnnotation(
-            startX = xForTime(cycleStart + cdel + con),
-            endX = xForTime(cycleEnd),
-            arrowY = cockingAboveAnnoTop + annotationRowHeight / 2f,
-            label = coffLabel,
-            msTime = coffTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
-        drawSegmentAnnotation(
-            startX = xForTime(cycleStart + cdel),
-            endX = xForTime(cycleStart + cdel + con),
-            arrowY = cockingBelowAnnoTop + annotationRowHeight / 2f,
-            label = conLabel,
-            msTime = conTime,
-            labelStyle = segmentLabelStyle,
-            msTimeStyle = msTimeStyle,
-            textMeasurer = textMeasurer,
-            color = annotationColor,
-            strokeWidth = annotationStroke,
-            arrowSize = arrowSize,
-            labelGap = labelGap,
-        )
+            val triggerTitleTop = 0f
+            val triggerAboveAnnoTop = triggerTitleTop + titleRowHeight
+            val triggerSignalTop = triggerAboveAnnoTop + annotationRowHeight
+            val triggerSignalBottom = triggerSignalTop + signalHeight
+            val triggerBelowAnnoTop = triggerSignalBottom
+
+            val cockingTitleTop = triggerBelowAnnoTop + annotationRowHeight + laneGap
+            val cockingAboveAnnoTop = cockingTitleTop + titleRowHeight
+            val cockingSignalTop = cockingAboveAnnoTop + annotationRowHeight
+            val cockingSignalBottom = cockingSignalTop + signalHeight
+            val cockingBelowAnnoTop = cockingSignalBottom
+
+            val searTitleTop = cockingBelowAnnoTop + annotationRowHeight + laneGap
+            val searAboveAnnoTop = searTitleTop + titleRowHeight
+            val searSignalTop = searAboveAnnoTop + annotationRowHeight
+            val searSignalBottom = searSignalTop + signalHeight
+            val searBelowAnnoTop = searSignalBottom
+
+            val plotBottom = searBelowAnnoTop + annotationRowHeight
+
+            drawLine(
+                color = guideColor,
+                start = Offset(plotLeft, triggerAboveAnnoTop),
+                end = Offset(plotLeft, plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
+            drawLine(
+                color = guideColor,
+                start = Offset(plotRight, triggerAboveAnnoTop),
+                end = Offset(plotRight, plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
+            // The instant the board qualifies the pull: in open-bolt mode, the cocking solenoid
+            // energizes immediately at TON while the sear solenoid starts its delay from TON.
+            drawLine(
+                color = guideColor,
+                start = Offset(xForTime(cycleStart), triggerAboveAnnoTop),
+                end = Offset(xForTime(cycleStart), plotBottom),
+                strokeWidth = guideStroke,
+                pathEffect = dash,
+            )
+
+            drawDigitalSignal(
+                laneTop = triggerSignalTop,
+                laneBottom = triggerSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                highSegments = listOf(0f to cycleStart),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
+
+            drawDigitalSignal(
+                laneTop = cockingSignalTop,
+                laneBottom = cockingSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                highSegments = listOf(cycleStart to (cycleStart + con)),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
+
+            drawDigitalSignal(
+                laneTop = searSignalTop,
+                laneBottom = searSignalBottom,
+                plotLeft = plotLeft,
+                plotRight = plotRight,
+                signalLift = signalLift,
+                highSegments = listOf((cycleStart + sdel) to (cycleStart + sdel + son)),
+                color = signalColor,
+                strokeWidth = signalStroke,
+                xForTime = ::xForTime,
+            )
+
+            drawLaneTitle(
+                text = triggerLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = triggerAboveAnnoTop - titleGap,
+            )
+            drawLaneTitle(
+                text = cockingLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = cockingAboveAnnoTop - titleGap,
+            )
+            drawLaneTitle(
+                text = searLabel,
+                style = laneTitleStyle,
+                textMeasurer = textMeasurer,
+                rightX = plotRight,
+                bottomY = searAboveAnnoTop - titleGap,
+            )
+
+            drawSegmentAnnotation(
+                startX = xForTime(0f),
+                endX = xForTime(cycleStart),
+                arrowY = triggerAboveAnnoTop + annotationRowHeight / 2f,
+                label = tOnLabel,
+                msTime = tOnTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + tOff),
+                arrowY = triggerBelowAnnoTop + annotationRowHeight / 2f,
+                label = tOffLabel,
+                msTime = tOffTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart + con),
+                endX = xForTime(cycleStart + con + coff),
+                arrowY = cockingAboveAnnoTop + annotationRowHeight / 2f,
+                label = coffLabel,
+                msTime = coffTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + con),
+                arrowY = cockingBelowAnnoTop + annotationRowHeight / 2f,
+                label = conLabel,
+                msTime = conTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart),
+                endX = xForTime(cycleStart + sdel),
+                arrowY = searAboveAnnoTop + annotationRowHeight / 2f,
+                label = cdelLabel,
+                msTime = sdelTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+            drawSegmentAnnotation(
+                startX = xForTime(cycleStart + sdel),
+                endX = xForTime(cycleStart + sdel + son),
+                arrowY = searBelowAnnoTop + annotationRowHeight / 2f,
+                label = sonLabel,
+                msTime = sonTime,
+                labelStyle = segmentLabelStyle,
+                msTimeStyle = msTimeStyle,
+                textMeasurer = textMeasurer,
+                color = annotationColor,
+                strokeWidth = annotationStroke,
+                arrowSize = arrowSize,
+                labelGap = labelGap,
+            )
+        }
     }
 }
 
@@ -385,26 +588,39 @@ private fun openPhaseLabel(profile: MarkerProfile): String {
 /**
  * The drawn phases of the diagram, in tenths of a millisecond, on the time axis of the canvas.
  *
- * The cocking phases are [MarkerProfile.cockingSolenoidDelay], [MarkerProfile.cockingOpenTenthsMs]
- * and [MarkerProfile.cockingSolenoidDwellClosed], so the drawn cycle is
+ * In closed-bolt mode (`!isOpenBolt`), the cocking phases are [MarkerProfile.cockingSolenoidDelay],
+ * [MarkerProfile.cockingOpenTenthsMs], and [MarkerProfile.cockingSolenoidDwellClosed] (`cdel + con + coff`).
+ * In open-bolt mode (`isOpenBolt`, [MarkerProfile.usesOpenBolt]), the cocking open/closed phases
+ * (`con + coff`) and the sear delay/dwell phases (`sdel + son`) run in parallel from `TON`, so the
+ * drawn cycle is `max(con + coff, sdel + son)`. In both modes, the drawn cycle equals
  * [MarkerProfile.cycleTenthsMs], the same cycle that [MarkerProfile.maxBpsForTiming] uses.
  *
  * These values are for the canvas only. A 0 setting would collapse its segment to zero width and
  * take the wave edge and the arrow with it, so each segment has a floor of one tenth of a
- * millisecond. The sear also has a ceiling of one cycle, so that a dwell longer than the cycle
- * cannot go off the axis. The labels never show these adjustments: a floored segment still prints
- * the real 0.0 ms above it.
+ * millisecond. In closed-bolt mode, the sear dwell also has a ceiling of one cycle (`cdel + con + coff`),
+ * so that a dwell longer than the cycle cannot go off the axis. The labels never show these
+ * adjustments: a floored segment still prints the real 0.0 ms above it.
  */
 internal data class TimingDiagramPhases(
     val tOn: Float,
     val tOff: Float,
     val son: Float,
+    val sdel: Float,
     val cdel: Float,
     val con: Float,
     val coff: Float,
+    val isOpenBolt: Boolean,
 ) {
-    /** The cocking cycle: the delay, the breach-open phase and the closed dwell. */
-    val cycle: Float get() = cdel + con + coff
+    /**
+     * The firing cycle: `cdel + con + coff` in closed-bolt mode, or `max(con + coff, sdel + son)`
+     * in open-bolt mode.
+     */
+    val cycle: Float
+        get() = if (isOpenBolt) {
+            maxOf(con + coff, sdel + son)
+        } else {
+            cdel + con + coff
+        }
 
     /**
      * The press debounce qualifies the pull at TON, where the firmware enters FIRING, so the
@@ -422,17 +638,30 @@ internal data class TimingDiagramPhases(
     val total: Float get() = maxOf(cycleEnd, cycleStart + tOff)
 }
 
-internal fun timingDiagramPhases(profile: MarkerProfile): TimingDiagramPhases {
+internal fun timingDiagramPhases(
+    profile: MarkerProfile,
+    boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
+): TimingDiagramPhases {
+    val isOpenBolt = profile.usesOpenBolt(boltMode)
+    val sdel = profile.searSolenoidDelay.toFloat().coerceAtLeast(1f)
     val cdel = profile.cockingSolenoidDelay.toFloat().coerceAtLeast(1f)
     val con = profile.cockingOpenTenthsMs.toFloat().coerceAtLeast(1f)
     val coff = profile.cockingSolenoidDwellClosed.toFloat().coerceAtLeast(1f)
+    val rawSon = profile.searSolenoidDwell.toFloat().coerceAtLeast(1f)
+    val son = if (isOpenBolt) {
+        rawSon
+    } else {
+        rawSon.coerceAtMost(cdel + con + coff)
+    }
     return TimingDiagramPhases(
         tOn = profile.triggerDebounceOn.toFloat().coerceAtLeast(1f),
         tOff = profile.triggerDebounceOff.toFloat().coerceAtLeast(1f),
-        son = profile.searSolenoidDwell.toFloat().coerceAtLeast(1f).coerceAtMost(cdel + con + coff),
+        son = son,
+        sdel = sdel,
         cdel = cdel,
         con = con,
         coff = coff,
+        isOpenBolt = isOpenBolt,
     )
 }
 

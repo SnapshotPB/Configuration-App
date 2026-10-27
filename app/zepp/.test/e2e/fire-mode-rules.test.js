@@ -10,20 +10,27 @@ import '../mocks/runtime';
 import { afterEach, describe, expect, test } from 'vitest';
 import { startHarness } from '../harness';
 import { LABELS, PAGES, syncNewBoard } from '../harness/flows';
-import { createBoardState, createProfile, FIRE_MODE } from '../virtual-board/boardState';
+import { BOLT_MODE, createBoardState, createProfile, FIRE_MODE } from '../virtual-board/boardState';
 import {
   EyeMode,
   FireMode,
+  MarkerBoltMode,
+  boltModeToDomain,
+  boltModeToProto,
   fireModeToDomain,
   fireModeToProto
 } from '../../src/protocol/OtsModelMapper.js';
 import { snapshotpb } from '../../src/protocol/proto.js';
+import { BOARD_SETTINGS, boardSettingLabel } from '../../src/utils/boardSettings.js';
 import {
   PROFILE_CHOICES,
   hasFixedRateCap,
+  isFieldShown,
   profileChoiceLabel,
+  usesBoltMode,
   usesCockingTimeout,
   usesCustomRamping,
+  usesOpenBolt,
   visibleProfileFields
 } from '../../src/utils/profileFields.js';
 
@@ -84,6 +91,56 @@ describe('fire mode rules', () => {
       FireMode.RAMPING_NXL_2026,
       FireMode.CUSTOM_RAMPING
     ]);
+  });
+
+  test('bolt mode applies only in the cycled fire modes', () => {
+    expect(Object.values(FireMode).filter(usesBoltMode)).toEqual([
+      FireMode.SEMI,
+      FireMode.FULL_AUTO,
+      FireMode.RAMPING_NXL_2026,
+      FireMode.CUSTOM_RAMPING
+    ]);
+    for (const fireMode of [FireMode.MECHANICAL, FireMode.TRIGGER_ONLY, FireMode.UNKNOWN]) {
+      expect(usesOpenBolt({ fireMode }, MarkerBoltMode.OPEN), fireMode).toBe(false);
+    }
+    for (const fireMode of [FireMode.SEMI, FireMode.FULL_AUTO, FireMode.RAMPING_NXL_2026, FireMode.CUSTOM_RAMPING]) {
+      expect(usesOpenBolt({ fireMode }, MarkerBoltMode.CLOSED), fireMode).toBe(false);
+      expect(usesOpenBolt({ fireMode }, MarkerBoltMode.OPEN), fireMode).toBe(true);
+    }
+  });
+
+  test('open bolt swaps Cocking Solenoid Delay for Sear Solenoid Delay in cycled fire modes only', () => {
+    for (const fireMode of Object.values(FireMode)) {
+      const closedKeys = visibleProfileFields({
+        fireMode,
+        eyeMode: EyeMode.REFLECTIVE
+      }, MarkerBoltMode.CLOSED).map(f => f.key);
+      expect(closedKeys, `closed ${fireMode}`).toContain('COCKING_SOLENOID_DELAY');
+      expect(closedKeys, `closed ${fireMode}`).not.toContain('SEAR_SOLENOID_DELAY');
+
+      const openKeys = visibleProfileFields({
+        fireMode,
+        eyeMode: EyeMode.REFLECTIVE
+      }, MarkerBoltMode.OPEN).map(f => f.key);
+      const isOpen = usesBoltMode(fireMode);
+      expect(openKeys.includes('SEAR_SOLENOID_DELAY'), `open SEAR_SOLENOID_DELAY in ${fireMode}`).toBe(isOpen);
+      expect(openKeys.includes('COCKING_SOLENOID_DELAY'), `open COCKING_SOLENOID_DELAY in ${fireMode}`).toBe(!isOpen);
+      expect(isFieldShown('SEAR_SOLENOID_DELAY', { fireMode }, MarkerBoltMode.OPEN)).toBe(isOpen);
+      expect(isFieldShown('COCKING_SOLENOID_DELAY', { fireMode }, MarkerBoltMode.OPEN)).toBe(!isOpen);
+    }
+  });
+
+  test('bolt mode maps between wire DeviceConfig.bolt_mode enum and MarkerBoltMode domain values', () => {
+    expect(boltModeToDomain(BOLT_MODE.BOLT_MODE_UNSPECIFIED)).toBeNull();
+    expect(boltModeToDomain(BOLT_MODE.BOLT_MODE_CLOSED)).toBe(MarkerBoltMode.CLOSED);
+    expect(boltModeToDomain(BOLT_MODE.BOLT_MODE_OPEN)).toBe(MarkerBoltMode.OPEN);
+    expect(boltModeToDomain(99)).toBeNull();
+    expect(boltModeToProto(null)).toBe(BOLT_MODE.BOLT_MODE_UNSPECIFIED);
+    expect(boltModeToProto(MarkerBoltMode.CLOSED)).toBe(BOLT_MODE.BOLT_MODE_CLOSED);
+    expect(boltModeToProto(MarkerBoltMode.OPEN)).toBe(BOLT_MODE.BOLT_MODE_OPEN);
+    expect(BOARD_SETTINGS.boltMode.options).toEqual([MarkerBoltMode.CLOSED, MarkerBoltMode.OPEN]);
+    expect(boardSettingLabel('boltMode', MarkerBoltMode.CLOSED)).toBe('Closed Bolt');
+    expect(boardSettingLabel('boltMode', MarkerBoltMode.OPEN)).toBe('Open Bolt');
   });
 });
 
@@ -226,5 +283,65 @@ describe('the profile editor with a board', () => {
 
     expect(device.knownProfiles[0].fireMode).toBe(FireMode.CUSTOM_RAMPING);
     expect(profileChoiceLabel('fireMode', device.knownProfiles[0].fireMode)).toBe('Custom Ramping');
+  });
+
+  test('device Bolt Mode card and profile Sear Solenoid Delay follow Open Bolt and preserve hidden values on save', async () => {
+    h = await startHarness({
+      state: createBoardState({
+        profiles: {
+          profiles: [
+            createProfile({
+              name: 'Semi Auto',
+              fireRateCap: 0,
+              autococker: {
+                cockingSolenoidDelay: 40,
+                searSolenoidDelay: 75
+              }
+            })
+          ]
+        }
+      })
+    });
+    await syncNewBoard(h);
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.deviceConfig);
+    expect(h.hasText('BOLT MODE')).toBe(true);
+    expect(h.hasText('Closed Bolt')).toBe(true);
+
+    h.click(LABELS.tuneProfile);
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.profileEdit);
+
+    const rowLabels = () => h.texts().map(text => text.split('\n')[0].replace(/ \*$/, ''));
+
+    // Closed Bolt in Semi: Cocking Solenoid Delay shows; Sear Solenoid Delay hides.
+    expect(rowLabels()).toContain('Cocking Solenoid Delay');
+    expect(rowLabels()).not.toContain('Sear Solenoid Delay');
+
+    // Return to device_config and switch the device-level Bolt Mode to Open Bolt.
+    h.back();
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.deviceConfig);
+    clickNewest(text => text === 'Closed Bolt');
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.boardSettingSelection);
+    clickNewest(text => text === 'Open Bolt');
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.deviceConfig);
+
+    // Re-open profile editor: Sear Solenoid Delay now replaces Cocking Solenoid Delay in Semi.
+    clickNewest(text => text.startsWith(LABELS.tuneProfile));
+    expect(h.stack[h.stack.length - 1].__url).toBe(PAGES.profileEdit);
+    expect(rowLabels()).toContain('Sear Solenoid Delay');
+    expect(rowLabels()).not.toContain('Cocking Solenoid Delay');
+
+    // Switch to Mechanical: Sear Solenoid Delay hides and Cocking Solenoid Delay returns.
+    selectFireMode('Mechanical');
+    expect(rowLabels()).not.toContain('Sear Solenoid Delay');
+    expect(rowLabels()).toContain('Cocking Solenoid Delay');
+
+    // Save in Mechanical: the board still receives boltMode = BOLT_MODE_OPEN on device_config,
+    // plus searSolenoidDelay = 75 and cockingSolenoidDelay = 40 on the profile.
+    await saveAndWaitForFireMode(FIRE_MODE.AUTOCOCKER_FIRE_MODE_MECHANICAL);
+
+    expect(h.board.state.deviceConfig.boltMode).toBe(BOLT_MODE.BOLT_MODE_OPEN);
+    const onBoard = h.board.state.profiles.profiles[0].autococker;
+    expect(onBoard.searSolenoidDelay).toBe(75);
+    expect(onBoard.cockingSolenoidDelay).toBe(40);
   });
 });

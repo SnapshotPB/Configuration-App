@@ -17,6 +17,7 @@ import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.DisplayWindow
 import com.snapshotpb.configuration.model.GripFrame
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.configuration.model.Photo
@@ -55,6 +56,7 @@ class DeviceViewModelDelegateTest {
         screenBrightness: BoardScreenBrightness? = null,
         screenOffDelay: Int? = null,
         displayWindow: DisplayWindow? = null,
+        boltMode: MarkerBoltMode? = null,
     ) = BoardState(
         bootText = bootText,
         activeProfileId = null,
@@ -64,6 +66,7 @@ class DeviceViewModelDelegateTest {
         screenBrightness = screenBrightness,
         screenOffDelay = screenOffDelay,
         displayWindow = displayWindow,
+        boltMode = boltMode,
     )
 
     private class Fixture(
@@ -701,12 +704,14 @@ class DeviceViewModelDelegateTest {
             screenBrightness = BoardScreenBrightness.LOW,
             screenOffDelay = 20,
             displayWindow = DisplayWindow.FULL_PANEL,
+            boltMode = MarkerBoltMode.CLOSED,
         )
         val requested = testDevice(
             language = BoardLanguage.EN,
             screenBrightness = BoardScreenBrightness.HIGH,
             screenOffDelay = 30,
             displayWindow = GripFrame.E1.window,
+            boltMode = MarkerBoltMode.OPEN,
             boardState = board,
         )
         val f = fixture(testScheduler, requested)
@@ -717,6 +722,7 @@ class DeviceViewModelDelegateTest {
             screenBrightness = null,
             screenOffDelay = null,
             displayWindow = null,
+            boltMode = null,
         )
         f.bus.emit(DeviceWriteResult(written, error = null, requestedDevice = requested))
         testScheduler.advanceUntilIdle()
@@ -726,10 +732,12 @@ class DeviceViewModelDelegateTest {
         assertNull(after.boardState?.screenBrightness)
         assertNull(after.boardState?.screenOffDelay)
         assertNull(after.boardState?.displayWindow)
+        assertNull(after.boardState?.boltMode)
         assertNull(after.language)
         assertNull(after.screenBrightness)
         assertNull(after.screenOffDelay)
         assertNull(after.displayWindow)
+        assertNull(after.boltMode)
         assertFalse(after.hasDiverged())
     }
 

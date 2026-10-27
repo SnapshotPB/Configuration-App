@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.bluetooth.ots
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardModel
 import com.snapshotpb.configuration.model.BoardScreenBrightness
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -10,6 +11,7 @@ import com.snapshotpb.configuration.model.clampedScreenOffDelay
 import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
+import snapshotpb.v1.BoltMode
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
 import snapshotpb.v1.Language
@@ -129,6 +131,25 @@ fun MarkerFireMode.toProtocol(): AutocockerFireMode = when (this) {
     MarkerFireMode.RAMPING_NXL_2026 -> AutocockerFireMode.AUTOCOCKER_FIRE_MODE_RAMPING_NXL_2026
     MarkerFireMode.CUSTOM_RAMPING -> AutocockerFireMode.AUTOCOCKER_FIRE_MODE_CUSTOM_RAMPING
     MarkerFireMode.UNKNOWN -> AutocockerFireMode.AUTOCOCKER_FIRE_MODE_UNSPECIFIED
+}
+
+/**
+ * Maps protocol [BoltMode] to domain [MarkerBoltMode]. An unset (`UNSPECIFIED`) value maps to
+ * `null`, so the board has no bolt mode to show. Firmware from before the field existed omits
+ * it, and [decodeDeviceConfig] reads a number that this app does not know as `UNSPECIFIED`.
+ */
+fun BoltMode.toDomain(): MarkerBoltMode? = when (this) {
+    BoltMode.BOLT_MODE_CLOSED -> MarkerBoltMode.CLOSED
+    BoltMode.BOLT_MODE_OPEN -> MarkerBoltMode.OPEN
+    BoltMode.BOLT_MODE_UNSPECIFIED -> null
+}
+
+/**
+ * Maps domain [MarkerBoltMode] to protocol [BoltMode].
+ */
+fun MarkerBoltMode.toProtocol(): BoltMode = when (this) {
+    MarkerBoltMode.CLOSED -> BoltMode.BOLT_MODE_CLOSED
+    MarkerBoltMode.OPEN -> BoltMode.BOLT_MODE_OPEN
 }
 
 /**
@@ -260,6 +281,7 @@ fun Profile.toDomain(deviceUuid: Uuid, slotIndex: Int): MarkerProfile {
         eyeThreshold = autococker.eyeThreshold.toInt(),
         eyeDebounce = autococker.eyeDebounce.toInt(),
         searSolenoidDwell = autococker.searSolenoidDwell.toInt(),
+        searSolenoidDelay = autococker.searSolenoidDelay.toInt(),
         cockingSolenoidDelay = autococker.cockingSolenoidDelay.toInt(),
         cockingSolenoidDwellOpen = autococker.cockingSolenoidDwellOpen.toInt(),
         cockingSolenoidDwellClosed = autococker.cockingSolenoidDwellClosed.toInt(),
@@ -278,9 +300,10 @@ fun Profile.toDomain(deviceUuid: Uuid, slotIndex: Int): MarkerProfile {
  * carried in the `autococker` arm of the `board_config` oneof.
  *
  * Each numeric field goes out in each fire mode. The NXL 2026 mode does not read `fire_rate_cap`,
- * and only the custom ramping mode reads the `ramping_custom_*` fields, but the board keeps the
- * stored values and uses them again after a change of mode. A write that sent a default in their
- * place would lose the values that the editors hide.
+ * only the custom ramping mode reads the `ramping_custom_*` fields, open-bolt mode ignores
+ * `cocking_solenoid_delay`, and closed-bolt mode / `MECHANICAL` / `TRIGGER_ONLY` ignore
+ * `sear_solenoid_delay`, but the board keeps the stored values and uses them again after a change
+ * of mode. A write that sent a default in their place would lose the values that the editors hide.
  */
 fun MarkerProfile.toProtocol(): Profile {
     return Profile(
@@ -307,7 +330,8 @@ fun MarkerProfile.toProtocol(): Profile {
             rampingCustomRofMinimum = rampingCustomROFMinimum.coerceAtLeast(0).toUInt(),
             triggerDebounceOn = triggerDebounceOn.coerceAtLeast(0).toUInt(),
             triggerDebounceOff = triggerDebounceOff.coerceAtLeast(0).toUInt(),
-            cockingSolenoidTimeout = cockingSolenoidTimeout.coerceAtLeast(0).toUInt()
+            cockingSolenoidTimeout = cockingSolenoidTimeout.coerceAtLeast(0).toUInt(),
+            searSolenoidDelay = searSolenoidDelay.coerceAtLeast(0).toUInt(),
         )
     )
 }
@@ -369,6 +393,7 @@ fun toDomainDevice(
         screenBrightness = protoDeviceConfig.screenBrightness.toDomain(),
         screenOffDelay = protoDeviceConfig.screenOffDelay.screenOffDelayToDomain(),
         displayWindow = protoDeviceConfig.displayWindow?.toDomain(),
+        boltMode = protoDeviceConfig.boltMode.toDomain(),
         boardModel = protoDevice.model.toDomain(),
         supportedProfileCount = protoDevice.supportedProfileCount.toInt()
             .takeIf { it > 0 } ?: mappedProfiles.size,
@@ -435,6 +460,8 @@ fun toProtocolDeviceConfig(
         // presence, so a client that writes only boot text cannot move the window by omission.
         // toProtocol clamps, so an out-of-bounds value cannot make the board drop this message.
         displayWindow = domainDevice.displayWindow?.toProtocol(),
+        // An unknown bolt mode (null) sends UNSPECIFIED, which leaves the board's bolt mode alone.
+        boltMode = domainDevice.boltMode?.toProtocol() ?: BoltMode.BOLT_MODE_UNSPECIFIED,
     )
 }
 
@@ -615,6 +642,7 @@ private fun profileSimilarity(a: MarkerProfile, b: MarkerProfile): Int {
         a.eyeThreshold == b.eyeThreshold,
         a.eyeDebounce == b.eyeDebounce,
         a.searSolenoidDwell == b.searSolenoidDwell,
+        a.searSolenoidDelay == b.searSolenoidDelay,
         a.cockingSolenoidDelay == b.cockingSolenoidDelay,
         a.cockingSolenoidDwellOpen == b.cockingSolenoidDwellOpen,
         a.cockingSolenoidDwellClosed == b.cockingSolenoidDwellClosed,

@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.bluetooth.ots
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardModel
 import com.snapshotpb.configuration.model.BoardScreenBrightness
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -10,6 +11,7 @@ import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
 import snapshotpb.v1.BatteryType
+import snapshotpb.v1.BoltMode
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
 import snapshotpb.v1.Language
@@ -118,6 +120,34 @@ class OtsModelMapperTest {
     }
 
     @Test
+    fun testBoltModeMappingAndHiddenDelayPreservationOnWrite() {
+        assertEquals(MarkerBoltMode.CLOSED, BoltMode.BOLT_MODE_CLOSED.toDomain())
+        assertEquals(MarkerBoltMode.OPEN, BoltMode.BOLT_MODE_OPEN.toDomain())
+        assertNull(BoltMode.BOLT_MODE_UNSPECIFIED.toDomain())
+        assertEquals(BoltMode.BOLT_MODE_CLOSED, MarkerBoltMode.CLOSED.toProtocol())
+        assertEquals(BoltMode.BOLT_MODE_OPEN, MarkerBoltMode.OPEN.toProtocol())
+
+        // In open-bolt mode, cocking_solenoid_delay is hidden; in closed-bolt or MECHANICAL,
+        // sear_solenoid_delay is hidden. Writes must preserve the stored values.
+        val semi = MarkerProfile(
+            id = testDeviceUuid,
+            name = "Semi",
+            fireMode = MarkerFireMode.SEMI,
+            searSolenoidDelay = 75,
+            cockingSolenoidDelay = 90,
+        )
+        val semiArm = assertNotNull(semi.toProtocol().autococker)
+        assertEquals(75u, semiArm.searSolenoidDelay)
+        assertEquals(90u, semiArm.cockingSolenoidDelay)
+
+        val mech = semi.copy(fireMode = MarkerFireMode.MECHANICAL)
+        val mechArm = assertNotNull(mech.toProtocol().autococker)
+        assertEquals(AutocockerFireMode.AUTOCOCKER_FIRE_MODE_MECHANICAL, mechArm.fireMode)
+        assertEquals(75u, mechArm.searSolenoidDelay)
+        assertEquals(90u, mechArm.cockingSolenoidDelay)
+    }
+
+    @Test
     fun testEnumMappingEyeMode() {
         assertEquals(MarkerEyeMode.OFF, EyeMode.EYE_MODE_OFF.toDomain())
         assertEquals(MarkerEyeMode.REFLECTIVE, EyeMode.EYE_MODE_REFLECTIVE.toDomain())
@@ -155,7 +185,8 @@ class OtsModelMapperTest {
                 rampingCustomRofMinimum = 5u,
                 triggerDebounceOn = 8u,
                 triggerDebounceOff = 10u,
-                cockingSolenoidTimeout = 33u
+                cockingSolenoidTimeout = 33u,
+                searSolenoidDelay = 14u,
             )
         )
 
@@ -172,6 +203,7 @@ class OtsModelMapperTest {
         assertEquals(22, domainProfile.eyeThreshold)
         assertEquals(4, domainProfile.eyeDebounce)
         assertEquals(6, domainProfile.searSolenoidDwell)
+        assertEquals(14, domainProfile.searSolenoidDelay)
         assertEquals(12, domainProfile.cockingSolenoidDelay)
         assertEquals(25, domainProfile.cockingSolenoidDwellOpen)
         assertEquals(18, domainProfile.cockingSolenoidDwellClosed)
@@ -201,6 +233,7 @@ class OtsModelMapperTest {
         assertEquals(8u, backAutococker.triggerDebounceOn)
         assertEquals(10u, backAutococker.triggerDebounceOff)
         assertEquals(33u, backAutococker.cockingSolenoidTimeout)
+        assertEquals(14u, backAutococker.searSolenoidDelay)
     }
 
     @Test
@@ -212,6 +245,7 @@ class OtsModelMapperTest {
             fireRateCap = -5,
             eyeThreshold = -1,
             eyeDebounce = -100,
+            searSolenoidDelay = -20,
             cockingSolenoidTimeout = -1,
         )
         val proto = profile.toProtocol()
@@ -219,6 +253,7 @@ class OtsModelMapperTest {
         val autococker = assertNotNull(proto.autococker)
         assertEquals(0u, autococker.eyeThreshold)
         assertEquals(0u, autococker.eyeDebounce)
+        assertEquals(0u, autococker.searSolenoidDelay)
         assertEquals(0u, autococker.cockingSolenoidTimeout)
     }
 
@@ -461,6 +496,7 @@ class OtsModelMapperTest {
                 bootText = "Hi",
                 screenBrightness = ScreenBrightness.SCREEN_BRIGHTNESS_LOW,
                 screenOffDelay = 30u,
+                boltMode = BoltMode.BOLT_MODE_OPEN,
             ),
             protoProfiles = Profiles(profiles = listOf(Profile(name = "P0"))),
             deviceName = "n",
@@ -468,20 +504,23 @@ class OtsModelMapperTest {
         )
         assertEquals(BoardScreenBrightness.LOW, device.screenBrightness)
         assertEquals(30, device.screenOffDelay)
+        assertEquals(MarkerBoltMode.OPEN, device.boltMode)
 
         val written = toProtocolDeviceConfig(device)
         assertEquals(ScreenBrightness.SCREEN_BRIGHTNESS_LOW, written.screenBrightness)
         assertEquals(30u, written.screenOffDelay)
+        assertEquals(BoltMode.BOLT_MODE_OPEN, written.boltMode)
     }
 
     @Test
     fun testUnreportedScreenSettingsSendTheUnsetValues() {
         // The unset values leave the board's own settings alone.
-        val device = domainDevice().copy(screenBrightness = null, screenOffDelay = null)
+        val device = domainDevice().copy(screenBrightness = null, screenOffDelay = null, boltMode = null)
         val written = toProtocolDeviceConfig(device)
 
         assertEquals(ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED, written.screenBrightness)
         assertEquals(0u, written.screenOffDelay)
+        assertEquals(BoltMode.BOLT_MODE_UNSPECIFIED, written.boltMode)
     }
 
     @Test
@@ -543,6 +582,7 @@ class OtsModelMapperTest {
         assertEquals(MarkerEyeMode.UNKNOWN, profile.eyeMode)
         assertEquals(0, profile.eyeThreshold)
         assertEquals(0, profile.searSolenoidDwell)
+        assertEquals(0, profile.searSolenoidDelay)
     }
 
     @Test

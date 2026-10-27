@@ -187,6 +187,37 @@ class ProfilesWriteMappingTest {
     }
 
     @Test
+    fun contentAlignmentFallback_usesSearSolenoidDelay() {
+        val boardWithSearDelay = ProfilesWire(
+            profiles = listOf(
+                ProfileWire(name = "Same", boardAutoOff = 10u, autococker = arm()),
+                ProfileWire(
+                    name = "Same",
+                    boardAutoOff = 20u,
+                    autococker = arm().copy(searSolenoidDelay = 85u),
+                ),
+            ),
+        )
+        // Legacy profile without sourceSlot whose only distinguishing setting is
+        // searSolenoidDelay must align to slot 1 and inherit boardAutoOff = 20u.
+        val legacy = deviceFrom(boardWithSearDelay).let { device ->
+            device.copy(
+                knownProfiles = listOf(
+                    device.knownProfiles[1].copy(
+                        id = getProfileUuid(deviceUuid, 0),
+                        sourceSlot = null,
+                        searSolenoidDelay = 85,
+                    ),
+                ),
+            )
+        }
+
+        val written = toProtocolProfilesWire(legacy, boardWithSearDelay)
+
+        assertEquals(listOf(20u), written.profiles.map { it.boardAutoOff })
+    }
+
+    @Test
     fun anUnknownFireModeAndEyeModeGoBackUnchanged() {
         val newer = ProfilesWire(
             profiles = listOf(

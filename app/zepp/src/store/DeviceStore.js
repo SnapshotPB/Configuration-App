@@ -27,7 +27,8 @@ function boardStateOf(device) {
     knownProfiles: device.knownProfiles || [],
     language: device.language || null,
     screenBrightness: device.screenBrightness || null,
-    screenOffDelay: device.screenOffDelay || null
+    screenOffDelay: device.screenOffDelay || null,
+    boltMode: device.boltMode || null
   };
 }
 
@@ -73,6 +74,7 @@ function configEqual(a, b) {
     boardValuesMatch(a.language, b.language) &&
     boardValuesMatch(a.screenBrightness, b.screenBrightness) &&
     boardValuesMatch(a.screenOffDelay, b.screenOffDelay) &&
+    boardValuesMatch(a.boltMode, b.boltMode) &&
     profilesEqual(a.knownProfiles, b.knownProfiles);
 }
 
@@ -268,6 +270,7 @@ export class DeviceStore {
         language: remoteDevice.language,
         screenBrightness: remoteDevice.screenBrightness,
         screenOffDelay: remoteDevice.screenOffDelay,
+        boltMode: remoteDevice.boltMode,
         activeProfileId: remoteDevice.activeProfileId,
         lockoutEnabled: remoteDevice.lockoutEnabled,
         knownProfiles: remoteDevice.knownProfiles,
@@ -304,12 +307,16 @@ export class DeviceStore {
       screenOffDelay: remoteDevice.screenOffDelay == null
         ? null
         : (d.screenOffDelay || remoteDevice.screenOffDelay),
+      boltMode: remoteDevice.boltMode == null
+        ? null
+        : (d.boltMode || remoteDevice.boltMode),
       boardState: {
         ...d.boardState,
         lockoutEnabled: !!remoteDevice.lockoutEnabled,
         language: remoteDevice.language || null,
         screenBrightness: remoteDevice.screenBrightness || null,
-        screenOffDelay: remoteDevice.screenOffDelay || null
+        screenOffDelay: remoteDevice.screenOffDelay || null,
+        boltMode: remoteDevice.boltMode || null
       }
     }));
     return { type: 'Synced', device: local };
@@ -368,6 +375,7 @@ export class DeviceStore {
         language: local.language || remoteDevice.language || null,
         screenBrightness: local.screenBrightness || remoteDevice.screenBrightness || null,
         screenOffDelay: local.screenOffDelay || remoteDevice.screenOffDelay || null,
+        boltMode: local.boltMode || remoteDevice.boltMode || null,
         // The board owns lockoutEnabled, so the local copy adopts the board's value.
         lockoutEnabled: remoteDevice.lockoutEnabled,
         lastSeen: remoteDevice.lastSeen,
@@ -453,7 +461,8 @@ export class DeviceStore {
       knownProfiles: bs.knownProfiles,
       language: bs.language,
       screenBrightness: bs.screenBrightness,
-      screenOffDelay: bs.screenOffDelay
+      screenOffDelay: bs.screenOffDelay,
+      boltMode: bs.boltMode
     }));
   }
 
@@ -491,12 +500,14 @@ export class DeviceStore {
       const reported = written || {
         language: source.language,
         screenBrightness: source.screenBrightness,
-        screenOffDelay: source.screenOffDelay
+        screenOffDelay: source.screenOffDelay,
+        boltMode: source.boltMode
       };
       const settled = {
         language: settledBoardValue(reported.language, base.language),
         screenBrightness: settledBoardValue(reported.screenBrightness, base.screenBrightness),
-        screenOffDelay: settledBoardValue(reported.screenOffDelay, base.screenOffDelay)
+        screenOffDelay: settledBoardValue(reported.screenOffDelay, base.screenOffDelay),
+        boltMode: settledBoardValue(reported.boltMode, base.boltMode)
       };
       const baseline = {
         bootText: source.bootText,
@@ -511,6 +522,7 @@ export class DeviceStore {
         (d.language || null) === (requested.language || null) &&
         (d.screenBrightness || null) === (requested.screenBrightness || null) &&
         (d.screenOffDelay || null) === (requested.screenOffDelay || null) &&
+        (d.boltMode || null) === (requested.boltMode || null) &&
         profilesEqual(d.knownProfiles, requested.knownProfiles)
       );
       if (editedInFlight) {
@@ -522,7 +534,8 @@ export class DeviceStore {
       const adopted = written ? settled : {
         language: d.language || null,
         screenBrightness: d.screenBrightness || null,
-        screenOffDelay: d.screenOffDelay || null
+        screenOffDelay: d.screenOffDelay || null,
+        boltMode: d.boltMode || null
       };
       return {
         ...d,

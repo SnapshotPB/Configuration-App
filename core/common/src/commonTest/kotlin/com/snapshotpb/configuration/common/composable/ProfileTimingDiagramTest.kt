@@ -1,10 +1,12 @@
 package com.snapshotpb.configuration.common.composable
 
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
@@ -48,26 +50,91 @@ class ProfileTimingDiagramTest {
 
     private val id = Uuid.parse("11111111-2222-3333-4444-555555555555")
 
-    private fun profile(eyeMode: MarkerEyeMode, fireMode: MarkerFireMode) = MarkerProfile(
+    private fun profile(
+        eyeMode: MarkerEyeMode,
+        fireMode: MarkerFireMode,
+    ) = MarkerProfile(
         id = id,
         name = "P",
         fireMode = fireMode,
         eyeMode = eyeMode,
         eyeDebounce = 20,
+        searSolenoidDwell = 45,
+        searSolenoidDelay = 60,
         cockingSolenoidDelay = 60,
         cockingSolenoidDwellOpen = 50,
         cockingSolenoidDwellClosed = 300,
     )
 
     @Test
-    fun drawnCycle_isTheCycleOfTheMaxBps_forEveryEyeModeAndFireMode() {
+    fun drawnCycle_isTheCycleOfTheMaxBps_forEveryEyeModeFireModeAndBoltMode() {
         MarkerEyeMode.entries.forEach { eyeMode ->
             MarkerFireMode.entries.forEach { fireMode ->
-                val profile = profile(eyeMode, fireMode)
-                val phases = timingDiagramPhases(profile)
-                assertEquals(profile.cockingOpenTenthsMs.toFloat(), phases.con, "$eyeMode $fireMode")
-                assertEquals(profile.cycleTenthsMs.toFloat(), phases.cycle, "$eyeMode $fireMode")
+                MarkerBoltMode.entries.forEach { boltMode ->
+                    val profile = profile(eyeMode, fireMode)
+                    val phases = timingDiagramPhases(profile, boltMode)
+                    val context = "$eyeMode $fireMode $boltMode"
+                    assertEquals(profile.usesOpenBolt(boltMode), phases.isOpenBolt, context)
+                    assertEquals(profile.cockingOpenTenthsMs.toFloat(), phases.con, context)
+                    assertEquals(profile.cycleTenthsMs(boltMode).toFloat(), phases.cycle, context)
+                }
             }
+        }
+    }
+
+    @Test
+    fun openBolt_whenCockingExceedsSear_cycleIsConPlusCoff() {
+        val openBolt = profile(MarkerEyeMode.OFF, MarkerFireMode.SEMI).copy(
+            cockingSolenoidDwellOpen = 50,
+            cockingSolenoidDwellClosed = 300,
+            searSolenoidDelay = 60,
+            searSolenoidDwell = 45,
+        )
+        val phases = timingDiagramPhases(openBolt, MarkerBoltMode.OPEN)
+        assertTrue(phases.isOpenBolt)
+        assertEquals(60f, phases.sdel)
+        assertEquals(45f, phases.son)
+        assertEquals(50f, phases.con)
+        assertEquals(300f, phases.coff)
+        assertEquals(350f, phases.cycle)
+        assertEquals(openBolt.cycleTenthsMs(MarkerBoltMode.OPEN).toFloat(), phases.cycle)
+    }
+
+    @Test
+    fun openBolt_whenSearExceedsCocking_cycleIsSdelPlusSon() {
+        val openBolt = profile(MarkerEyeMode.OFF, MarkerFireMode.SEMI).copy(
+            cockingSolenoidDwellOpen = 50,
+            cockingSolenoidDwellClosed = 100,
+            searSolenoidDelay = 250,
+            searSolenoidDwell = 200,
+        )
+        val phases = timingDiagramPhases(openBolt, MarkerBoltMode.OPEN)
+        assertTrue(phases.isOpenBolt)
+        assertEquals(250f, phases.sdel)
+        assertEquals(200f, phases.son)
+        assertEquals(450f, phases.cycle)
+        assertEquals(openBolt.cycleTenthsMs(MarkerBoltMode.OPEN).toFloat(), phases.cycle)
+    }
+
+    @Test
+    fun openBoltStoredInMechanicalOrTriggerOnly_usesClosedBoltDiagram() {
+        listOf(
+            MarkerFireMode.MECHANICAL,
+            MarkerFireMode.TRIGGER_ONLY,
+            MarkerFireMode.UNKNOWN,
+        ).forEach { fireMode ->
+            val p = profile(MarkerEyeMode.OFF, fireMode).copy(
+                cockingSolenoidDelay = 60,
+                cockingSolenoidDwellOpen = 50,
+                cockingSolenoidDwellClosed = 300,
+                searSolenoidDelay = 500,
+                searSolenoidDwell = 500,
+            )
+            val phases = timingDiagramPhases(p, MarkerBoltMode.OPEN)
+            assertFalse(phases.isOpenBolt, "$fireMode")
+            // Closed-bolt cycle is cdel + con + coff = 60 + 50 + 300 = 410, and son is clamped to 410.
+            assertEquals(410f, phases.cycle, "$fireMode")
+            assertEquals(410f, phases.son, "$fireMode")
         }
     }
 
@@ -94,14 +161,25 @@ class ProfileTimingDiagramTest {
 
     @Test
     fun zeroSettings_keepAVisibleSegment() {
-        val zero = profile(MarkerEyeMode.OFF, MarkerFireMode.SEMI).copy(
+        val zeroClosed = profile(MarkerEyeMode.OFF, MarkerFireMode.SEMI).copy(
+            searSolenoidDelay = 0,
+            searSolenoidDwell = 0,
             cockingSolenoidDelay = 0,
             cockingSolenoidDwellOpen = 0,
             cockingSolenoidDwellClosed = 0,
         )
-        val phases = timingDiagramPhases(zero)
-        assertEquals(1f, phases.cdel)
-        assertEquals(1f, phases.con)
-        assertEquals(1f, phases.coff)
+        val closedPhases = timingDiagramPhases(zeroClosed, MarkerBoltMode.CLOSED)
+        assertEquals(1f, closedPhases.sdel)
+        assertEquals(1f, closedPhases.son)
+        assertEquals(1f, closedPhases.cdel)
+        assertEquals(1f, closedPhases.con)
+        assertEquals(1f, closedPhases.coff)
+
+        val openPhases = timingDiagramPhases(zeroClosed, MarkerBoltMode.OPEN)
+        assertEquals(1f, openPhases.sdel)
+        assertEquals(1f, openPhases.son)
+        assertEquals(1f, openPhases.con)
+        assertEquals(1f, openPhases.coff)
+        assertEquals(2f, openPhases.cycle)
     }
 }

@@ -10,8 +10,9 @@ package com.snapshotpb.configuration.model
  * clear.
  *
  * The board settings that need this are the ones the board can refuse: [BoardLanguage],
- * [BoardScreenBrightness] and the screen-off delay. Each of them sends its unset value to leave the
- * board's own value alone, so the app cannot force agreement when one side has nothing.
+ * [BoardScreenBrightness], the screen-off delay, and [MarkerBoltMode]. Each of them sends its unset
+ * value to leave the board's own value alone, so the app cannot force agreement when one side has
+ * nothing.
  *
  * [DisplayWindow] is NOT one of them, although it too is absent when unset. The board takes a legal
  * rectangle or rejects the whole message, so the app can force agreement, and the window uses the

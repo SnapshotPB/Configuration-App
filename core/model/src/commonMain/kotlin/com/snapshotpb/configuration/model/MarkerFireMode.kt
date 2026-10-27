@@ -59,6 +59,15 @@ enum class MarkerFireMode {
         get() = this == SEMI || this == FULL_AUTO || this == RAMPING_NXL_2026 || this == CUSTOM_RAMPING
 
     /**
+     * Whether this fire mode runs a timed/eye-gated cocking cycle where [MarkerBoltMode] applies.
+     * Only [SEMI], [FULL_AUTO], [RAMPING_NXL_2026], and [CUSTOM_RAMPING] do — [MECHANICAL] holds
+     * the breach open via the trigger and [TRIGGER_ONLY] has no cocking phase — so the bolt-mode
+     * and sear-delay editors are hidden for the others.
+     */
+    val usesBoltMode: Boolean
+        get() = this == SEMI || this == FULL_AUTO || this == RAMPING_NXL_2026 || this == CUSTOM_RAMPING
+
+    /**
      * Whether the league sets the rate cap of this fire mode. Only [RAMPING_NXL_2026] has such a
      * cap ([NXL_2026_RATE_CAP]). The board does not read the fire-rate cap of the profile in that
      * mode, so the editors hide the cap. The stored cap stays, and it applies again in a different

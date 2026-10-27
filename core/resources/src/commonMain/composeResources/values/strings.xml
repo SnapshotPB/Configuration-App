@@ -39,7 +39,8 @@
     <string name="profile_section_basic_function">Basic Function</string>
     <string name="profile_section_eye">Eye</string>
     <string name="profile_section_timing_overview">Timing Overview</string>
-    <string name="profile_section_timing_overview_description">Visualizes one firing cycle from the trigger edge. The board qualifies the pull after the debounce-on time, then pulses the sear solenoid and runs the cocking solenoid sequence (delay, on, off). The debounce-off time follows the release.</string>
+    <string name="profile_section_timing_overview_description">Visualizes the timing profile of the trigger, sear, and cocking configurations. First, the trigger sensor must meet the debounce timing. Then the sear is triggered and after the cocking delay, the cocking solenoid is engaged.</string>
+    <string name="profile_section_timing_overview_description_open_bolt">Visualizes the timing profile of the trigger, cocking, and sear configurations in open bolt mode. First, the trigger sensor must meet the debounce timing. Then the cocking solenoid is engaged and after the sear delay, the sear is triggered.</string>
     <string name="profile_section_timing">Timing</string>
     <!-- Profile Timing Diagram -->
     <string name="profile_timing_diagram_lane_trigger">Trigger</string>
@@ -65,6 +66,10 @@
     <string name="profile_fire_mode_full_auto">Full Auto</string>
     <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
     <string name="profile_fire_mode_custom_ramping">Custom Ramping</string>
+    <string name="profile_label_bolt_mode">Bolt Mode</string>
+    <string name="profile_label_bolt_mode_details">Firing order of the marker: closed bolt fires the sear solenoid first, while open bolt fires the cocking solenoid first.</string>
+    <string name="profile_bolt_mode_closed">Closed Bolt</string>
+    <string name="profile_bolt_mode_open">Open Bolt</string>
     <string name="profile_label_fire_rate_cap">Fire Rate Cap</string>
     <string name="profile_label_fire_rate_cap_details">Maximum fire rate in balls per second. The cocking solenoid closed dwell is increased if the fire rate is lower than the timing cycle allows. Set 0 for uncapped.</string>
     <string name="profile_label_eye_mode">Eye Mode</string>
@@ -81,6 +86,8 @@
     <string name="profile_label_eye_debounce_details">The time in milliseconds (0.1 ms steps) the eye must be within threshold to determine a ball is in the breach.</string>
     <string name="profile_label_sear_solenoid_dwell">Sear Solenoid Dwell</string>
     <string name="profile_label_sear_solenoid_dwell_details">The time in milliseconds (0.1 ms steps) the sear solenoid is energized during the firing cycle.</string>
+    <string name="profile_label_sear_solenoid_delay">Sear Solenoid Delay</string>
+    <string name="profile_label_sear_solenoid_delay_details">The time in milliseconds (0.1 ms steps) the sear solenoid waits after a trigger pull before energizing in open bolt mode.</string>
     <string name="profile_label_cocking_solenoid_delay">Cocking Solenoid Delay</string>
     <string name="profile_label_cocking_solenoid_delay_details">The time in milliseconds (0.1 ms steps) the cocking solenoid waits after a trigger pull before energizing.</string>
     <string name="profile_label_cocking_solenoid_dwell_open">Cocking Solenoid Dwell Open</string>
@@ -172,6 +179,9 @@
     <string name="grip_frame_e1">E1 frame</string>
     <string name="grip_frame_e2">E2 frame</string>
     <string name="grip_frame_86">86 frame</string>
+    <string name="configure_device_screen_bolt_mode_label">Bolt Mode</string>
+    <string name="configure_device_screen_bolt_mode_details">Firing order of the marker: closed bolt fires the sear solenoid first, while open bolt fires the cocking solenoid first.</string>
+    <string name="configure_device_screen_bolt_mode_unavailable">The board has not reported a bolt mode. Connect to the board, or update its firmware.</string>
     <string name="configure_device_screen_save_button">Save</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth Icon</string>

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegate
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.store.DeviceStore
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,8 @@ sealed interface ProfileLoad {
         val profile: MarkerProfile,
         /** The board's last-read copy, or null when the device has never synced. Drives "unsaved" badges. */
         val boardProfile: MarkerProfile?,
+        /** The device's bolt mode (closed bolt when unset). */
+        val boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
     ) : ProfileLoad
 }
 
@@ -87,6 +90,7 @@ class ProfileViewModel(
                     boardProfile = device.boardState
                         ?.knownProfiles
                         ?.firstOrNull { it.id.toString() == args.profileId },
+                    boltMode = device.boltMode ?: MarkerBoltMode.CLOSED,
                 )
                 isLoaded -> ProfileLoad.Missing
                 else -> ProfileLoad.Loading

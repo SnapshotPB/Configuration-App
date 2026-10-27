@@ -50,6 +50,7 @@ import com.snapshotpb.configuration.common.composable.markerProfileFieldUnitSymb
 import com.snapshotpb.configuration.common.composable.textFieldName
 import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -76,6 +77,7 @@ import com.snapshotpb.core.resources.profile_label_name_details
 import com.snapshotpb.core.resources.profile_label_ramping_custom_multiplier_details
 import com.snapshotpb.core.resources.profile_label_ramping_custom_rof_minimum_details
 import com.snapshotpb.core.resources.profile_label_ramping_custom_trigger_pulls_details
+import com.snapshotpb.core.resources.profile_label_sear_solenoid_delay_details
 import com.snapshotpb.core.resources.profile_label_sear_solenoid_dwell_details
 import com.snapshotpb.core.resources.profile_label_trigger_debounce_off_details
 import com.snapshotpb.core.resources.profile_label_trigger_debounce_on_details
@@ -89,6 +91,7 @@ import com.snapshotpb.core.resources.profile_section_ramping
 import com.snapshotpb.core.resources.profile_section_timing
 import com.snapshotpb.core.resources.profile_section_timing_overview
 import com.snapshotpb.core.resources.profile_section_timing_overview_description
+import com.snapshotpb.core.resources.profile_section_timing_overview_description_open_bolt
 import com.snapshotpb.core.resources.profile_section_trigger
 import com.snapshotpb.core.resources.profile_settings_title
 import org.jetbrains.compose.resources.stringResource
@@ -120,6 +123,7 @@ fun ProfileScreen(
     // later store writes from clobbering in-progress edits.
     val profile: MarkerProfile? = viewModel.draft
     var boardProfile: MarkerProfile? by remember { mutableStateOf(null) }
+    var boltMode: MarkerBoltMode by remember { mutableStateOf(MarkerBoltMode.CLOSED) }
     val photoPath: String by viewModel.devicePhotoPath().collectAsState("")
     val profileLoad: ProfileLoad by viewModel.profileLoad().collectAsState(ProfileLoad.Loading)
     val focusManager = LocalFocusManager.current
@@ -131,6 +135,7 @@ fun ProfileScreen(
         // result or a conflict resolution that lands while the screen is open moves the "unsaved"
         // badges with it instead of comparing the draft against a stale baseline.
         boardProfile = found.boardProfile
+        boltMode = found.boltMode
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -198,7 +203,7 @@ fun ProfileScreen(
 
                         Space(16.dp)
 
-                        TimingOverviewSection(currentProfile)
+                        TimingOverviewSection(currentProfile, boltMode)
                     }
 
                     // Right Pane: Form Controls (Scrollable)
@@ -220,6 +225,7 @@ fun ProfileScreen(
                         BasicFunctionSection(
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
+                            boltMode = boltMode,
                             onProfileChange = onProfileChange,
                         )
 
@@ -228,6 +234,7 @@ fun ProfileScreen(
                         EyeSection(
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
+                            boltMode = boltMode,
                             onProfileChange = onProfileChange,
                         )
 
@@ -238,6 +245,7 @@ fun ProfileScreen(
                             group = MarkerProfileGroup.TIMING,
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
+                            boltMode = boltMode,
                             onProfileChange = onProfileChange,
                         )
 
@@ -248,12 +256,14 @@ fun ProfileScreen(
                             group = MarkerProfileGroup.TRIGGER,
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
+                            boltMode = boltMode,
                             onProfileChange = onProfileChange,
                         )
 
                         RampingSection(
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
+                            boltMode = boltMode,
                             onProfileChange = onProfileChange,
                         )
 
@@ -276,6 +286,7 @@ fun ProfileScreen(
                     BasicFunctionSection(
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
+                        boltMode = boltMode,
                         onProfileChange = onProfileChange,
                     )
 
@@ -284,12 +295,13 @@ fun ProfileScreen(
                     EyeSection(
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
+                        boltMode = boltMode,
                         onProfileChange = onProfileChange,
                     )
 
                     ConfigurationSpace()
 
-                    TimingOverviewSection(currentProfile)
+                    TimingOverviewSection(currentProfile, boltMode)
 
                     ConfigurationSpace()
 
@@ -298,6 +310,7 @@ fun ProfileScreen(
                         group = MarkerProfileGroup.TIMING,
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
+                        boltMode = boltMode,
                         onProfileChange = onProfileChange,
                     )
 
@@ -308,12 +321,14 @@ fun ProfileScreen(
                         group = MarkerProfileGroup.TRIGGER,
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
+                        boltMode = boltMode,
                         onProfileChange = onProfileChange,
                     )
 
                     RampingSection(
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
+                        boltMode = boltMode,
                         onProfileChange = onProfileChange,
                     )
 
@@ -333,28 +348,35 @@ fun ProfileScreen(
  * own pane, portrait places it inline between the eye and timing sections.
  */
 @Composable
-private fun TimingOverviewSection(currentProfile: MarkerProfile) {
+private fun TimingOverviewSection(currentProfile: MarkerProfile, boltMode: MarkerBoltMode) {
     ConfigurationSection(stringResource(Res.string.profile_section_timing_overview)) {
         Column {
             Text(
-                text = stringResource(Res.string.profile_section_timing_overview_description),
+                text = stringResource(
+                    if (currentProfile.usesOpenBolt(boltMode)) {
+                        Res.string.profile_section_timing_overview_description_open_bolt
+                    } else {
+                        Res.string.profile_section_timing_overview_description
+                    },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Space(8.dp)
-            ProfileTimingDiagram(profile = currentProfile)
+            ProfileTimingDiagram(profile = currentProfile, boltMode = boltMode)
         }
     }
 }
 
 /**
- * Name, fire mode and the numeric fields of the basic group (the fire-rate cap). The table does
+ * Name, fire mode, and the numeric fields of the basic group (the fire-rate cap). The table does
  * not show the cap in the NXL 2026 fire mode, because the league sets the cap of that mode.
  */
 @Composable
 private fun BasicFunctionSection(
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
 ) {
     val isNameDiverged = boardProfile?.let { currentProfile.name != it.name } ?: false
@@ -398,6 +420,7 @@ private fun BasicFunctionSection(
             group = MarkerProfileGroup.BASIC,
             currentProfile = currentProfile,
             boardProfile = boardProfile,
+            boltMode = boltMode,
             onProfileChange = onProfileChange,
             spaceBeforeFirst = true,
         )
@@ -409,6 +432,7 @@ private fun BasicFunctionSection(
 private fun EyeSection(
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
 ) {
     val isEyeModeDiverged = boardProfile?.let { currentProfile.eyeMode != it.eyeMode } ?: false
@@ -428,6 +452,7 @@ private fun EyeSection(
             group = MarkerProfileGroup.EYE,
             currentProfile = currentProfile,
             boardProfile = boardProfile,
+            boltMode = boltMode,
             onProfileChange = onProfileChange,
             spaceBeforeFirst = true,
         )
@@ -442,9 +467,10 @@ private fun EyeSection(
 private fun RampingSection(
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
 ) {
-    if (fieldsOf(MarkerProfileGroup.RAMPING).none { it.isShownFor(currentProfile) }) return
+    if (fieldsOf(MarkerProfileGroup.RAMPING).none { it.isShownFor(currentProfile, boltMode) }) return
 
     ConfigurationSpace()
 
@@ -453,6 +479,7 @@ private fun RampingSection(
         group = MarkerProfileGroup.RAMPING,
         currentProfile = currentProfile,
         boardProfile = boardProfile,
+        boltMode = boltMode,
         onProfileChange = onProfileChange,
     )
 }
@@ -464,6 +491,7 @@ private fun FieldGroupSection(
     group: MarkerProfileGroup,
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
 ) {
     ConfigurationSection(title) {
@@ -471,6 +499,7 @@ private fun FieldGroupSection(
             group = group,
             currentProfile = currentProfile,
             boardProfile = boardProfile,
+            boltMode = boltMode,
             onProfileChange = onProfileChange,
             spaceBeforeFirst = false,
         )
@@ -487,11 +516,12 @@ private fun GroupFields(
     group: MarkerProfileGroup,
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
     spaceBeforeFirst: Boolean,
 ) {
     fieldsOf(group)
-        .filter { it.isShownFor(currentProfile) }
+        .filter { it.isShownFor(currentProfile, boltMode) }
         .forEachIndexed { index, field ->
             // Keyed on the field, so each text draft stays with its own field when a field
             // above it shows or hides.
@@ -557,6 +587,7 @@ private fun markerProfileFieldDescription(field: MarkerProfileField): String = s
         MarkerProfileField.COCKING_SOLENOID_TIMEOUT ->
             Res.string.profile_label_cocking_solenoid_timeout_details
         MarkerProfileField.SEAR_SOLENOID_DWELL -> Res.string.profile_label_sear_solenoid_dwell_details
+        MarkerProfileField.SEAR_SOLENOID_DELAY -> Res.string.profile_label_sear_solenoid_delay_details
         MarkerProfileField.COCKING_SOLENOID_DELAY -> Res.string.profile_label_cocking_solenoid_delay_details
         MarkerProfileField.COCKING_SOLENOID_DWELL_OPEN ->
             Res.string.profile_label_cocking_solenoid_dwell_open_details

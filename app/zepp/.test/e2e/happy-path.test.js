@@ -37,10 +37,11 @@ describe('scan -> connect -> OTS read -> DeviceStore', () => {
     expect(stored.lockoutEnabled).toBe(false);
     expect(stored.boardModel).toBe('AUTOCOCKER');
     expect(stored.supportedProfileCount).toBe(4);
-    // Board-level display settings, read from DeviceConfig.
+    // Board-level settings, read from DeviceConfig.
     expect(stored.language).toBe('EN');
     expect(stored.screenBrightness).toBe('DEFAULT');
     expect(stored.screenOffDelay).toBe(5);
+    expect(stored.boltMode).toBe('CLOSED');
 
     expect(stored.knownProfiles).toHaveLength(2);
     expect(stored.knownProfiles[0]).toMatchObject({
@@ -54,6 +55,7 @@ describe('scan -> connect -> OTS read -> DeviceStore', () => {
       eyeThreshold: 60,
       eyeDebounce: 8,
       searSolenoidDwell: 55,
+      searSolenoidDelay: 60,
       cockingSolenoidDelay: 15,
       cockingSolenoidDwellOpen: 25,
       cockingSolenoidDwellClosed: 35,

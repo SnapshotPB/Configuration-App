@@ -30,6 +30,7 @@ import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
 import com.snapshotpb.configuration.bluetooth.resolveBoardId
 import com.snapshotpb.configuration.common.composable.boardLanguageLabel
 import com.snapshotpb.configuration.common.composable.boardScreenBrightnessLabel
+import com.snapshotpb.configuration.common.composable.displayName
 import com.snapshotpb.configuration.common.composable.markerEyeModeLabel
 import com.snapshotpb.configuration.common.composable.markerFireModeLabel
 import com.snapshotpb.configuration.common.screen.delegate.ConflictChoice
@@ -42,6 +43,7 @@ import com.snapshotpb.configuration.demo.WearDemoBoard
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.DiscoveredDevice
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfileField
@@ -59,6 +61,7 @@ import com.snapshotpb.configuration.screen.screenOffDelayOptions
 import com.snapshotpb.configuration.store.DeviceStore
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.board_screen_off_delay_seconds
+import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_label
 import com.snapshotpb.core.resources.configure_device_screen_brightness_label
 import com.snapshotpb.core.resources.configure_device_screen_language_label
 import com.snapshotpb.core.resources.configure_device_screen_off_delay_label
@@ -93,6 +96,9 @@ enum class WearScreen {
     /** The fire mode list of the active profile. Back goes to [ProfileEdit]. */
     FireModeSelection,
 
+    /** The bolt mode list of the board. Back goes to [DeviceConfig]. */
+    BoltModeSelection,
+
     /** The eye mode list of the active profile. Back goes to [ProfileEdit]. */
     EyeModeSelection,
 }
@@ -107,6 +113,7 @@ internal val WearScreen.parent: WearScreen?
         WearScreen.DeviceConfig -> WearScreen.DeviceList
 
         WearScreen.ProfileSelection,
+        WearScreen.BoltModeSelection,
         WearScreen.LanguageSelection,
         WearScreen.BrightnessSelection,
         WearScreen.ScreenOffDelaySelection,
@@ -135,6 +142,7 @@ internal val WearScreen.showsOpenDevice: Boolean
         WearScreen.ProfileEdit,
         WearScreen.ProfileFieldEdit,
         WearScreen.FireModeSelection,
+        WearScreen.BoltModeSelection,
         WearScreen.EyeModeSelection -> true
     }
 
@@ -161,6 +169,7 @@ internal fun WearScreen.fallback(
 
     WearScreen.DeviceConfig,
     WearScreen.ProfileSelection,
+    WearScreen.BoltModeSelection,
     WearScreen.LanguageSelection,
     WearScreen.BrightnessSelection,
     WearScreen.ScreenOffDelaySelection -> if (hasDevice) null else WearScreen.DeviceList
@@ -293,11 +302,14 @@ fun WearApp(
         hasDevice = currentDevice != null,
         hasConflict = currentConflict != null,
         hasActiveProfile = activeProfile != null,
-        // A phone push can change the fire mode or the eye mode while a stepper is open. When
-        // the table then hides the field, the stepper closes: the board does not read a field
-        // that the table hides for the mode, so the watch must not show it as adjustable.
+        // A phone push can change the fire mode, the bolt mode or the eye mode while a stepper is
+        // open. When the table then hides the field, the stepper closes: the board does not read a
+        // field that the table hides for the mode, so the watch must not show it as adjustable.
         hasEditingField = editingField != null &&
-            (activeProfile == null || editingField.isShownFor(activeProfile)),
+            (activeProfile == null || editingField.isShownFor(
+                activeProfile,
+                currentDevice.boltMode ?: MarkerBoltMode.CLOSED,
+            )),
     )
     LaunchedEffect(fallbackScreen) {
         if (fallbackScreen != null) currentScreen = fallbackScreen
@@ -469,6 +481,9 @@ fun WearApp(
                     onTuneProfileTriggered = {
                         currentScreen = WearScreen.ProfileEdit
                     },
+                    onSelectBoltModeTriggered = {
+                        currentScreen = WearScreen.BoltModeSelection
+                    },
                     onSelectLanguageTriggered = {
                         currentScreen = WearScreen.LanguageSelection
                     },
@@ -605,6 +620,7 @@ fun WearApp(
                 ProfileFieldStepperScreen(
                     profile = profile,
                     field = field,
+                    boltMode = device.boltMode ?: MarkerBoltMode.CLOSED,
                     onCommit = { value ->
                         deviceViewModelDelegate.updateProfileField(device.id.toString(), profile.id, field, value)
                     },
@@ -623,6 +639,23 @@ fun WearApp(
                     onSelect = { fireMode ->
                         deviceViewModelDelegate.updateProfile(device.id.toString(), profile.id) {
                             it.copy(fireMode = fireMode)
+                        }
+                        goBack()
+                    },
+                    onBack = { goBack() }
+                )
+            }
+
+            WearScreen.BoltModeSelection -> {
+                val device = currentDevice ?: return@content
+                BoardSettingSelectionScreen(
+                    title = stringResource(Res.string.configure_device_screen_bolt_mode_label),
+                    options = MarkerBoltMode.selectable,
+                    selected = device.boltMode,
+                    optionLabel = { it.displayName() },
+                    onSelect = { boltMode ->
+                        deviceViewModelDelegate.updateBoardSettings(device.id.toString()) {
+                            it.copy(boltMode = boltMode)
                         }
                         goBack()
                     },

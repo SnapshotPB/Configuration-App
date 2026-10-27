@@ -104,6 +104,7 @@ Page({
     this.valueWidgets.push(valueText);
 
     if (def.affectsMaxBps) {
+      const boltMode = (this.device && this.device.boltMode) || 'CLOSED';
       const bpsLine = createWidget(widget.TEXT, {
         x: px(60),
         y: px(160),
@@ -113,7 +114,7 @@ Page({
         text_size: px(18),
         align_h: align.CENTER_H,
         align_v: align.CENTER_V,
-        text: `Max BPS: ${maxBpsForTiming(this.profile)}`
+        text: `Max BPS: ${maxBpsForTiming(this.profile, boltMode)}`
       });
       this.valueWidgets.push(bpsLine);
     }

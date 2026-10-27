@@ -371,6 +371,22 @@ export const snapshotpb = $root.snapshotpb = (() => {
             return values;
         })();
 
+        /**
+         * BoltMode enum.
+         * @name snapshotpb.v1.BoltMode
+         * @enum {number}
+         * @property {number} BOLT_MODE_UNSPECIFIED=0 BOLT_MODE_UNSPECIFIED value
+         * @property {number} BOLT_MODE_CLOSED=1 BOLT_MODE_CLOSED value
+         * @property {number} BOLT_MODE_OPEN=2 BOLT_MODE_OPEN value
+         */
+        v1.BoltMode = (function() {
+            const valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "BOLT_MODE_UNSPECIFIED"] = 0;
+            values[valuesById[1] = "BOLT_MODE_CLOSED"] = 1;
+            values[valuesById[2] = "BOLT_MODE_OPEN"] = 2;
+            return values;
+        })();
+
         v1.DeviceConfig = (function() {
 
             /**
@@ -384,6 +400,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
              * @property {snapshotpb.v1.ScreenBrightness|null} [screenBrightness] DeviceConfig screenBrightness
              * @property {number|null} [screenOffDelay] DeviceConfig screenOffDelay
              * @property {snapshotpb.v1.BatteryType|null} [batteryType] DeviceConfig batteryType
+             * @property {snapshotpb.v1.BoltMode|null} [boltMode] DeviceConfig boltMode
              */
 
             /**
@@ -458,6 +475,14 @@ export const snapshotpb = $root.snapshotpb = (() => {
             DeviceConfig.prototype.batteryType = 0;
 
             /**
+             * DeviceConfig boltMode.
+             * @member {snapshotpb.v1.BoltMode} boltMode
+             * @memberof snapshotpb.v1.DeviceConfig
+             * @instance
+             */
+            DeviceConfig.prototype.boltMode = 0;
+
+            /**
              * Creates a new DeviceConfig instance using the specified properties.
              * @function create
              * @memberof snapshotpb.v1.DeviceConfig
@@ -499,6 +524,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     writer.uint32(/* id 6, wireType 0 =*/48).uint32(message.screenOffDelay);
                 if (message.batteryType != null && Object.hasOwnProperty.call(message, "batteryType"))
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batteryType);
+                if (message.boltMode != null && Object.hasOwnProperty.call(message, "boltMode"))
+                    writer.uint32(/* id 8, wireType 0 =*/64).int32(message.boltMode);
                 return writer;
             };
 
@@ -575,6 +602,10 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         }
                     case 7: {
                             message.batteryType = reader.int32();
+                            break;
+                        }
+                    case 8: {
+                            message.boltMode = reader.int32();
                             break;
                         }
                     default:
@@ -660,6 +691,15 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     switch (message.batteryType) {
                     default:
                         return "batteryType: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                        break;
+                    }
+                if (message.boltMode != null && Object.hasOwnProperty.call(message, "boltMode"))
+                    switch (message.boltMode) {
+                    default:
+                        return "boltMode: enum value expected";
                     case 0:
                     case 1:
                     case 2:
@@ -769,6 +809,26 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     message.batteryType = 2;
                     break;
                 }
+                switch (object.boltMode) {
+                default:
+                    if (typeof object.boltMode === "number") {
+                        message.boltMode = object.boltMode;
+                        break;
+                    }
+                    break;
+                case "BOLT_MODE_UNSPECIFIED":
+                case 0:
+                    message.boltMode = 0;
+                    break;
+                case "BOLT_MODE_CLOSED":
+                case 1:
+                    message.boltMode = 1;
+                    break;
+                case "BOLT_MODE_OPEN":
+                case 2:
+                    message.boltMode = 2;
+                    break;
+                }
                 return message;
             };
 
@@ -797,6 +857,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     object.screenBrightness = options.enums === String ? "SCREEN_BRIGHTNESS_UNSPECIFIED" : 0;
                     object.screenOffDelay = 0;
                     object.batteryType = options.enums === String ? "BATTERY_TYPE_UNSPECIFIED" : 0;
+                    object.boltMode = options.enums === String ? "BOLT_MODE_UNSPECIFIED" : 0;
                 }
                 if (message.activeProfile != null && Object.hasOwnProperty.call(message, "activeProfile"))
                     object.activeProfile = message.activeProfile;
@@ -812,6 +873,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     object.screenOffDelay = message.screenOffDelay;
                 if (message.batteryType != null && Object.hasOwnProperty.call(message, "batteryType"))
                     object.batteryType = options.enums === String ? $root.snapshotpb.v1.BatteryType[message.batteryType] === undefined ? message.batteryType : $root.snapshotpb.v1.BatteryType[message.batteryType] : message.batteryType;
+                if (message.boltMode != null && Object.hasOwnProperty.call(message, "boltMode"))
+                    object.boltMode = options.enums === String ? $root.snapshotpb.v1.BoltMode[message.boltMode] === undefined ? message.boltMode : $root.snapshotpb.v1.BoltMode[message.boltMode] : message.boltMode;
                 return object;
             };
 
@@ -1859,6 +1922,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
                  * @property {number|null} [triggerDebounceOn] AutocockerConfig triggerDebounceOn
                  * @property {number|null} [triggerDebounceOff] AutocockerConfig triggerDebounceOff
                  * @property {number|null} [cockingSolenoidTimeout] AutocockerConfig cockingSolenoidTimeout
+                 * @property {number|null} [searSolenoidDelay] AutocockerConfig searSolenoidDelay
                  */
 
                 /**
@@ -1989,6 +2053,14 @@ export const snapshotpb = $root.snapshotpb = (() => {
                 AutocockerConfig.prototype.cockingSolenoidTimeout = 0;
 
                 /**
+                 * AutocockerConfig searSolenoidDelay.
+                 * @member {number} searSolenoidDelay
+                 * @memberof snapshotpb.autococker.v1.AutocockerConfig
+                 * @instance
+                 */
+                AutocockerConfig.prototype.searSolenoidDelay = 0;
+
+                /**
                  * Creates a new AutocockerConfig instance using the specified properties.
                  * @function create
                  * @memberof snapshotpb.autococker.v1.AutocockerConfig
@@ -2044,6 +2116,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         writer.uint32(/* id 13, wireType 0 =*/104).uint32(message.triggerDebounceOff);
                     if (message.cockingSolenoidTimeout != null && Object.hasOwnProperty.call(message, "cockingSolenoidTimeout"))
                         writer.uint32(/* id 14, wireType 0 =*/112).uint32(message.cockingSolenoidTimeout);
+                    if (message.searSolenoidDelay != null && Object.hasOwnProperty.call(message, "searSolenoidDelay"))
+                        writer.uint32(/* id 15, wireType 0 =*/120).uint32(message.searSolenoidDelay);
                     return writer;
                 };
 
@@ -2150,6 +2224,10 @@ export const snapshotpb = $root.snapshotpb = (() => {
                                 message.cockingSolenoidTimeout = reader.uint32();
                                 break;
                             }
+                        case 15: {
+                                message.searSolenoidDelay = reader.uint32();
+                                break;
+                            }
                         default:
                             reader.skipType(tag & 7, long);
                             break;
@@ -2253,6 +2331,9 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     if (message.cockingSolenoidTimeout != null && Object.hasOwnProperty.call(message, "cockingSolenoidTimeout"))
                         if (!$util.isInteger(message.cockingSolenoidTimeout))
                             return "cockingSolenoidTimeout: integer expected";
+                    if (message.searSolenoidDelay != null && Object.hasOwnProperty.call(message, "searSolenoidDelay"))
+                        if (!$util.isInteger(message.searSolenoidDelay))
+                            return "searSolenoidDelay: integer expected";
                     return null;
                 };
 
@@ -2358,6 +2439,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         message.triggerDebounceOff = object.triggerDebounceOff >>> 0;
                     if (object.cockingSolenoidTimeout != null)
                         message.cockingSolenoidTimeout = object.cockingSolenoidTimeout >>> 0;
+                    if (object.searSolenoidDelay != null)
+                        message.searSolenoidDelay = object.searSolenoidDelay >>> 0;
                     return message;
                 };
 
@@ -2393,6 +2476,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         object.triggerDebounceOn = 0;
                         object.triggerDebounceOff = 0;
                         object.cockingSolenoidTimeout = 0;
+                        object.searSolenoidDelay = 0;
                     }
                     if (message.fireMode != null && Object.hasOwnProperty.call(message, "fireMode"))
                         object.fireMode = options.enums === String ? $root.snapshotpb.autococker.v1.AutocockerFireMode[message.fireMode] === undefined ? message.fireMode : $root.snapshotpb.autococker.v1.AutocockerFireMode[message.fireMode] : message.fireMode;
@@ -2422,6 +2506,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         object.triggerDebounceOff = message.triggerDebounceOff;
                     if (message.cockingSolenoidTimeout != null && Object.hasOwnProperty.call(message, "cockingSolenoidTimeout"))
                         object.cockingSolenoidTimeout = message.cockingSolenoidTimeout;
+                    if (message.searSolenoidDelay != null && Object.hasOwnProperty.call(message, "searSolenoidDelay"))
+                        object.searSolenoidDelay = message.searSolenoidDelay;
                     return object;
                 };
 

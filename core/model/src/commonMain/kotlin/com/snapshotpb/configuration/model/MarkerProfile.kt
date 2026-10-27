@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.model
 import com.snapshotpb.configuration.common.util.format
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.uuid.Uuid
 
@@ -77,8 +78,16 @@ data class MarkerProfile(
     val searSolenoidDwell: Int = 45,
 
     /**
+     * The amount of time in tenths of a millisecond the sear solenoid waits after a trigger pull
+     * before energizing when [usesOpenBolt] is true. Ignored when [usesOpenBolt] is false, where
+     * the sear solenoid energizes immediately after [triggerDebounceOn].
+     */
+    val searSolenoidDelay: Int = 60,
+
+    /**
      * The amount of time in tenths of a millisecond the cocking solenoid waits after a trigger pull
-     * before energizing.
+     * before energizing when [usesOpenBolt] is false. Ignored when [usesOpenBolt] is true, where
+     * the cocking solenoid energizes immediately after [triggerDebounceOn].
      */
     val cockingSolenoidDelay: Int = 60,
 
@@ -164,6 +173,16 @@ data class MarkerProfile(
     val sourceSlot: Int? = null,
 ) {
     /**
+     * True when the board runs the open-bolt firing order for this profile under [boltMode]:
+     * [boltMode] is [MarkerBoltMode.OPEN] and [fireMode] uses a timed cocking cycle
+     * ([MarkerFireMode.usesBoltMode]). In [MarkerFireMode.MECHANICAL],
+     * [MarkerFireMode.TRIGGER_ONLY], and [MarkerFireMode.UNKNOWN], open-bolt mode does not apply
+     * even if the device's [boltMode] is [MarkerBoltMode.OPEN].
+     */
+    fun usesOpenBolt(boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED): Boolean =
+        boltMode.isOpenBolt && fireMode.usesBoltMode
+
+    /**
      * True when the board closes the breach on the eye, not on [cockingSolenoidDwellOpen].
      *
      * The firmware latches this decision when the cocking phase starts
@@ -205,12 +224,22 @@ data class MarkerProfile(
         get() = if (eyeClosesBreach) effectiveCockingTimeout else cockingSolenoidDwellOpen
 
     /**
-     * The firing cycle, in tenths of a millisecond: the cocking delay, the shortest breach-open
-     * phase ([cockingOpenTenthsMs]) and the closed dwell. The firmware starts the cycle when the
-     * trigger debounce-on time ends, so the cycle does not include that time.
+     * The firing cycle, in tenths of a millisecond. When [usesOpenBolt] is false, this is the
+     * cocking delay, the shortest breach-open phase ([cockingOpenTenthsMs]), and the closed dwell.
+     * When [usesOpenBolt] is true, the cocking open/closed cycle and the sear delay/dwell run in
+     * parallel starting at [triggerDebounceOn], so whichever finishes last bounds the cycle. The
+     * firmware starts the cycle when the trigger debounce-on time ends, so the cycle does not
+     * include that time.
      */
-    val cycleTenthsMs: Int
-        get() = cockingSolenoidDelay + cockingOpenTenthsMs + cockingSolenoidDwellClosed
+    fun cycleTenthsMs(boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED): Int =
+        if (usesOpenBolt(boltMode)) {
+            max(
+                cockingOpenTenthsMs + cockingSolenoidDwellClosed,
+                searSolenoidDelay + searSolenoidDwell,
+            )
+        } else {
+            cockingSolenoidDelay + cockingOpenTenthsMs + cockingSolenoidDwellClosed
+        }
 
     /**
      * The fire-rate cap that the board applies, in tenths of a ball per second. `0` = uncapped.
@@ -249,8 +278,8 @@ data class MarkerProfile(
      * The cap is the league limit in the NXL 2026 fire mode, and the cap of the user in each other
      * mode.
      */
-    fun maxBpsForTiming(): String {
-        val cycle = cycleTenthsMs
+    fun maxBpsForTiming(boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED): String {
+        val cycle = cycleTenthsMs(boltMode)
         val timingBps = if (cycle > 0) TENTHS_MS_PER_SECOND / cycle else 0.0
         // A cap <= 0 means "uncapped": show the timing-limited rate rather than a literal 0.
         val capTenths = effectiveFireRateCap
@@ -275,6 +304,7 @@ data class MarkerProfile(
         eyeThreshold = if (eyeThreshold <= 0) EYE_THRESHOLD_DEFAULT else eyeThreshold.coerceIn(0, EYE_THRESHOLD_MAX),
         eyeDebounce = eyeDebounce.coerceIn(0, TENTHS_MS_MAX),
         searSolenoidDwell = searSolenoidDwell.coerceIn(0, TENTHS_MS_MAX),
+        searSolenoidDelay = searSolenoidDelay.coerceIn(0, TENTHS_MS_MAX),
         cockingSolenoidDelay = cockingSolenoidDelay.coerceIn(0, TENTHS_MS_MAX),
         cockingSolenoidDwellOpen = cockingSolenoidDwellOpen.coerceIn(0, TENTHS_MS_MAX),
         cockingSolenoidDwellClosed = cockingSolenoidDwellClosed.coerceIn(0, TENTHS_MS_MAX),

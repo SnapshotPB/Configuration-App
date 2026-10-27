@@ -39,7 +39,8 @@
     <string name="profile_section_basic_function">Fonction de base</string>
     <string name="profile_section_eye">Œil</string>
     <string name="profile_section_timing_overview">Aperçu du chronométrage</string>
-    <string name="profile_section_timing_overview_description">Visualise un cycle de tir à partir du front de la détente. La carte valide la pression après le temps d’anti-rebond à l’activation, puis déclenche l’impulsion du solénoïde de sear et la séquence du solénoïde d’armement (délai, marche, arrêt). Le temps d’anti-rebond à la désactivation suit le relâchement.</string>
+    <string name="profile_section_timing_overview_description">Visualise le profil de chronométrage des configurations de la détente, du sear et de l’armement. D’abord, le capteur de la détente doit respecter le temps d’anti-rebond. Ensuite, le sear est déclenché et, après le délai d’armement, le solénoïde d’armement est engagé.</string>
+    <string name="profile_section_timing_overview_description_open_bolt">Visualise le profil de chronométrage des configurations de la détente, de l’armement et du sear en mode culasse ouverte. D’abord, le capteur de la détente doit respecter le temps d’anti-rebond. Ensuite, le solénoïde d’armement est engagé et, après le délai du sear, le sear est déclenché.</string>
     <string name="profile_section_timing">Chronométrage</string>
     <!-- Profile Timing Diagram -->
     <string name="profile_timing_diagram_lane_trigger">Détente</string>
@@ -65,6 +66,10 @@
     <string name="profile_fire_mode_full_auto">Automatique</string>
     <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
     <string name="profile_fire_mode_custom_ramping">Ramping personnalisé</string>
+    <string name="profile_label_bolt_mode">Mode de culasse</string>
+    <string name="profile_label_bolt_mode_details">Ordre de tir du marqueur&#160;: la culasse fermée déclenche d’abord le solénoïde de sear, tandis que la culasse ouverte déclenche d’abord le solénoïde d’armement.</string>
+    <string name="profile_bolt_mode_closed">Culasse fermée</string>
+    <string name="profile_bolt_mode_open">Culasse ouverte</string>
     <string name="profile_label_fire_rate_cap">Limite de cadence</string>
     <string name="profile_label_fire_rate_cap_details">Cadence de tir maximale en billes par seconde. Le temps de maintien fermé du solénoïde d’armement augmente si la cadence est inférieure à ce que permet le cycle de chronométrage. Mettez 0 pour ne pas limiter.</string>
     <string name="profile_label_eye_mode">Mode œil</string>
@@ -81,6 +86,8 @@
     <string name="profile_label_eye_debounce_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel l’œil doit rester sous le seuil pour confirmer qu’une bille est dans la chambre.</string>
     <string name="profile_label_sear_solenoid_dwell">Maintien du solénoïde de sear</string>
     <string name="profile_label_sear_solenoid_dwell_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde de sear est alimenté durant le cycle de tir.</string>
+    <string name="profile_label_sear_solenoid_delay">Délai du solénoïde de sear</string>
+    <string name="profile_label_sear_solenoid_delay_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde de sear attend après une pression sur la détente avant d’être alimenté en mode culasse ouverte.</string>
     <string name="profile_label_cocking_solenoid_delay">Délai du solénoïde d’armement</string>
     <string name="profile_label_cocking_solenoid_delay_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde d’armement attend après une pression sur la détente avant d’être alimenté.</string>
     <string name="profile_label_cocking_solenoid_dwell_open">Maintien ouvert du solénoïde d’armement</string>
@@ -172,6 +179,9 @@
     <string name="grip_frame_e1">Cadre E1</string>
     <string name="grip_frame_e2">Cadre E2</string>
     <string name="grip_frame_86">Cadre 86</string>
+    <string name="configure_device_screen_bolt_mode_label">Mode de culasse</string>
+    <string name="configure_device_screen_bolt_mode_details">Ordre de tir du marqueur&#160;: la culasse fermée déclenche d’abord le solénoïde de sear, tandis que la culasse ouverte déclenche d’abord le solénoïde d’armement.</string>
+    <string name="configure_device_screen_bolt_mode_unavailable">La carte n’a signalé aucun mode de culasse. Connectez-vous à la carte ou mettez à jour son firmware.</string>
     <string name="configure_device_screen_save_button">Enregistrer</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icône Bluetooth</string>

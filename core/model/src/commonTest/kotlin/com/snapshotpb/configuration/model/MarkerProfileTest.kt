@@ -10,9 +10,13 @@ class MarkerProfileTest {
 
     private fun profile(
         name: String = "Semi",
+        fireMode: MarkerFireMode = MarkerFireMode.SEMI,
         fireRateCap: Int = FIRE_RATE_CAP_DEFAULT,
         eyeThreshold: Int = EYE_THRESHOLD_DEFAULT,
         eyeDebounce: Int = 20,
+        searSolenoidDwell: Int = 45,
+        searSolenoidDelay: Int = 60,
+        cockingSolenoidDelay: Int = 60,
         triggerDebounceOn: Int = TRIGGER_DEBOUNCE_DEFAULT,
         triggerDebounceOff: Int = TRIGGER_DEBOUNCE_DEFAULT,
         cockingSolenoidTimeout: Int = COCKING_TIMEOUT_DEFAULT,
@@ -22,9 +26,13 @@ class MarkerProfileTest {
     ) = MarkerProfile(
         id = id,
         name = name,
+        fireMode = fireMode,
         fireRateCap = fireRateCap,
         eyeThreshold = eyeThreshold,
         eyeDebounce = eyeDebounce,
+        searSolenoidDwell = searSolenoidDwell,
+        searSolenoidDelay = searSolenoidDelay,
+        cockingSolenoidDelay = cockingSolenoidDelay,
         triggerDebounceOn = triggerDebounceOn,
         triggerDebounceOff = triggerDebounceOff,
         cockingSolenoidTimeout = cockingSolenoidTimeout,
@@ -107,8 +115,13 @@ class MarkerProfileTest {
 
     @Test
     fun clamp_timingFieldsBoundToTenthsMax() {
-        val clamped = profile(eyeDebounce = 200_000).clampedToFirmwareRanges()
+        val clamped = profile(
+            eyeDebounce = 200_000,
+            searSolenoidDelay = 200_000,
+        ).clampedToFirmwareRanges()
         assertEquals(TENTHS_MS_MAX, clamped.eyeDebounce)
+        assertEquals(TENTHS_MS_MAX, clamped.searSolenoidDelay)
+        assertEquals(0, profile(searSolenoidDelay = -10).clampedToFirmwareRanges().searSolenoidDelay)
     }
 
     @Test
@@ -247,7 +260,7 @@ class MarkerProfileTest {
             assertEquals(false, profile.eyeClosesBreach, "$fireMode")
             assertEquals(50, profile.cockingOpenTenthsMs, "$fireMode")
             assertEquals(50, profile.cockingOpenLimitTenthsMs, "$fireMode")
-            assertEquals(410, profile.cycleTenthsMs, "$fireMode")
+            assertEquals(410, profile.cycleTenthsMs(), "$fireMode")
             assertEquals(uncappedMaxBps(fireMode, "24.4"), profile.maxBpsForTiming(), "$fireMode")
         }
     }
@@ -268,7 +281,7 @@ class MarkerProfileTest {
                 // With no ball, the anti-jam timeout closes the breach.
                 assertEquals(COCKING_TIMEOUT_DEFAULT, profile.cockingOpenLimitTenthsMs, "$eyeMode $fireMode")
                 // 60 + 20 + 300 = 380 tenths of a ms; 10000 / 380 = 26.3 BPS.
-                assertEquals(380, profile.cycleTenthsMs, "$eyeMode $fireMode")
+                assertEquals(380, profile.cycleTenthsMs(), "$eyeMode $fireMode")
                 assertEquals(uncappedMaxBps(fireMode, "26.3"), profile.maxBpsForTiming(), "$eyeMode $fireMode")
             }
         }
@@ -283,7 +296,7 @@ class MarkerProfileTest {
                 val profile = timing(eyeMode, fireMode)
                 assertEquals(false, profile.eyeClosesBreach, "$eyeMode $fireMode")
                 assertEquals(50, profile.cockingOpenTenthsMs, "$eyeMode $fireMode")
-                assertEquals(410, profile.cycleTenthsMs, "$eyeMode $fireMode")
+                assertEquals(410, profile.cycleTenthsMs(), "$eyeMode $fireMode")
             }
         }
     }
@@ -308,12 +321,104 @@ class MarkerProfileTest {
         val profile = timing(MarkerEyeMode.REFLECTIVE, eyeDebounce = 100, cockingSolenoidTimeout = 30)
         assertEquals(30, profile.cockingOpenTenthsMs)
         assertEquals(30, profile.cockingOpenLimitTenthsMs)
-        assertEquals(390, profile.cycleTenthsMs)
+        assertEquals(390, profile.cycleTenthsMs())
     }
 
     @Test
     fun eyeOn_theCapStillLimitsTheRate() {
         val capped = timing(MarkerEyeMode.REFLECTIVE).copy(fireRateCap = FIRE_RATE_CAP_DEFAULT)
         assertEquals("10.5", capped.maxBpsForTiming())
+    }
+
+    // --- Open Bolt mode & sear solenoid delay ---
+
+    @Test
+    fun usesOpenBolt_requiresOpenBoltAndACycledFireMode() {
+        val cycledModes = setOf(
+            MarkerFireMode.SEMI,
+            MarkerFireMode.FULL_AUTO,
+            MarkerFireMode.RAMPING_NXL_2026,
+            MarkerFireMode.CUSTOM_RAMPING,
+        )
+        MarkerFireMode.entries.forEach { fireMode ->
+            assertEquals(
+                fireMode in cycledModes,
+                fireMode.usesBoltMode,
+                "$fireMode usesBoltMode",
+            )
+            assertEquals(
+                false,
+                profile(fireMode = fireMode).usesOpenBolt(MarkerBoltMode.CLOSED),
+                "$fireMode CLOSED usesOpenBolt",
+            )
+            assertEquals(
+                fireMode in cycledModes,
+                profile(fireMode = fireMode).usesOpenBolt(MarkerBoltMode.OPEN),
+                "$fireMode OPEN usesOpenBolt",
+            )
+        }
+    }
+
+    @Test
+    fun openBolt_cockingSequenceLongerThanSearSequence_boundsTheCycle() {
+        // Cocking: CON(50) + COFF(300) = 350; Sear: SDEL(60) + SON(45) = 105.
+        // max(350, 105) = 350 tenths-ms; 10000 / 350 ≈ 28.6 BPS.
+        // cockingSolenoidDelay (999) is ignored in open-bolt mode.
+        val openBolt = MarkerProfile(
+            id = id,
+            name = "Open",
+            fireMode = MarkerFireMode.SEMI,
+            eyeMode = MarkerEyeMode.OFF,
+            fireRateCap = 0,
+            searSolenoidDelay = 60,
+            searSolenoidDwell = 45,
+            cockingSolenoidDelay = 999,
+            cockingSolenoidDwellOpen = 50,
+            cockingSolenoidDwellClosed = 300,
+        )
+        assertEquals(350, openBolt.cycleTenthsMs(MarkerBoltMode.OPEN))
+        assertEquals("28.6", openBolt.maxBpsForTiming(MarkerBoltMode.OPEN))
+    }
+
+    @Test
+    fun openBolt_searSequenceLongerThanCockingSequence_boundsTheCycle() {
+        // Cocking: CON(50) + COFF(300) = 350; Sear: SDEL(300) + SON(200) = 500.
+        // max(350, 500) = 500 tenths-ms; 10000 / 500 = 20.0 BPS.
+        val openBolt = MarkerProfile(
+            id = id,
+            name = "OpenSearBound",
+            fireMode = MarkerFireMode.FULL_AUTO,
+            eyeMode = MarkerEyeMode.OFF,
+            fireRateCap = 0,
+            searSolenoidDelay = 300,
+            searSolenoidDwell = 200,
+            cockingSolenoidDelay = 60,
+            cockingSolenoidDwellOpen = 50,
+            cockingSolenoidDwellClosed = 300,
+        )
+        assertEquals(500, openBolt.cycleTenthsMs(MarkerBoltMode.OPEN))
+        assertEquals("20.0", openBolt.maxBpsForTiming(MarkerBoltMode.OPEN))
+    }
+
+    @Test
+    fun closedBoltAndNonCycledModes_ignoreSearSolenoidDelay() {
+        // Even with a huge searSolenoidDelay, closed-bolt mode and non-cycled modes use
+        // cockingSolenoidDelay(60) + CON(50) + COFF(300) = 410 tenths-ms.
+        val closedSemi = timing(MarkerEyeMode.OFF, MarkerFireMode.SEMI).copy(
+            searSolenoidDelay = 5_000,
+        )
+        assertEquals(410, closedSemi.cycleTenthsMs(MarkerBoltMode.CLOSED))
+
+        listOf(
+            MarkerFireMode.MECHANICAL,
+            MarkerFireMode.TRIGGER_ONLY,
+            MarkerFireMode.UNKNOWN,
+        ).forEach { fireMode ->
+            val nonCycledOpen = timing(MarkerEyeMode.OFF, fireMode).copy(
+                searSolenoidDelay = 5_000,
+            )
+            assertEquals(false, nonCycledOpen.usesOpenBolt(MarkerBoltMode.OPEN), "$fireMode")
+            assertEquals(410, nonCycledOpen.cycleTenthsMs(MarkerBoltMode.OPEN), "$fireMode")
+        }
     }
 }

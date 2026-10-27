@@ -39,7 +39,7 @@ enum class MarkerProfileGroup {
  * The watch apps use this table for a stepper editor. It is the one source of truth: the Zepp
  * app mirrors it by hand with the same entry names, so a change here needs the same change there.
  * The fire mode and the eye mode are not in the table, because they are enum fields with their
- * own selection screens.
+ * own selection screens (and bolt mode lives at the device level).
  *
  * [min] and [max] bound the range of values the firmware keeps unchanged, so a stepper never
  * visits a value the board would replace (see [MarkerProfile.clampedToFirmwareRanges]).
@@ -59,7 +59,7 @@ enum class MarkerProfileField(
     val affectsMaxBps: Boolean,
     private val read: (MarkerProfile) -> Int,
     private val write: (MarkerProfile, Int) -> MarkerProfile,
-    private val shownFor: (MarkerProfile) -> Boolean = { true },
+    private val shownFor: (MarkerProfile, MarkerBoltMode) -> Boolean = { _, _ -> true },
 ) {
     FIRE_RATE_CAP(
         unit = MarkerProfileUnit.TENTHS_BPS,
@@ -69,7 +69,7 @@ enum class MarkerProfileField(
         affectsMaxBps = true,
         read = { it.fireRateCap },
         write = { profile, value -> profile.copy(fireRateCap = value) },
-        shownFor = { !it.fireMode.hasFixedRateCap },
+        shownFor = { profile, _ -> !profile.fireMode.hasFixedRateCap },
     ),
     EYE_THRESHOLD(
         unit = MarkerProfileUnit.PERCENT,
@@ -79,7 +79,7 @@ enum class MarkerProfileField(
         affectsMaxBps = false,
         read = { it.eyeThreshold },
         write = { profile, value -> profile.copy(eyeThreshold = value) },
-        shownFor = { it.usesEye },
+        shownFor = { profile, _ -> profile.usesEye },
     ),
     EYE_DEBOUNCE(
         unit = MarkerProfileUnit.TENTHS_MS,
@@ -89,7 +89,7 @@ enum class MarkerProfileField(
         affectsMaxBps = true,
         read = { it.eyeDebounce },
         write = { profile, value -> profile.copy(eyeDebounce = value) },
-        shownFor = { it.usesEye },
+        shownFor = { profile, _ -> profile.usesEye },
     ),
     COCKING_SOLENOID_TIMEOUT(
         unit = MarkerProfileUnit.TENTHS_MS,
@@ -100,17 +100,27 @@ enum class MarkerProfileField(
         affectsMaxBps = true,
         read = { it.cockingSolenoidTimeout },
         write = { profile, value -> profile.copy(cockingSolenoidTimeout = value) },
-        shownFor = { it.eyeClosesBreach },
+        shownFor = { profile, _ -> profile.eyeClosesBreach },
     ),
     SEAR_SOLENOID_DWELL(
         unit = MarkerProfileUnit.TENTHS_MS,
         min = 0,
         max = TENTHS_MS_MAX,
         group = MarkerProfileGroup.TIMING,
-        // The cycle time of maxBpsForTiming does not include the sear dwell.
-        affectsMaxBps = false,
+        // In open-bolt mode, searSolenoidDelay + searSolenoidDwell can bound cycleTenthsMs.
+        affectsMaxBps = true,
         read = { it.searSolenoidDwell },
         write = { profile, value -> profile.copy(searSolenoidDwell = value) },
+    ),
+    SEAR_SOLENOID_DELAY(
+        unit = MarkerProfileUnit.TENTHS_MS,
+        min = 0,
+        max = TENTHS_MS_MAX,
+        group = MarkerProfileGroup.TIMING,
+        affectsMaxBps = true,
+        read = { it.searSolenoidDelay },
+        write = { profile, value -> profile.copy(searSolenoidDelay = value) },
+        shownFor = { profile, boltMode -> profile.usesOpenBolt(boltMode) },
     ),
     COCKING_SOLENOID_DELAY(
         unit = MarkerProfileUnit.TENTHS_MS,
@@ -120,6 +130,7 @@ enum class MarkerProfileField(
         affectsMaxBps = true,
         read = { it.cockingSolenoidDelay },
         write = { profile, value -> profile.copy(cockingSolenoidDelay = value) },
+        shownFor = { profile, boltMode -> !profile.usesOpenBolt(boltMode) },
     ),
     COCKING_SOLENOID_DWELL_OPEN(
         unit = MarkerProfileUnit.TENTHS_MS,
@@ -165,7 +176,7 @@ enum class MarkerProfileField(
         affectsMaxBps = false,
         read = { it.rampingCustomMultiplier },
         write = { profile, value -> profile.copy(rampingCustomMultiplier = value) },
-        shownFor = { it.fireMode.usesCustomRamping },
+        shownFor = { profile, _ -> profile.fireMode.usesCustomRamping },
     ),
     RAMPING_CUSTOM_TRIGGER_PULLS(
         unit = MarkerProfileUnit.COUNT,
@@ -175,7 +186,7 @@ enum class MarkerProfileField(
         affectsMaxBps = false,
         read = { it.rampingCustomTriggerPulls },
         write = { profile, value -> profile.copy(rampingCustomTriggerPulls = value) },
-        shownFor = { it.fireMode.usesCustomRamping },
+        shownFor = { profile, _ -> profile.fireMode.usesCustomRamping },
     ),
     RAMPING_CUSTOM_ROF_MINIMUM(
         unit = MarkerProfileUnit.BPS,
@@ -185,7 +196,7 @@ enum class MarkerProfileField(
         affectsMaxBps = false,
         read = { it.rampingCustomROFMinimum },
         write = { profile, value -> profile.copy(rampingCustomROFMinimum = value) },
-        shownFor = { it.fireMode.usesCustomRamping },
+        shownFor = { profile, _ -> profile.fireMode.usesCustomRamping },
     ),
     ;
 
@@ -199,16 +210,22 @@ enum class MarkerProfileField(
     fun set(profile: MarkerProfile, value: Int): MarkerProfile = write(profile, value)
 
     /**
-     * Whether an editor shows this field for [profile]. The eye fields need an eye mode, and the
-     * cocking timeout also needs a fire mode with an eye-gated cocking phase.
+     * Whether an editor shows this field for [profile] under the device's [boltMode]. The eye
+     * fields need an eye mode, and the cocking timeout also needs a fire mode with an eye-gated
+     * cocking phase.
      *
-     * The two fire mode rules are the rules of the board menu. The ramping fields show only in the
-     * custom ramping mode ([MarkerFireMode.usesCustomRamping]), because no other mode reads them.
-     * The fire-rate cap does not show in the NXL 2026 mode ([MarkerFireMode.hasFixedRateCap]),
-     * because the league sets the cap of that mode. A hidden field keeps its stored value, and a
+     * The fire mode and bolt mode rules are the rules of the board menu. The ramping fields show
+     * only in the custom ramping mode ([MarkerFireMode.usesCustomRamping]), because no other mode
+     * reads them. The fire-rate cap does not show in the NXL 2026 mode
+     * ([MarkerFireMode.hasFixedRateCap]), because the league sets the cap of that mode.
+     * [SEAR_SOLENOID_DELAY] shows when [MarkerProfile.usesOpenBolt] is true and
+     * [COCKING_SOLENOID_DELAY] shows when it is false. A hidden field keeps its stored value, and a
      * write still sends it.
      */
-    fun isShownFor(profile: MarkerProfile): Boolean = shownFor(profile)
+    fun isShownFor(
+        profile: MarkerProfile,
+        boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
+    ): Boolean = shownFor(profile, boltMode)
 
     /**
      * The value after a step of [delta] from [value], held inside [min] and [max].

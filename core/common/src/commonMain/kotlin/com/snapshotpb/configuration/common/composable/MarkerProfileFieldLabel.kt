@@ -15,6 +15,7 @@ import com.snapshotpb.core.resources.profile_label_fire_rate_cap
 import com.snapshotpb.core.resources.profile_label_ramping_custom_multiplier
 import com.snapshotpb.core.resources.profile_label_ramping_custom_rof_minimum
 import com.snapshotpb.core.resources.profile_label_ramping_custom_trigger_pulls
+import com.snapshotpb.core.resources.profile_label_sear_solenoid_delay
 import com.snapshotpb.core.resources.profile_label_sear_solenoid_dwell
 import com.snapshotpb.core.resources.profile_label_trigger_debounce_off
 import com.snapshotpb.core.resources.profile_label_trigger_debounce_on
@@ -41,6 +42,7 @@ fun markerProfileFieldLabel(field: MarkerProfileField): String = stringResource(
         MarkerProfileField.EYE_DEBOUNCE -> Res.string.profile_label_eye_debounce
         MarkerProfileField.COCKING_SOLENOID_TIMEOUT -> Res.string.profile_label_cocking_solenoid_timeout
         MarkerProfileField.SEAR_SOLENOID_DWELL -> Res.string.profile_label_sear_solenoid_dwell
+        MarkerProfileField.SEAR_SOLENOID_DELAY -> Res.string.profile_label_sear_solenoid_delay
         MarkerProfileField.COCKING_SOLENOID_DELAY -> Res.string.profile_label_cocking_solenoid_delay
         MarkerProfileField.COCKING_SOLENOID_DWELL_OPEN -> Res.string.profile_label_cocking_solenoid_dwell_open
         MarkerProfileField.COCKING_SOLENOID_DWELL_CLOSED -> Res.string.profile_label_cocking_solenoid_dwell_closed

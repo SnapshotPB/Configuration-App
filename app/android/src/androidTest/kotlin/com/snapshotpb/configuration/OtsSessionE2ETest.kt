@@ -14,6 +14,8 @@ import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
 import com.snapshotpb.configuration.bluetooth.toDeviceUuid
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
+import com.snapshotpb.configuration.model.MarkerFireMode
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.engine.android.AndroidEngine
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +66,8 @@ class OtsSessionE2ETest {
         val cycles = args.getString("cycles")?.toIntOrNull() ?: DEFAULT_CYCLES
         val deviceId = (args.getString("boardAddress") ?: DEFAULT_BOARD_ADDRESS).toDeviceUuid().toString()
         val finalBootText = args.getString("finalBootText")
+        val finalBoltMode = args.getString("finalBoltMode")?.let { MarkerBoltMode.valueOf(it) }
+        val finalSearDelay = args.getString("finalSearDelay")?.toIntOrNull()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val app = instrumentation.targetContext.applicationContext as Application
         grantHeadlessScanPermissions()
@@ -109,17 +113,38 @@ class OtsSessionE2ETest {
             board = read.device
 
             val text = "AND$cycle-${System.currentTimeMillis() % 1000}".take(BOOT_TEXT_MAX)
+            val expectedBoltMode = if (cycle % 2 == 1) MarkerBoltMode.OPEN else MarkerBoltMode.CLOSED
+            val expectedSearDelay = 120 + cycle * 15
+            val updatedProfiles = read.device.knownProfiles.mapIndexed { idx, profile ->
+                if (idx == 0) {
+                    profile.copy(searSolenoidDelay = expectedSearDelay)
+                } else {
+                    profile
+                }
+            }
             val writeStart = System.currentTimeMillis()
-            val write = writeBoard(scope, writeBus, manager, deviceId, read.device.copy(bootText = text), cycle.toLong())
+            val write = writeBoard(
+                scope,
+                writeBus,
+                manager,
+                deviceId,
+                read.device.copy(bootText = text, boltMode = expectedBoltMode, knownProfiles = updatedProfiles),
+                cycle.toLong(),
+            )
             val writeMs = System.currentTimeMillis() - writeStart
-            val passed = write != null && write.error == null && write.device.bootText == text
+            val writtenFirst = write?.device?.knownProfiles?.firstOrNull()
+            val passed = write != null &&
+                write.error == null &&
+                write.device.bootText == text &&
+                write.device.boltMode == expectedBoltMode &&
+                writtenFirst?.searSolenoidDelay == expectedSearDelay
             if (passed) {
                 ok++
                 board = write.device
             }
             Log.i(
                 TAG,
-                "cycle=$cycle connect ms=$connectMs write ms=$writeMs result=${if (passed) "OK" else "FAIL"}" +
+                "cycle=$cycle connect ms=$connectMs write ms=$writeMs boltMode=$expectedBoltMode searDelay=$expectedSearDelay result=${if (passed) "OK" else "FAIL"}" +
                     (write?.error?.let { " error='${it.message}'" } ?: if (write == null) " error='no write result'" else ""),
             )
             manager.disconnect(deviceId)
@@ -130,14 +155,35 @@ class OtsSessionE2ETest {
         val start = original
         if (start != null) {
             val target = finalBootText ?: start.bootText
+            val targetBoltMode = finalBoltMode ?: start.boltMode ?: MarkerBoltMode.CLOSED
+            val targetSearDelay = finalSearDelay ?: start.knownProfiles.firstOrNull()?.searSolenoidDelay ?: 1000
+            val targetProfiles = start.knownProfiles.mapIndexed { idx, profile ->
+                if (idx == 0) {
+                    profile.copy(
+                        fireMode = MarkerFireMode.SEMI,
+                        searSolenoidDelay = targetSearDelay,
+                        cockingSolenoidDelay = 1000,
+                        searSolenoidDwell = 1000,
+                        cockingSolenoidDwellOpen = 1000,
+                        cockingSolenoidDwellClosed = 1000,
+                    )
+                } else {
+                    profile
+                }
+            }
             awaitNext(scope, readBus.results, READ_TIMEOUT_MS, isThisBoard) {
                 manager.connect(deviceId)
             }
             val restore = writeBoard(
                 scope, writeBus, manager, deviceId,
-                (board ?: start).copy(bootText = target), cycles + 1L,
+                (board ?: start).copy(bootText = target, boltMode = targetBoltMode, knownProfiles = targetProfiles), cycles + 1L,
             )
-            restored = restore != null && restore.error == null && restore.device.bootText == target
+            val restoredFirst = restore?.device?.knownProfiles?.firstOrNull()
+            restored = restore != null &&
+                restore.error == null &&
+                restore.device.bootText == target &&
+                restore.device.boltMode == targetBoltMode &&
+                restoredFirst?.searSolenoidDelay == targetSearDelay
             manager.disconnect(deviceId)
         }
         Log.i(TAG, "SUMMARY cycles=$cycles ok=$ok fail=${cycles - ok} restored=$restored")

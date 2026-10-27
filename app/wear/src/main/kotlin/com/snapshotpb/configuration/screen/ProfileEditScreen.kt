@@ -29,6 +29,7 @@ import com.snapshotpb.configuration.common.composable.markerFireModeLabel
 import com.snapshotpb.configuration.common.composable.markerProfileFieldLabel
 import com.snapshotpb.configuration.common.composable.markerProfileFieldValueLabel
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.core.resources.Res
@@ -49,10 +50,11 @@ const val PROFILE_FIELD_CHIP_TAG_PREFIX = "profile_field_chip_"
 /**
  * The editor of one [profile] of [device], the active one on the watch.
  *
- * The list shows the name and the max BPS first, then the fire mode, the eye mode and one chip
- * per visible numeric field. A chip shows an unsaved mark when its value differs from the copy in
- * the board state. The Save chip shows only when the watch is connected and the profile differs,
- * and it is disabled while the board reports lockout or while a write runs.
+ * The list shows the name and the max BPS first, then the fire mode, the eye mode and one chip per
+ * visible numeric field. A
+ * chip shows an unsaved mark when its value differs from the copy in the board state. The Save
+ * chip shows only when the watch is connected and the profile differs, and it is disabled while
+ * the board reports lockout or while a write runs.
  * The Discard chip restores this profile alone, so it cannot undo an unsaved board setting.
  */
 @Composable
@@ -71,7 +73,8 @@ fun ProfileEditScreen(
 ) {
     val boardProfile = device.boardState?.knownProfiles?.firstOrNull { it.id == profile.id }
     val isDiverged = device.isProfileDiverged(profile.id)
-    val visibleFields = MarkerProfileField.entries.filter { it.isShownFor(profile) }
+    val boltMode = device.boltMode ?: MarkerBoltMode.CLOSED
+    val visibleFields = MarkerProfileField.entries.filter { it.isShownFor(profile, boltMode) }
 
     ScalingLazyColumn(
         // The E2E test finds a chip by its tag as a resource id.
@@ -88,7 +91,7 @@ fun ProfileEditScreen(
 
         item {
             Text(
-                text = stringResource(Res.string.profile_marker_max_bps, profile.maxBpsForTiming()),
+                text = stringResource(Res.string.profile_marker_max_bps, profile.maxBpsForTiming(boltMode)),
                 style = MaterialTheme.typography.caption2,
             )
         }

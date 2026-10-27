@@ -49,6 +49,7 @@ internal data class AutocockerConfigWire(
     @ProtoNumber(12) val triggerDebounceOn: UInt = 0U,
     @ProtoNumber(13) val triggerDebounceOff: UInt = 0U,
     @ProtoNumber(14) val cockingSolenoidTimeout: UInt = 0U,
+    @ProtoNumber(15) val searSolenoidDelay: UInt = 0U,
 )
 
 /** Wire copy of [Profile]. Tag 2 and tag 5 are reserved in `profile.proto`. */
@@ -108,6 +109,7 @@ internal fun AutocockerConfigWire.toGenerated(): AutocockerConfig = AutocockerCo
     triggerDebounceOn = triggerDebounceOn,
     triggerDebounceOff = triggerDebounceOff,
     cockingSolenoidTimeout = cockingSolenoidTimeout,
+    searSolenoidDelay = searSolenoidDelay,
 )
 
 internal fun AutocockerConfig.toWire(): AutocockerConfigWire = AutocockerConfigWire(
@@ -125,6 +127,7 @@ internal fun AutocockerConfig.toWire(): AutocockerConfigWire = AutocockerConfigW
     triggerDebounceOn = triggerDebounceOn,
     triggerDebounceOff = triggerDebounceOff,
     cockingSolenoidTimeout = cockingSolenoidTimeout,
+    searSolenoidDelay = searSolenoidDelay,
 )
 
 internal fun ProfileWire.toGenerated(): Profile = Profile(

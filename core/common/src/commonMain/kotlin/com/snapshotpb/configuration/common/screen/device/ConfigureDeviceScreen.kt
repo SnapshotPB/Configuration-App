@@ -51,6 +51,7 @@ import com.snapshotpb.configuration.common.composable.boardScreenBrightnessLabel
 import com.snapshotpb.configuration.common.composable.divergenceFieldColors
 import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.composable.gripFrameLabel
+import com.snapshotpb.configuration.common.composable.markerBoltModeLabel
 import com.snapshotpb.configuration.common.composable.textFieldName
 import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.common.navigation.ScreenKeyFirmwareUpdate
@@ -61,6 +62,7 @@ import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
 import com.snapshotpb.configuration.model.GripFrame
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.SCREEN_OFF_DELAY_MAX
 import com.snapshotpb.configuration.model.SCREEN_OFF_DELAY_MIN
 import com.snapshotpb.configuration.model.boardValuesMatch
@@ -72,6 +74,9 @@ import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_details
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_empty
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_label
+import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_details
+import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_label
+import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_unavailable
 import com.snapshotpb.core.resources.configure_device_screen_boot_text_details
 import com.snapshotpb.core.resources.configure_device_screen_boot_text_label
 import com.snapshotpb.core.resources.configure_device_screen_brightness_details
@@ -234,6 +239,8 @@ private fun ColumnScope.ConfigureDeviceForm(
         boardState?.let { !boardValuesMatch(draft.screenOffDelay, it.screenOffDelay) } ?: false
     val isDisplayWindowDiverged =
         boardState?.let { displayWindowDiverged(draft.displayWindow, it.displayWindow) } ?: false
+    val isBoltModeDiverged =
+        boardState?.let { !boardValuesMatch(draft.boltMode, it.boltMode) } ?: false
     val knownProfiles = device?.knownProfiles.orEmpty()
 
     ActionContainer {
@@ -331,6 +338,12 @@ private fun ColumnScope.ConfigureDeviceForm(
         customChosen = draft.displayWindowCustom,
         onCustomChosenChange = { custom -> onEdit { it.copy(displayWindowCustom = custom) } },
         onValueChange = { window -> onEdit { it.copy(displayWindow = window) } },
+    )
+
+    BoltModeSection(
+        selected = draft.boltMode,
+        isDiverged = isBoltModeDiverged,
+        onSelect = { choice -> onEdit { it.copy(boltMode = choice) } },
     )
 
     LockoutStatusRow(enabled = device?.lockoutEnabled == true)
@@ -554,6 +567,43 @@ private fun DisplayWindowSection(
                     window = shownWindow,
                     onWindowChange = onValueChange,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Choice of the marker's bolt mode (closed bolt vs. open bolt). It is a board setting and not a
+ * profile setting, because the solenoid plumbing is physical to the marker. Firmware from before
+ * the field reports no bolt mode and ignores a choice, so the list shows only when a bolt mode is
+ * known.
+ */
+@Composable
+private fun BoltModeSection(
+    selected: MarkerBoltMode?,
+    isDiverged: Boolean,
+    onSelect: (MarkerBoltMode) -> Unit,
+) {
+    ActionContainer(
+        containerColor = if (isDiverged) MaterialTheme.colorScheme.tertiaryContainer else null
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+            SectionHeader(
+                label = stringResource(Res.string.configure_device_screen_bolt_mode_label),
+                description = stringResource(Res.string.configure_device_screen_bolt_mode_details),
+                isDiverged = isDiverged,
+            )
+
+            if (selected == null) {
+                UnavailableText(stringResource(Res.string.configure_device_screen_bolt_mode_unavailable))
+            } else {
+                MarkerBoltMode.entries.forEach { option ->
+                    SelectableRow(
+                        label = markerBoltModeLabel(option),
+                        selected = option == selected,
+                        onSelect = { onSelect(option) },
+                    )
+                }
             }
         }
     }

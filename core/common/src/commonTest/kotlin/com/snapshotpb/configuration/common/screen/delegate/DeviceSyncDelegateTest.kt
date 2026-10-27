@@ -17,6 +17,7 @@ import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
 import com.snapshotpb.configuration.model.GripFrame
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.Photo
@@ -80,6 +81,7 @@ class DeviceSyncDelegateTest {
         screenBrightness = device.screenBrightness,
         screenOffDelay = device.screenOffDelay,
         displayWindow = device.displayWindow,
+        boltMode = device.boltMode,
     )
 
     @Test
@@ -263,6 +265,7 @@ class DeviceSyncDelegateTest {
             screenBrightness = BoardScreenBrightness.HIGH,
             screenOffDelay = 30,
             displayWindow = GripFrame.E1.window,
+            boltMode = MarkerBoltMode.OPEN,
         )
         f.readBus.emit(DeviceReadResult(changed))
         testScheduler.advanceUntilIdle()
@@ -275,6 +278,7 @@ class DeviceSyncDelegateTest {
         assertEquals(BoardScreenBrightness.HIGH, stored.screenBrightness)
         assertEquals(30, stored.screenOffDelay)
         assertEquals(GripFrame.E1.window, stored.displayWindow)
+        assertEquals(MarkerBoltMode.OPEN, stored.boltMode)
         assertEquals(baseline(changed), stored.boardState, "the baseline records the new board state")
         assertFalse(stored.hasDiverged())
         assertEquals("My Name", stored.name, "the local name is a user label, not board state")

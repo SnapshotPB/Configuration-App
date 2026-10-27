@@ -10,6 +10,7 @@ import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.configuration.model.Photo
@@ -82,6 +83,7 @@ interface DeviceViewModelDelegate {
         screenBrightness: BoardScreenBrightness?,
         screenOffDelay: Int?,
         displayWindow: DisplayWindow?,
+        boltMode: MarkerBoltMode? = null,
     )
 
     /**
@@ -245,6 +247,7 @@ class DeviceViewModelDelegateImpl(
         screenBrightness: BoardScreenBrightness?,
         screenOffDelay: Int?,
         displayWindow: DisplayWindow?,
+        boltMode: MarkerBoltMode?,
     ) {
         val deviceUuid = Uuid.parse(deviceId)
         val deviceToUpdate = deviceStore.knownDevices.value.firstOrNull { it.id == deviceUuid }
@@ -267,7 +270,7 @@ class DeviceViewModelDelegateImpl(
                         name = updatedName,
                         bootText = updatedBootText,
                         activeProfileId = activeProfileId,
-                        // null is "no choice" for each of the four settings the board can refuse:
+                        // null is "no choice" for each of the settings the board can refuse:
                         // it must not clear a value the board reported.
                         language = language ?: device.language,
                         screenBrightness = screenBrightness ?: device.screenBrightness,
@@ -275,6 +278,7 @@ class DeviceViewModelDelegateImpl(
                         // Clamped here as well as at the write boundary, so the value the user sees
                         // after a save is the one the board will accept.
                         displayWindow = displayWindow?.clampedToPanel() ?: device.displayWindow,
+                        boltMode = boltMode ?: device.boltMode,
                         lastSeen = seenDate,
                     )
                 } else {
@@ -338,6 +342,7 @@ class DeviceViewModelDelegateImpl(
                 language = changed.language ?: device.language,
                 screenBrightness = changed.screenBrightness ?: device.screenBrightness,
                 screenOffDelay = changed.screenOffDelay ?: device.screenOffDelay,
+                boltMode = changed.boltMode ?: device.boltMode,
             )
             if (updated == device) device else updated.copy(lastSeen = seenDate)
         }
@@ -534,6 +539,11 @@ class DeviceViewModelDelegateImpl(
                             requested = requested?.displayWindow,
                             baseline = dev.boardState?.displayWindow,
                         )
+                        val baselineBoltMode = settledBoardValue(
+                            written = written.boltMode,
+                            requested = requested?.boltMode,
+                            baseline = dev.boardState?.boltMode,
+                        )
                         val baseline = dev.boardState?.copy(
                             bootText = written.bootText,
                             activeProfileId = written.activeProfileId,
@@ -542,6 +552,7 @@ class DeviceViewModelDelegateImpl(
                             screenBrightness = baselineBrightness,
                             screenOffDelay = baselineDelay,
                             displayWindow = baselineDisplayWindow,
+                            boltMode = baselineBoltMode,
                         ) ?: BoardState(
                             bootText = written.bootText,
                             activeProfileId = written.activeProfileId,
@@ -551,6 +562,7 @@ class DeviceViewModelDelegateImpl(
                             screenBrightness = baselineBrightness,
                             screenOffDelay = baselineDelay,
                             displayWindow = baselineDisplayWindow,
+                            boltMode = baselineBoltMode,
                         )
                         // Adopt the clamped values into the EDITABLE device only if it has not been
                         // edited since this write was dispatched — otherwise a concurrent in-flight
@@ -565,6 +577,7 @@ class DeviceViewModelDelegateImpl(
                                 dev.screenBrightness != requested.screenBrightness ||
                                 dev.screenOffDelay != requested.screenOffDelay ||
                                 dev.displayWindow != requested.displayWindow ||
+                                dev.boltMode != requested.boltMode ||
                                 // A change of the source slots alone is not an edit.
                                 !dev.knownProfiles.equalsIgnoringSourceSlots(requested.knownProfiles)
                             )
@@ -588,6 +601,7 @@ class DeviceViewModelDelegateImpl(
                                 screenBrightness = baselineBrightness,
                                 screenOffDelay = baselineDelay,
                                 displayWindow = baselineDisplayWindow,
+                                boltMode = baselineBoltMode,
                                 boardState = baseline,
                             )
                         }
@@ -646,6 +660,7 @@ class DeviceViewModelDelegateImpl(
                         screenBrightness = bs.screenBrightness,
                         screenOffDelay = bs.screenOffDelay,
                         displayWindow = bs.displayWindow,
+                        boltMode = bs.boltMode,
                     )
                 } else dev
             }

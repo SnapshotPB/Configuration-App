@@ -959,6 +959,7 @@ class BluetoothConnectionEngine(
                     screenBrightness = back.screenBrightness.toDomain(),
                     screenOffDelay = back.screenOffDelay.screenOffDelayToDomain(),
                     displayWindow = back.displayWindow?.toDomain(),
+                    boltMode = back.boltMode.toDomain(),
                 )
             } ?: written
             // Report the CLAMPED device (what the board stored) plus the pre-clamp requested device,
@@ -1032,6 +1033,7 @@ class BluetoothConnectionEngine(
                 screenBrightness = device.screenBrightness,
                 screenOffDelay = device.screenOffDelay,
                 displayWindow = device.displayWindow,
+                boltMode = device.boltMode,
             )
         }
 

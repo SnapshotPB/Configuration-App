@@ -7,6 +7,7 @@
     "eyeThreshold": 50,
     "eyeDebounce": 20,
     "searSolenoidDwell": 45,
+    "searSolenoidDelay": 60,
     "cockingSolenoidDelay": 60,
     "cockingSolenoidDwellOpen": 50,
     "cockingSolenoidDwellClosed": 300,

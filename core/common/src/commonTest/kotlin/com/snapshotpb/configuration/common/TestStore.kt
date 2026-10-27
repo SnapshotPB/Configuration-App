@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.common
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.store.DeviceStore
 import com.snapshotpb.configuration.store.StoreIOProvider
@@ -77,6 +78,7 @@ fun testDevice(
     screenBrightness: BoardScreenBrightness? = null,
     screenOffDelay: Int? = null,
     displayWindow: com.snapshotpb.configuration.model.DisplayWindow? = null,
+    boltMode: MarkerBoltMode? = null,
 ): Device = Device(
     id = id,
     name = name,
@@ -87,5 +89,6 @@ fun testDevice(
     screenBrightness = screenBrightness,
     screenOffDelay = screenOffDelay,
     displayWindow = displayWindow,
+    boltMode = boltMode,
     boardState = boardState,
 )

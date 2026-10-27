@@ -9,6 +9,7 @@ import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
 import com.snapshotpb.configuration.bluetooth.selectBlueFalconEngine
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothManagerState
 import kotlinx.coroutines.CoroutineScope
@@ -147,23 +148,61 @@ private suspend fun run(): Boolean = coroutineScope {
     var board = original
     for (cycle in 1..cycles) {
         val text = "E2E$cycle-${now() % 1000}".take(BOOT_TEXT_MAX)
+        val expectedBoltMode = if (cycle % 2 == 1) MarkerBoltMode.OPEN else MarkerBoltMode.CLOSED
+        val expectedSearDelay = 100 + cycle * 15
+        val updatedProfiles = board.knownProfiles.mapIndexed { idx, profile ->
+            if (idx == 0) {
+                profile.copy(searSolenoidDelay = expectedSearDelay)
+            } else {
+                profile
+            }
+        }
         val start = now()
-        val write = manager.writeBoard(scope, writeBus, deviceId, board.copy(bootText = text), requestId = cycle.toLong())
-        val writeOk = write != null && write.error == null && write.device.bootText == text
+        val write = manager.writeBoard(
+            scope,
+            writeBus,
+            deviceId,
+            board.copy(bootText = text, boltMode = expectedBoltMode, knownProfiles = updatedProfiles),
+            requestId = cycle.toLong(),
+        )
+        val writtenFirst = write?.device?.knownProfiles?.firstOrNull()
+        val writeOk = write != null &&
+            write.error == null &&
+            write.device.bootText == text &&
+            write.device.boltMode == expectedBoltMode &&
+            writtenFirst?.searSolenoidDelay == expectedSearDelay
         val read = if (writeOk) manager.readBoard(scope, readBus, deviceId) else null
-        val readOk = read?.device?.bootText == text
+        val readFirst = read?.device?.knownProfiles?.firstOrNull()
+        val readOk = read?.device?.bootText == text &&
+            read.device.boltMode == expectedBoltMode &&
+            readFirst?.searSolenoidDelay == expectedSearDelay
         if (writeOk && readOk) ok++ else fail++
         emit(
-            "cycle=$cycle bootText='$text' write=${if (writeOk) "OK" else "FAIL"} " +
+            "cycle=$cycle bootText='$text' boltMode=$expectedBoltMode searDelay=$expectedSearDelay " +
+                "write=${if (writeOk) "OK" else "FAIL"} " +
                 "readback=${if (readOk) "OK" else "FAIL"} ms=${now() - start}" +
                 (write?.error?.let { " error='${it.message}'" } ?: if (write == null) " error='no write result'" else "")
         )
         read?.device?.let { board = it }
     }
 
-    val restore = manager.writeBoard(scope, writeBus, deviceId, board.copy(bootText = original.bootText), requestId = cycles + 1L)
-    val restored = restore != null && restore.error == null &&
-        manager.readBoard(scope, readBus, deviceId)?.device?.bootText == original.bootText
+    val targetBoltMode = original.boltMode ?: MarkerBoltMode.CLOSED
+    val restore = manager.writeBoard(
+        scope,
+        writeBus,
+        deviceId,
+        board.copy(bootText = original.bootText, boltMode = targetBoltMode, knownProfiles = original.knownProfiles),
+        requestId = cycles + 1L,
+    )
+    val restoredRead = if (restore != null && restore.error == null) {
+        manager.readBoard(scope, readBus, deviceId)?.device
+    } else {
+        null
+    }
+    val restored = restoredRead != null &&
+        restoredRead.bootText == original.bootText &&
+        restoredRead.boltMode == targetBoltMode &&
+        restoredRead.knownProfiles.firstOrNull()?.searSolenoidDelay == original.knownProfiles.firstOrNull()?.searSolenoidDelay
     emit("SUMMARY cycles=$cycles ok=$ok fail=$fail restored=$restored t=${now()}")
 
     manager.disconnect(deviceId)

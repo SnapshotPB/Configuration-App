@@ -27,19 +27,23 @@ describe('write device configuration', () => {
 
     device.bootText = 'NEWBOOT';
     device.activeProfileId = h.profileUuid(1); // slot 1 == 2 on the 1-based wire
+    device.boltMode = 'OPEN';
     device.knownProfiles[0].fireRateCapTenths = 135;
     device.knownProfiles[0].fireMode = 'FULL_AUTO';
     device.knownProfiles[0].searSolenoidDwell = 72;
+    device.knownProfiles[0].searSolenoidDelay = 85;
 
     await h.writeConfiguration(h.address, device);
 
     expect(h.board.state.deviceConfig.bootText).toBe('NEWBOOT');
     expect(h.board.state.deviceConfig.activeProfile).toBe(2);
+    expect(h.board.state.deviceConfig.boltMode).toBe(2); // BOLT_MODE_OPEN
     expect(h.board.state.profiles.profiles[0].fireRateCap).toBe(135);
     expect(h.board.state.profiles.profiles[0].autococker.fireMode).toBe(
       FIRE_MODE.AUTOCOCKER_FIRE_MODE_FULL_AUTO
     );
     expect(h.board.state.profiles.profiles[0].autococker.searSolenoidDwell).toBe(72);
+    expect(h.board.state.profiles.profiles[0].autococker.searSolenoidDelay).toBe(85);
     expect(h.board.state.profiles.profiles[1].name).toBe('Ramp');
 
     // Both writable objects were applied; neither decode failed.
@@ -85,6 +89,7 @@ describe('write device configuration', () => {
     device.language = null;
     device.screenBrightness = null;
     device.screenOffDelay = null;
+    device.boltMode = null;
 
     await h.writeConfiguration(h.address, device);
 
@@ -92,6 +97,7 @@ describe('write device configuration', () => {
     expect(cfg.language).toBe(1); // LANGUAGE_EN, untouched
     expect(cfg.screenBrightness).toBe(2); // DEFAULT, untouched
     expect(cfg.screenOffDelay).toBe(5); // untouched
+    expect(cfg.boltMode).toBe(1); // BOLT_MODE_CLOSED, untouched
     // display_window has explicit message presence and the watch never sends one.
     expect(cfg.displayWindow).toEqual({ x: 0, y: 3, w: 110, h: 26 });
     // The watch has no battery setting. A write must not move a 2S LiPo board to a 9 V cell.
@@ -106,6 +112,7 @@ describe('write device configuration', () => {
     device.language = 'FR';
     device.screenBrightness = 'HIGH';
     device.screenOffDelay = 42;
+    device.boltMode = 'OPEN';
 
     await h.writeConfiguration(h.address, device);
 
@@ -113,6 +120,7 @@ describe('write device configuration', () => {
     expect(cfg.language).toBe(4); // LANGUAGE_FR
     expect(cfg.screenBrightness).toBe(3); // HIGH
     expect(cfg.screenOffDelay).toBe(42);
+    expect(cfg.boltMode).toBe(2); // BOLT_MODE_OPEN
     expect(cfg.displayWindow).toEqual({ x: 0, y: 3, w: 110, h: 26 });
   });
 
@@ -183,6 +191,7 @@ describe('write device configuration', () => {
     expect(reread.language).toBe(device.language);
     expect(reread.screenBrightness).toBe(device.screenBrightness);
     expect(reread.screenOffDelay).toBe(device.screenOffDelay);
+    expect(reread.boltMode).toBe(device.boltMode);
     expect(reread.knownProfiles).toEqual(device.knownProfiles.map(p => ({ ...p })));
   });
 
