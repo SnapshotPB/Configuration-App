@@ -18,11 +18,11 @@ android {
         applicationId = "com.snapshotpb.configuration"
         minSdk = 30 // Wear OS 3+ requires API 30 (Android 11)
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        // Driven from the resolved project version with the Wear form-factor offset
+        // Driven from the resolved root project version with the Wear form-factor offset
         // (docs/versioning-and-release-plan.md §3) so phone and watch AABs do not collide
         // on versionCode in the shared Play listing.
-        versionCode = wearVersionCode(project.version.toString())
-        versionName = project.version.toString()
+        versionCode = wearVersionCode(rootProject.version.toString())
+        versionName = rootProject.version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

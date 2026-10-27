@@ -3,7 +3,7 @@
   "component": {
     "group": "com.snapshotpb.composite",
     "module": "composite",
-    "version": "1.0-018c2923b9a3",
+    "version": "1.0-b26d6972daed",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -27,13 +27,13 @@
       },
       "files": [
         {
-          "name": "composite-1.0-018c2923b9a3.jar",
-          "url": "composite-1.0-018c2923b9a3.jar",
-          "size": 30369,
-          "sha512": "ab4971c195c5ad587442b9ef484be0e5703200545389bf5957131110da9574d29bbc62533bc5055a219161fdf53fe71a857a2fdfaf5b46734576a6ea7e78ef43",
-          "sha256": "121fa34c8d40eae155e579e61e612e79e36d51b81d78d8bd381bc6fec19ecde1",
-          "sha1": "9f731e94788e674c3aceeae583d44f0b5111a254",
-          "md5": "82de85f2cf69edefdfb791eb2465dd35"
+          "name": "composite-1.0-b26d6972daed.jar",
+          "url": "composite-1.0-b26d6972daed.jar",
+          "size": 30466,
+          "sha512": "c5ce11399cb2401bf5cf5c5a411b2404f27ca90683b7b27228f2572b80bab109e03ff73809e59dffaeb5508f2d20bc55c7c5cdb7fb4a9064539b246ce97f8f17",
+          "sha256": "548f17ea2389c15f28dc1c2da3004dc00cfec5dd50110c93fcf9c7e3b3c61864",
+          "sha1": "ebd88c507e3ffaa30ffa82983156763a4edf4f71",
+          "md5": "7d6c225d63c6f945e7a5df7465fe238a"
         }
       ]
     },
@@ -50,13 +50,13 @@
       },
       "files": [
         {
-          "name": "composite-1.0-018c2923b9a3.jar",
-          "url": "composite-1.0-018c2923b9a3.jar",
-          "size": 30369,
-          "sha512": "ab4971c195c5ad587442b9ef484be0e5703200545389bf5957131110da9574d29bbc62533bc5055a219161fdf53fe71a857a2fdfaf5b46734576a6ea7e78ef43",
-          "sha256": "121fa34c8d40eae155e579e61e612e79e36d51b81d78d8bd381bc6fec19ecde1",
-          "sha1": "9f731e94788e674c3aceeae583d44f0b5111a254",
-          "md5": "82de85f2cf69edefdfb791eb2465dd35"
+          "name": "composite-1.0-b26d6972daed.jar",
+          "url": "composite-1.0-b26d6972daed.jar",
+          "size": 30466,
+          "sha512": "c5ce11399cb2401bf5cf5c5a411b2404f27ca90683b7b27228f2572b80bab109e03ff73809e59dffaeb5508f2d20bc55c7c5cdb7fb4a9064539b246ce97f8f17",
+          "sha256": "548f17ea2389c15f28dc1c2da3004dc00cfec5dd50110c93fcf9c7e3b3c61864",
+          "sha1": "ebd88c507e3ffaa30ffa82983156763a4edf4f71",
+          "md5": "7d6c225d63c6f945e7a5df7465fe238a"
         }
       ]
     }

@@ -17,9 +17,9 @@ android {
         applicationId = "com.snapshotpb.configuration"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        // Driven from the resolved project version (docs/versioning-and-release-plan.md).
-        versionCode = projectVersionCode(project.version.toString())
-        versionName = project.version.toString()
+        // Driven from the resolved root project version (docs/versioning-and-release-plan.md).
+        versionCode = projectVersionCode(rootProject.version.toString())
+        versionName = rootProject.version.toString()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
