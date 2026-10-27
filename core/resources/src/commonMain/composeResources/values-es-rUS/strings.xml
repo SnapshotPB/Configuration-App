@@ -39,7 +39,8 @@
     <string name="profile_section_basic_function">Función básica</string>
     <string name="profile_section_eye">Ojo</string>
     <string name="profile_section_timing_overview">Resumen de temporización</string>
-    <string name="profile_section_timing_overview_description">Visualiza un ciclo de disparo desde el flanco del gatillo. La placa valida la pulsación tras el tiempo de antirrebote activado y después activa el pulso del solenoide del fiador y la secuencia del solenoide de carga (retraso, on, off). El tiempo de antirrebote desactivado sigue a la suelta.</string>
+    <string name="profile_section_timing_overview_description">Visualiza el perfil de temporización de las configuraciones del gatillo, el fiador y la carga. Primero, el sensor del gatillo debe cumplir el tiempo de antirrebote. Después se activa el fiador y, tras el retraso de carga, se acciona el solenoide de carga.</string>
+    <string name="profile_section_timing_overview_description_open_bolt">Visualiza el perfil de temporización de las configuraciones del gatillo, la carga y el fiador en modo de cerrojo abierto. Primero, el sensor del gatillo debe cumplir el tiempo de antirrebote. Después se acciona el solenoide de carga y, tras el retraso del fiador, se activa el fiador.</string>
     <string name="profile_section_timing">Temporización</string>
     <!-- Profile Timing Diagram -->
     <string name="profile_timing_diagram_lane_trigger">Gatillo</string>
@@ -65,6 +66,10 @@
     <string name="profile_fire_mode_full_auto">Automático</string>
     <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
     <string name="profile_fire_mode_custom_ramping">Ramping personalizado</string>
+    <string name="profile_label_bolt_mode">Modo de cerrojo</string>
+    <string name="profile_label_bolt_mode_details">Orden de disparo del marcador: el cerrojo cerrado activa primero el solenoide del fiador, mientras que el cerrojo abierto activa primero el solenoide de carga.</string>
+    <string name="profile_bolt_mode_closed">Cerrojo cerrado</string>
+    <string name="profile_bolt_mode_open">Cerrojo abierto</string>
     <string name="profile_label_fire_rate_cap">Límite de cadencia de tiro</string>
     <string name="profile_label_fire_rate_cap_details">Cadencia máxima de tiro en bolas por segundo. El dwell cerrado del solenoide de carga aumenta si la cadencia es menor de lo que permite el ciclo de temporización. Ponga 0 para no limitarla.</string>
     <string name="profile_label_eye_mode">Modo de ojo</string>
@@ -81,6 +86,8 @@
     <string name="profile_label_eye_debounce_details">El tiempo en milisegundos (pasos de 0,1 ms) que el ojo debe permanecer dentro del umbral para determinar que hay una bola en la recámara.</string>
     <string name="profile_label_sear_solenoid_dwell">Dwell del solenoide del fiador</string>
     <string name="profile_label_sear_solenoid_dwell_details">El tiempo en milisegundos (pasos de 0,1 ms) que el solenoide del fiador permanece activado durante el ciclo de disparo.</string>
+    <string name="profile_label_sear_solenoid_delay">Retraso del solenoide del fiador</string>
+    <string name="profile_label_sear_solenoid_delay_details">El tiempo en milisegundos (pasos de 0,1 ms) que el solenoide del fiador espera tras una pulsación del gatillo antes de activarse en modo de cerrojo abierto.</string>
     <string name="profile_label_cocking_solenoid_delay">Retraso del solenoide de carga</string>
     <string name="profile_label_cocking_solenoid_delay_details">El tiempo en milisegundos (pasos de 0,1 ms) que el solenoide de carga espera tras una pulsación del gatillo antes de activarse.</string>
     <string name="profile_label_cocking_solenoid_dwell_open">Dwell del solenoide de carga (Abierto)</string>
@@ -172,6 +179,9 @@
     <string name="grip_frame_e1">Marco E1</string>
     <string name="grip_frame_e2">Marco E2</string>
     <string name="grip_frame_86">Marco 86</string>
+    <string name="configure_device_screen_bolt_mode_label">Modo de cerrojo</string>
+    <string name="configure_device_screen_bolt_mode_details">Orden de disparo del marcador: el cerrojo cerrado activa primero el solenoide del fiador, mientras que el cerrojo abierto activa primero el solenoide de carga.</string>
+    <string name="configure_device_screen_bolt_mode_unavailable">La placa no ha indicado un modo de cerrojo. Conéctese a la placa o actualice su firmware.</string>
     <string name="configure_device_screen_save_button">Guardar</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icono de Bluetooth</string>

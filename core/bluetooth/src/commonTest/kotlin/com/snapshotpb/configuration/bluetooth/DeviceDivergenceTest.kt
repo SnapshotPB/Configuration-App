@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.boardValuesMatch
 import com.snapshotpb.configuration.model.equalsIgnoringSourceSlots
@@ -79,16 +80,20 @@ class DeviceDivergenceTest {
         val withScreen = baseDevice.copy(
             screenBrightness = BoardScreenBrightness.DEFAULT,
             screenOffDelay = 5,
+            boltMode = MarkerBoltMode.CLOSED,
             boardState = baseBoardState.copy(
                 screenBrightness = BoardScreenBrightness.DEFAULT,
                 screenOffDelay = 5,
+                boltMode = MarkerBoltMode.CLOSED,
             ),
         )
         assertFalse(withScreen.hasDiverged())
         assertTrue(withScreen.copy(screenBrightness = BoardScreenBrightness.HIGH).hasDiverged())
         assertTrue(withScreen.copy(screenOffDelay = 30).hasDiverged())
+        assertTrue(withScreen.copy(boltMode = MarkerBoltMode.OPEN).hasDiverged())
         assertFalse(baseDevice.copy(screenOffDelay = 30).hasDiverged())
-        assertFalse(withScreen.copy(screenBrightness = null, screenOffDelay = null).hasDiverged())
+        assertFalse(baseDevice.copy(boltMode = MarkerBoltMode.OPEN).hasDiverged())
+        assertFalse(withScreen.copy(screenBrightness = null, screenOffDelay = null, boltMode = null).hasDiverged())
 
         // lockoutEnabled is a read-only board fact, NOT a divergence field: changing it alone must
         // not raise an unsaved/conflict state the user cannot push back to the board.
@@ -130,6 +135,7 @@ class DeviceDivergenceTest {
             language = bs.language ?: editedDevice.language,
             screenBrightness = bs.screenBrightness ?: editedDevice.screenBrightness,
             screenOffDelay = bs.screenOffDelay ?: editedDevice.screenOffDelay,
+            boltMode = bs.boltMode ?: editedDevice.boltMode,
         )
 
         // Verify restoration
@@ -194,6 +200,7 @@ class DeviceDivergenceTest {
             boardValuesMatch(bs.language, language) &&
             boardValuesMatch(bs.screenBrightness, screenBrightness) &&
             boardValuesMatch(bs.screenOffDelay, screenOffDelay) &&
+            boardValuesMatch(bs.boltMode, boltMode) &&
             knownProfiles.equalsIgnoringSourceSlots(bs.knownProfiles)
 
     @Test

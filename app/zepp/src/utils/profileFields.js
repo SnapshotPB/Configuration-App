@@ -5,6 +5,7 @@ import {
   EYE_THRESHOLD_MAX,
   EyeMode,
   FireMode,
+  MarkerBoltMode,
   NXL_2026_RATE_CAP,
   RATE_CAP_MAX,
   RATE_CAP_MIN,
@@ -54,6 +55,26 @@ export function usesCockingTimeout(fireMode) {
     fireMode === FireMode.FULL_AUTO ||
     fireMode === FireMode.RAMPING_NXL_2026 ||
     fireMode === FireMode.CUSTOM_RAMPING;
+}
+
+// Whether the fire mode runs a timed/eye-gated cocking cycle where BoltMode applies. Only SEMI,
+// FULL_AUTO, RAMPING_NXL_2026, and CUSTOM_RAMPING do — MECHANICAL holds the breach open via the
+// trigger and TRIGGER_ONLY has no cocking phase — so the bolt-mode and sear-delay editors are
+// hidden for the others. Mirrors MarkerFireMode.usesBoltMode in core:model.
+export function usesBoltMode(fireMode) {
+  return fireMode === FireMode.SEMI ||
+    fireMode === FireMode.FULL_AUTO ||
+    fireMode === FireMode.RAMPING_NXL_2026 ||
+    fireMode === FireMode.CUSTOM_RAMPING;
+}
+
+// Whether the board runs the open-bolt firing order for [profile] and [boltMode]: the device's
+// boltMode is MarkerBoltMode.OPEN and fireMode uses a timed cocking cycle (usesBoltMode). In
+// MECHANICAL, TRIGGER_ONLY, and UNKNOWN, open-bolt mode does not apply even when the board is set
+// to MarkerBoltMode.OPEN. Mirrors MarkerProfile.usesOpenBolt(boltMode) in core:model.
+export function usesOpenBolt(profile, boltMode = MarkerBoltMode.CLOSED) {
+  const effectiveBoltMode = boltMode || (profile && profile.boltMode) || MarkerBoltMode.CLOSED;
+  return Boolean(profile && effectiveBoltMode === MarkerBoltMode.OPEN && usesBoltMode(profile.fireMode));
 }
 
 // Whether the league sets the rate cap of the fire mode. Only the NXL 2026 mode has such a cap.
@@ -161,8 +182,18 @@ export const PROFILE_FIELDS = [
     unit: ProfileFieldUnit.TENTHS_MS,
     min: 0,
     max: TENTHS_MS_MAX,
-    affectsMaxBps: false,
+    affectsMaxBps: true,
     isShownFor: always
+  },
+  {
+    key: 'SEAR_SOLENOID_DELAY',
+    field: 'searSolenoidDelay',
+    label: 'Sear Solenoid Delay',
+    unit: ProfileFieldUnit.TENTHS_MS,
+    min: 0,
+    max: TENTHS_MS_MAX,
+    affectsMaxBps: true,
+    isShownFor: (p, boltMode) => usesOpenBolt(p, boltMode)
   },
   {
     key: 'COCKING_SOLENOID_DELAY',
@@ -172,7 +203,7 @@ export const PROFILE_FIELDS = [
     min: 0,
     max: TENTHS_MS_MAX,
     affectsMaxBps: true,
-    isShownFor: always
+    isShownFor: (p, boltMode) => !usesOpenBolt(p, boltMode)
   },
   {
     key: 'COCKING_SOLENOID_DWELL_OPEN',
@@ -251,9 +282,16 @@ export function profileFieldByKey(key) {
   return PROFILE_FIELDS.find(f => f.key === key) || null;
 }
 
-// The fields the editor shows for [profile], in table order.
-export function visibleProfileFields(profile) {
-  return PROFILE_FIELDS.filter(f => f.isShownFor(profile));
+// Whether an editor shows [field] (a PROFILE_FIELDS entry or its key) for [profile] and [boltMode].
+export function isFieldShown(field, profile, boltMode = MarkerBoltMode.CLOSED) {
+  const def = typeof field === 'string' ? profileFieldByKey(field) : field;
+  return Boolean(def && def.isShownFor(profile, boltMode || MarkerBoltMode.CLOSED));
+}
+
+// The fields the editor shows for [profile] and [boltMode], in table order.
+export function visibleProfileFields(profile, boltMode = MarkerBoltMode.CLOSED) {
+  const mode = boltMode || MarkerBoltMode.CLOSED;
+  return PROFILE_FIELDS.filter(f => f.isShownFor(profile, mode));
 }
 
 // The name of a fire mode or an eye mode that the board reports and the app does not know. It
@@ -377,12 +415,22 @@ export function effectiveFireRateCapTenths(profile) {
 // The timing-limited maximum balls per second for [profile], bounded by the fire-rate cap that
 // the board applies, with one decimal. Mirrors MarkerProfile.maxBpsForTiming in core:model.
 //
-// The firing cycle is the sum of its phases, all in tenths of a millisecond: the cocking delay,
-// the shortest breach-open phase and the dwell closed. Mirrors MarkerProfile.cycleTenthsMs.
-export function maxBpsForTiming(profile) {
-  const delay = toInteger(profile.cockingSolenoidDelay);
+// In closed-bolt mode (or fire modes where open-bolt does not apply), the firing cycle is the sum
+// of the cocking delay, the shortest breach-open phase and the dwell closed. In open-bolt mode,
+// the cocking sequence (open + closed) and the sear sequence (sear delay + sear dwell) run in
+// parallel from trigger_debounce_on, so the longer sequence bounds the cycle. Mirrors
+// MarkerProfile.cycleTenthsMs.
+export function maxBpsForTiming(profile, boltMode = MarkerBoltMode.CLOSED) {
   const closed = toInteger(profile.cockingSolenoidDwellClosed);
-  const cycleTenthsMs = delay + cockingOpenTenthsMs(profile) + closed;
+  let cycleTenthsMs;
+  if (usesOpenBolt(profile, boltMode)) {
+    const searDelay = toInteger(profile.searSolenoidDelay);
+    const searDwell = toInteger(profile.searSolenoidDwell);
+    cycleTenthsMs = Math.max(cockingOpenTenthsMs(profile) + closed, searDelay + searDwell);
+  } else {
+    const delay = toInteger(profile.cockingSolenoidDelay);
+    cycleTenthsMs = delay + cockingOpenTenthsMs(profile) + closed;
+  }
   const timingBps = cycleTenthsMs > 0 ? TENTHS_MS_PER_SECOND / cycleTenthsMs : 0;
   const capTenths = effectiveFireRateCapTenths(profile);
   const cap = capTenths <= 0 ? timingBps : capTenths / TENTHS_PER_BALL;

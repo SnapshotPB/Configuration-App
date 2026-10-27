@@ -30,6 +30,8 @@ data class Device(
      * `null` write leaves the board's current window alone, like the three settings above.
      */
     val displayWindow: DisplayWindow? = null,
+    /** Bolt actuation order of the marker (`DeviceConfig.bolt_mode`); `null` until the board reports one. */
+    val boltMode: MarkerBoltMode? = null,
     /** Board-reported model. Read-only board fact; not part of divergence. */
     val boardModel: BoardModel = BoardModel.AUTOCOCKER,
     /** Number of profile slots the board supports. Read-only board fact; drives slot UI. */
@@ -47,6 +49,7 @@ data class Device(
             !boardValuesMatch(language, bs.language) ||
             !boardValuesMatch(screenBrightness, bs.screenBrightness) ||
             !boardValuesMatch(screenOffDelay, bs.screenOffDelay) ||
+            !boardValuesMatch(boltMode, bs.boltMode) ||
             displayWindowDiverged(displayWindow, bs.displayWindow) ||
             hasProfilesDiverged()
     }

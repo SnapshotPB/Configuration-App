@@ -23,6 +23,7 @@ class DeviceSyncTest {
         boardState: BoardState? = null,
         language: BoardLanguage? = null,
         displayWindow: DisplayWindow? = null,
+        boltMode: MarkerBoltMode? = null,
         profiles: List<MarkerProfile> = listOf(MarkerProfile(id = profileId, name = "P0")),
         lastSeen: LocalDate = LocalDate(2026, 9, 1),
     ) = Device(
@@ -34,6 +35,7 @@ class DeviceSyncTest {
         photoPath = photoPath,
         language = language,
         displayWindow = displayWindow,
+        boltMode = boltMode,
         boardState = boardState,
     )
 
@@ -68,6 +70,14 @@ class DeviceSyncTest {
     }
 
     @Test
+    fun syncedConfigEquals_seesABoltModeOnlyChange() {
+        assertFalse(
+            device(boltMode = MarkerBoltMode.CLOSED)
+                .syncedConfigEquals(device(boltMode = MarkerBoltMode.OPEN)),
+        )
+    }
+
+    @Test
     fun syncedConfigEquals_ignoresLastModifiedAndLastSeen() {
         assertTrue(
             device(lastModified = 1L, lastSeen = LocalDate(2026, 1, 1))
@@ -95,6 +105,7 @@ class DeviceSyncTest {
             boardState = baseline("Kept"),
             language = BoardLanguage.DE,
             displayWindow = DisplayWindow.FULL_PANEL,
+            boltMode = MarkerBoltMode.OPEN,
             lastSeen = LocalDate(2026, 9, 20),
         )
         val merged = local.mergeFromPeer(device(lastSeen = LocalDate(2026, 9, 2)))
@@ -103,6 +114,7 @@ class DeviceSyncTest {
         assertEquals("Kept", merged.boardState?.bootText)
         assertEquals(BoardLanguage.DE, merged.language)
         assertEquals(DisplayWindow.FULL_PANEL, merged.displayWindow)
+        assertEquals(MarkerBoltMode.OPEN, merged.boltMode)
         assertEquals(LocalDate(2026, 9, 20), merged.lastSeen)
     }
 
@@ -151,6 +163,18 @@ class DeviceSyncTest {
         // (SEMI), so an edit from such a peer could replace the custom ramping mode.
         val current = listOf(device(lastModified = 100L))
         val result = applyPeerDevice(current, device(name = "Old build"), 900L, peerSchemaVersion = 3)
+
+        assertEquals(PeerSyncOutcome.IGNORED_OLD_SCHEMA, result.outcome)
+        assertSame(current, result.devices)
+    }
+
+    @Test
+    fun applyPeerDevice_rejectsAPeerFromBeforeOpenBoltMode() {
+        // Version 4 peers do not know Device.boltMode or MarkerProfile.searSolenoidDelay.
+        // They decode them as the defaults (null and 60), so an edit from such a peer could
+        // overwrite open-bolt settings.
+        val current = listOf(device(lastModified = 100L))
+        val result = applyPeerDevice(current, device(name = "Old build"), 900L, peerSchemaVersion = 4)
 
         assertEquals(PeerSyncOutcome.IGNORED_OLD_SCHEMA, result.outcome)
         assertSame(current, result.devices)

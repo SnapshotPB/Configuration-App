@@ -51,6 +51,10 @@ device = "{label}"
 label = "configure_device_screen_active_profile_label"
 description = "The profile that the board uses. The app lists the profiles of the board, and you select one. The board changes to that profile at once."
 
+[settings."device_config.bolt_mode"]
+label = "configure_device_screen_bolt_mode_label"
+description = "The firing order of the marker. In Closed Bolt mode the board starts the sear solenoid first and then the cocking solenoid. In Open Bolt mode the board starts the cocking solenoid first and then the sear solenoid. One bolt mode serves every profile. The Mechanical and Trigger Only fire modes do not use this setting."
+
 [settings."device_config.language"]
 label = "configure_device_screen_language_label"
 description = "The language of the menu on the board. The boot text and the profile names do not change. The app shows the languages that the board reports."
@@ -90,8 +94,13 @@ description = "The longest time that the board waits for the eye to see a ball b
 [settings."autococker.sear_solenoid_dwell"]
 description = "The time that the sear solenoid stays energized in one firing cycle, in milliseconds."
 
+[settings."autococker.sear_solenoid_delay"]
+label = "profile_label_sear_solenoid_delay"
+section = "profile_section_timing"
+description = "The time between the trigger pull and the start of the sear solenoid in Open Bolt mode, in milliseconds. The app shows this setting only in Open Bolt mode."
+
 [settings."autococker.cocking_solenoid_delay"]
-description = "The time between the trigger pull and the start of the cocking solenoid, in milliseconds."
+description = "The time between the trigger pull and the start of the cocking solenoid, in milliseconds. The app shows this setting only in Closed Bolt mode."
 
 [settings."autococker.cocking_solenoid_dwell_open"]
 description = "The time that the cocking solenoid stays energized to open the breech, in milliseconds."

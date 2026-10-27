@@ -5,6 +5,7 @@ import {
   BoardLanguage,
   BoardScreenBrightness,
   FireMode,
+  MarkerBoltMode,
   SCREEN_OFF_DELAY_DEFAULT
 } from '../protocol/OtsModelMapper';
 
@@ -478,6 +479,7 @@ class BleManagerImpl {
                   eyeThreshold: 50,
                   eyeDebounce: 10,
                   searSolenoidDwell: 60,
+                  searSolenoidDelay: 60,
                   cockingSolenoidDelay: 20,
                   cockingSolenoidDwellOpen: 30,
                   cockingSolenoidDwellClosed: 40,
@@ -497,6 +499,7 @@ class BleManagerImpl {
                   eyeThreshold: 60,
                   eyeDebounce: 8,
                   searSolenoidDwell: 55,
+                  searSolenoidDelay: 60,
                   cockingSolenoidDelay: 15,
                   cockingSolenoidDwellOpen: 25,
                   cockingSolenoidDwellClosed: 35,
@@ -513,6 +516,7 @@ class BleManagerImpl {
               language: BoardLanguage.EN,
               screenBrightness: BoardScreenBrightness.DEFAULT,
               screenOffDelay: SCREEN_OFF_DELAY_DEFAULT,
+              boltMode: MarkerBoltMode.CLOSED,
               lockoutEnabled: false,
               boardModel: "AUTOCOCKER",
               supportedProfileCount: 2
@@ -730,7 +734,8 @@ class BleManagerImpl {
         onSuccess({
           language: domainDevice.language || null,
           screenBrightness: domainDevice.screenBrightness || null,
-          screenOffDelay: domainDevice.screenOffDelay || null
+          screenOffDelay: domainDevice.screenOffDelay || null,
+          boltMode: domainDevice.boltMode || null
         });
       }, 500);
       return;

@@ -9,6 +9,7 @@ import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.limitBootText
 import com.snapshotpb.configuration.model.limitDeviceName
 import com.snapshotpb.configuration.store.DeviceStore
@@ -25,6 +26,7 @@ data class ConfigureDeviceDraft(
     val screenBrightness: BoardScreenBrightness? = null,
     val screenOffDelay: Int? = null,
     val displayWindow: DisplayWindow? = null,
+    val boltMode: MarkerBoltMode? = null,
     /**
      * Whether the user chose the custom display window entry. It is kept apart from the window,
      * because a custom rectangle that equals a known frame must keep the custom entry selected.
@@ -49,6 +51,7 @@ internal fun ConfigureDeviceDraft.hydratedFrom(loaded: Device?): ConfigureDevice
         screenBrightness = loaded.screenBrightness,
         screenOffDelay = loaded.screenOffDelay,
         displayWindow = loaded.displayWindow,
+        boltMode = loaded.boltMode,
         hydrated = true,
     )
     else -> copy(
@@ -56,6 +59,7 @@ internal fun ConfigureDeviceDraft.hydratedFrom(loaded: Device?): ConfigureDevice
         screenBrightness = screenBrightness ?: loaded.screenBrightness,
         screenOffDelay = screenOffDelay ?: loaded.screenOffDelay,
         displayWindow = displayWindow ?: loaded.displayWindow,
+        boltMode = boltMode ?: loaded.boltMode,
     )
 }
 
@@ -100,6 +104,7 @@ class ConfigureDeviceViewModel(
             screenBrightness = current.screenBrightness,
             screenOffDelay = current.screenOffDelay,
             displayWindow = current.displayWindow,
+            boltMode = current.boltMode,
         )
     }
 }

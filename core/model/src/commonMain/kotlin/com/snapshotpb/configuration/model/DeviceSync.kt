@@ -20,6 +20,9 @@ package com.snapshotpb.configuration.model
  *   property default (`SEMI`), and its next edit would replace the custom ramping mode. The NXL
  *   2026 mode is not a new value for this rule: its stored name did not change (see
  *   [MarkerFireMode.RAMPING_NXL_2026]).
+ * - Version 5 adds [Device.boltMode], [BoardState.boltMode], and
+ *   [MarkerProfile.searSolenoidDelay]. A peer on an older version decodes them as their defaults
+ *   (`null` and `60`) and would overwrite open-bolt or custom sear-delay values on its next edit.
  *
  * The check protects the store of the newer build only. A peer on an older build still accepts a
  * payload with a higher version, and it keeps the default in its own store. That peer can then
@@ -27,7 +30,7 @@ package com.snapshotpb.configuration.model
  * update. No change to a new build can correct a build that is already released, so the two apps
  * must get the update before the user selects a value that the older build does not know.
  */
-const val DEVICE_SYNC_SCHEMA_VERSION: Int = 4
+const val DEVICE_SYNC_SCHEMA_VERSION: Int = 5
 
 /** Data map key of [DEVICE_SYNC_SCHEMA_VERSION]. A payload without the key has version 0. */
 const val DEVICE_SYNC_SCHEMA_VERSION_KEY: String = "schema_version"
@@ -53,6 +56,7 @@ fun Device.syncedConfigEquals(other: Device): Boolean =
         screenBrightness == other.screenBrightness &&
         screenOffDelay == other.screenOffDelay &&
         displayWindow == other.displayWindow &&
+        boltMode == other.boltMode &&
         activeProfileId == other.activeProfileId &&
         lockoutEnabled == other.lockoutEnabled &&
         // Plain equality, so a change of MarkerProfile.sourceSlot alone goes to the peer as well.
@@ -78,6 +82,7 @@ fun Device.mergeFromPeer(incoming: Device): Device =
         screenBrightness = incoming.screenBrightness ?: screenBrightness,
         screenOffDelay = incoming.screenOffDelay ?: screenOffDelay,
         displayWindow = incoming.displayWindow ?: displayWindow,
+        boltMode = incoming.boltMode ?: boltMode,
         boardState = incoming.boardState ?: boardState,
         advertisementData = incoming.advertisementData ?: advertisementData,
     )

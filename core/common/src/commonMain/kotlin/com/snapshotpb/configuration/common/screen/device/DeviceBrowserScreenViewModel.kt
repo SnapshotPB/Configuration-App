@@ -17,6 +17,7 @@ import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
 import com.snapshotpb.configuration.model.FirmwareVersion
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -176,6 +177,7 @@ abstract class DeviceBrowserScreenViewModel(
             screenBrightness = BoardScreenBrightness.DEFAULT,
             screenOffDelay = 30,
             displayWindow = DisplayWindow.FULL_PANEL,
+            boltMode = MarkerBoltMode.CLOSED,
             boardModel = BoardModel.AUTOCOCKER,
             supportedProfileCount = Device.DEFAULT_PROFILE_COUNT,
             boardState = BoardState(
@@ -187,6 +189,7 @@ abstract class DeviceBrowserScreenViewModel(
                 screenBrightness = BoardScreenBrightness.DEFAULT,
                 screenOffDelay = 30,
                 displayWindow = DisplayWindow.FULL_PANEL,
+                boltMode = MarkerBoltMode.CLOSED,
             ),
             advertisementData = AdvertisementData(
                 boardType = "FAKE",

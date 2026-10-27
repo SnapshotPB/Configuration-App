@@ -494,6 +494,9 @@ internal class FakeBoard(
             screenOffDelay = written.screenOffDelay
                 .takeUnless { it == 0U } ?: boardConfig.screenOffDelay,
             displayWindow = written.displayWindow ?: boardConfig.displayWindow,
+            boltMode = written.boltMode
+                .takeUnless { it == snapshotpb.v1.BoltMode.BOLT_MODE_UNSPECIFIED }
+                ?: boardConfig.boltMode,
         )
         // A board holds as many slots as it reports, and the protocol carries no more than four.
         boardProfiles = toProtocolProfiles(clamped, boardProfiles)
@@ -511,6 +514,7 @@ internal class FakeBoard(
             screenBrightness = boardNow.screenBrightness,
             screenOffDelay = boardNow.screenOffDelay,
             displayWindow = boardNow.displayWindow,
+            boltMode = boardNow.boltMode,
         )
         log.d { "Fake board stored the boot text ${boardConfig.bootText}" }
         deviceWriteResultBus.emit(
@@ -642,5 +646,6 @@ private fun fakeBoardSeed(): Device {
         screenBrightness = BoardScreenBrightness.DEFAULT,
         screenOffDelay = 30,
         displayWindow = DisplayWindow.FULL_PANEL,
+        boltMode = com.snapshotpb.configuration.model.MarkerBoltMode.CLOSED,
     )
 }

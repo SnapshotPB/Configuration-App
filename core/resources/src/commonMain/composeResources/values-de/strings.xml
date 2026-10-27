@@ -39,7 +39,8 @@
     <string name="profile_section_basic_function">Grundfunktion</string>
     <string name="profile_section_eye">Auge</string>
     <string name="profile_section_timing_overview">Timing-Übersicht</string>
-    <string name="profile_section_timing_overview_description">Zeigt einen Schusszyklus ab der Abzugsflanke. Die Platine erkennt den Zug nach der Entprellzeit Ein, dann folgen der Impuls des Sear-Magnetventils und die Abfolge des Cocking-Magnetventils (Verzögerung, Ein, Aus). Die Entprellzeit Aus folgt dem Loslassen.</string>
+    <string name="profile_section_timing_overview_description">Visualisiert das Timing-Profil der Abzug-, Sear- und Cocking-Konfigurationen. Zuerst muss der Abzugssensor die Entprellzeit erfüllen. Danach wird der Sear ausgelöst und nach der Cocking-Verzögerung wird das Cocking-Magnetventil aktiviert.</string>
+    <string name="profile_section_timing_overview_description_open_bolt">Visualisiert das Timing-Profil der Abzug-, Cocking- und Sear-Konfigurationen im Open-Bolt-Modus. Zuerst muss der Abzugssensor die Entprellzeit erfüllen. Danach wird das Cocking-Magnetventil aktiviert und nach der Sear-Verzögerung wird der Sear ausgelöst.</string>
     <string name="profile_section_timing">Timing</string>
     <!-- Profile Timing Diagram -->
     <string name="profile_timing_diagram_lane_trigger">Abzug</string>
@@ -65,6 +66,10 @@
     <string name="profile_fire_mode_full_auto">Vollautomatik</string>
     <string name="profile_fire_mode_ramping_nxl_2026">NXL 2026</string>
     <string name="profile_fire_mode_custom_ramping">Ramping benutzerdefiniert</string>
+    <string name="profile_label_bolt_mode">Bolzenmodus</string>
+    <string name="profile_label_bolt_mode_details">Schussreihenfolge des Markierers: Geschlossener Bolzen löst zuerst das Sear-Magnetventil aus, während offener Bolzen zuerst das Cocking-Magnetventil auslöst.</string>
+    <string name="profile_bolt_mode_closed">Geschlossener Bolzen</string>
+    <string name="profile_bolt_mode_open">Offener Bolzen</string>
     <string name="profile_label_fire_rate_cap">Feuerratenbegrenzung</string>
     <string name="profile_label_fire_rate_cap_details">Maximale Feuerrate in Bällen pro Sekunde. Die geschlossene Haltezeit des Cocking-Magnetventils wird erhöht, wenn die Feuerrate niedriger ist, als der Timing-Zyklus zulässt. 0 bedeutet keine Begrenzung.</string>
     <string name="profile_label_eye_mode">Augenmodus</string>
@@ -81,6 +86,8 @@
     <string name="profile_label_eye_debounce_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Auge innerhalb der Schwelle bleiben muss, damit ein Ball im Breech erkannt wird.</string>
     <string name="profile_label_sear_solenoid_dwell">Haltezeit Sear-Magnetventil</string>
     <string name="profile_label_sear_solenoid_dwell_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Sear-Magnetventil während des Schusszyklus bestromt wird.</string>
+    <string name="profile_label_sear_solenoid_delay">Verzögerung Sear-Magnetventil</string>
+    <string name="profile_label_sear_solenoid_delay_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Sear-Magnetventil im Open-Bolt-Modus nach einem Abzugszug wartet, bevor es bestromt wird.</string>
     <string name="profile_label_cocking_solenoid_delay">Verzögerung Cocking-Magnetventil</string>
     <string name="profile_label_cocking_solenoid_delay_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Cocking-Magnetventil nach einem Abzugszug wartet, bevor es bestromt wird.</string>
     <string name="profile_label_cocking_solenoid_dwell_open">Haltezeit Cocking-Magnetventil offen</string>
@@ -172,6 +179,9 @@
     <string name="grip_frame_e1">E1-Rahmen</string>
     <string name="grip_frame_e2">E2-Rahmen</string>
     <string name="grip_frame_86">86-Rahmen</string>
+    <string name="configure_device_screen_bolt_mode_label">Bolzenmodus</string>
+    <string name="configure_device_screen_bolt_mode_details">Schussreihenfolge des Markierers: Geschlossener Bolzen löst zuerst das Sear-Magnetventil aus, während offener Bolzen zuerst das Cocking-Magnetventil auslöst.</string>
+    <string name="configure_device_screen_bolt_mode_unavailable">Die Platine hat keinen Bolzenmodus gemeldet. Verbinden Sie sich mit der Platine oder aktualisieren Sie ihre Firmware.</string>
     <string name="configure_device_screen_save_button">Speichern</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth-Symbol</string>

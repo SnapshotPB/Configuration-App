@@ -19,7 +19,7 @@ class MarkerProfileFieldTest {
         eyeMode: MarkerEyeMode = MarkerEyeMode.REFLECTIVE,
     ) = MarkerProfile(id = id, name = "P", fireMode = fireMode, eyeMode = eyeMode)
 
-    /** A profile that shows every field: an eye is on and the fire mode is the custom ramping mode. */
+    /** A profile that shows every closed-bolt field: an eye is on and the fire mode is the custom ramping mode. */
     private fun allShown() = profile(fireMode = MarkerFireMode.CUSTOM_RAMPING)
 
     private val rampingFields = listOf(
@@ -145,9 +145,35 @@ class MarkerProfileFieldTest {
     // --- visibility ---
 
     @Test
-    fun isShownFor_everyFieldShowsForAnEyeAndTheCustomRampingMode() {
+    fun isShownFor_everyClosedBoltFieldShowsForAnEyeAndTheCustomRampingMode() {
         val shown = MarkerProfileField.entries.filter { it.isShownFor(allShown()) }
-        assertEquals(MarkerProfileField.entries, shown)
+        assertEquals(MarkerProfileField.entries - MarkerProfileField.SEAR_SOLENOID_DELAY, shown)
+    }
+
+    @Test
+    fun isShownFor_everyOpenBoltFieldShowsForAnEyeAndTheCustomRampingMode() {
+        val shown = MarkerProfileField.entries.filter { it.isShownFor(allShown(), MarkerBoltMode.OPEN) }
+        assertEquals(MarkerProfileField.entries - MarkerProfileField.COCKING_SOLENOID_DELAY, shown)
+    }
+
+    @Test
+    fun isShownFor_searDelayAndCockingDelaySwapWithUsesOpenBolt() {
+        MarkerFireMode.entries.forEach { fireMode ->
+            MarkerBoltMode.entries.forEach { boltMode ->
+                val p = profile(fireMode = fireMode)
+                val expectOpen = boltMode == MarkerBoltMode.OPEN && fireMode.usesBoltMode
+                assertEquals(
+                    expectOpen,
+                    MarkerProfileField.SEAR_SOLENOID_DELAY.isShownFor(p, boltMode),
+                    "SEAR_SOLENOID_DELAY in $fireMode $boltMode",
+                )
+                assertEquals(
+                    !expectOpen,
+                    MarkerProfileField.COCKING_SOLENOID_DELAY.isShownFor(p, boltMode),
+                    "COCKING_SOLENOID_DELAY in $fireMode $boltMode",
+                )
+            }
+        }
     }
 
     @Test
@@ -191,24 +217,34 @@ class MarkerProfileFieldTest {
     @Test
     fun isShownFor_theNxlModeShowsNoSettingOfItsOwnAndKeepsTheOthers() {
         // The league sets the rules of the mode, so its cap and the ramping values do not show.
-        // The eye, timing and trigger fields set how the marker operates, so they stay.
+        // The eye, timing and trigger fields set how the marker operates, so they stay (with
+        // SEAR_SOLENOID_DELAY hidden in closed-bolt mode).
         val league = profile(fireMode = MarkerFireMode.RAMPING_NXL_2026)
         val hidden = MarkerProfileField.entries.filterNot { it.isShownFor(league) }
 
-        assertEquals(listOf(MarkerProfileField.FIRE_RATE_CAP) + rampingFields, hidden)
+        assertEquals(
+            listOf(MarkerProfileField.FIRE_RATE_CAP, MarkerProfileField.SEAR_SOLENOID_DELAY) + rampingFields,
+            hidden,
+        )
     }
 
     @Test
-    fun usesCockingTimeout_namesTheModesWithAnEyeGatedCockingPhase() {
-        assertEquals(
-            setOf(
-                MarkerFireMode.SEMI,
-                MarkerFireMode.FULL_AUTO,
-                MarkerFireMode.RAMPING_NXL_2026,
-                MarkerFireMode.CUSTOM_RAMPING,
-            ),
-            MarkerFireMode.entries.filter { it.usesCockingTimeout }.toSet(),
+    fun usesCockingTimeoutAndUsesBoltMode_nameTheCycledFireModes() {
+        val cycled = setOf(
+            MarkerFireMode.SEMI,
+            MarkerFireMode.FULL_AUTO,
+            MarkerFireMode.RAMPING_NXL_2026,
+            MarkerFireMode.CUSTOM_RAMPING,
         )
+        assertEquals(cycled, MarkerFireMode.entries.filter { it.usesCockingTimeout }.toSet())
+        assertEquals(cycled, MarkerFireMode.entries.filter { it.usesBoltMode }.toSet())
+    }
+
+    @Test
+    fun boltMode_selectableListsClosedAndOpen() {
+        assertEquals(listOf(MarkerBoltMode.CLOSED, MarkerBoltMode.OPEN), MarkerBoltMode.selectable)
+        assertFalse(MarkerBoltMode.CLOSED.isOpenBolt)
+        assertTrue(MarkerBoltMode.OPEN.isOpenBolt)
     }
 
     @Test
@@ -221,17 +257,20 @@ class MarkerProfileFieldTest {
 
     @Test
     fun affectsMaxBps_namesExactlyTheFieldsThatMoveTheMaxBps() {
-        // Every fire mode and eye mode, uncapped. The eye debounce is longer than the lowest
-        // timeout, so that the timeout can end the breach-open phase.
-        val profiles = MarkerFireMode.entries.flatMap { fireMode ->
-            MarkerEyeMode.entries.map { eyeMode ->
-                profile(fireMode = fireMode, eyeMode = eyeMode).copy(fireRateCap = 0, eyeDebounce = 100)
+        // Every fire mode, bolt mode and eye mode, uncapped. The eye debounce is longer than the
+        // lowest timeout, so that the timeout can end the breach-open phase.
+        val cases = MarkerFireMode.entries.flatMap { fireMode ->
+            MarkerBoltMode.entries.flatMap { boltMode ->
+                MarkerEyeMode.entries.map { eyeMode ->
+                    profile(fireMode = fireMode, eyeMode = eyeMode)
+                        .copy(fireRateCap = 0, eyeDebounce = 100) to boltMode
+                }
             }
         }
         MarkerProfileField.entries.forEach { field ->
             val values = listOf(field.min, field.step(field.min, 1), field.max)
-            val moves = profiles.any { base ->
-                values.map { field.set(base, it).maxBpsForTiming() }.toSet().size > 1
+            val moves = cases.any { (base, boltMode) ->
+                values.map { field.set(base, it).maxBpsForTiming(boltMode) }.toSet().size > 1
             }
             assertEquals(field.affectsMaxBps, moves, "$field affectsMaxBps")
         }

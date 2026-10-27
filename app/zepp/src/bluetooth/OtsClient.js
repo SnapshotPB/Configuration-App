@@ -1,5 +1,6 @@
 import * as ble from '@zos/ble';
 import {
+  boltModeToDomain,
   languageToDomain,
   screenBrightnessToDomain,
   screenOffDelayToDomain,
@@ -657,7 +658,8 @@ export class OtsClient {
         written = {
           language: languageToDomain(backConfig.language),
           screenBrightness: screenBrightnessToDomain(backConfig.screenBrightness),
-          screenOffDelay: screenOffDelayToDomain(backConfig.screenOffDelay)
+          screenOffDelay: screenOffDelayToDomain(backConfig.screenOffDelay),
+          boltMode: boltModeToDomain(backConfig.boltMode)
         };
       } catch (readBackError) {
         console.log("Read-back after the write failed:", readBackError);

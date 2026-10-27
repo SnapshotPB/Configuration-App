@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.common_yes
@@ -28,6 +29,7 @@ fun MarkerProfileItem(
     index: Int,
     activeProfile: Boolean,
     profile: MarkerProfile,
+    boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
     isDiverged: Boolean = false,
     onClick: () -> Unit = {},
 ) {
@@ -87,7 +89,7 @@ fun MarkerProfileItem(
             Text(
                 stringResource(
                     Res.string.profile_marker_max_bps,
-                    profile.maxBpsForTiming()
+                    profile.maxBpsForTiming(boltMode)
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,

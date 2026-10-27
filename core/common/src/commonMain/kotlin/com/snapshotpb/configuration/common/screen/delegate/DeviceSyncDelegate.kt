@@ -183,6 +183,7 @@ class DeviceSyncDelegateImpl(
                                     screenBrightness = remote.screenBrightness,
                                     screenOffDelay = remote.screenOffDelay,
                                     displayWindow = remote.displayWindow,
+                                    boltMode = remote.boltMode,
                                     boardState = BoardState(
                                         bootText = remote.bootText,
                                         activeProfileId = remote.activeProfileId,
@@ -192,6 +193,7 @@ class DeviceSyncDelegateImpl(
                                         screenBrightness = remote.screenBrightness,
                                         screenOffDelay = remote.screenOffDelay,
                                         displayWindow = remote.displayWindow,
+                                        boltMode = remote.boltMode,
                                     )
                                 )
                             } else device
@@ -219,6 +221,9 @@ class DeviceSyncDelegateImpl(
                 }
                 if (remote.displayWindow == null && local.displayWindow != null) {
                     log.d { "OTS read: board ${remote.id} reports no display window, clearing the stored one" }
+                }
+                if (remote.boltMode == null && local.boltMode != null) {
+                    log.d { "OTS read: board ${remote.id} reports no bolt mode, clearing the stored one" }
                 }
                 deviceStore.update { current ->
                     current.map { device ->
@@ -252,6 +257,8 @@ class DeviceSyncDelegateImpl(
                                     ?.let { device.screenOffDelay ?: it },
                                 displayWindow = remote.displayWindow
                                     ?.let { device.displayWindow ?: it },
+                                boltMode = remote.boltMode
+                                    ?.let { device.boltMode ?: it },
                                 boardState = device.boardState?.let { base ->
                                     base.copy(
                                         // The same settings as before, with the source slots of this
@@ -266,6 +273,7 @@ class DeviceSyncDelegateImpl(
                                         screenBrightness = remote.screenBrightness,
                                         screenOffDelay = remote.screenOffDelay,
                                         displayWindow = remote.displayWindow,
+                                        boltMode = remote.boltMode,
                                     )
                                 },
                             )
@@ -312,6 +320,7 @@ class DeviceSyncDelegateImpl(
                 screenBrightness = pending.device.screenBrightness,
                 screenOffDelay = pending.device.screenOffDelay,
                 displayWindow = pending.device.displayWindow,
+                boltMode = pending.device.boltMode,
             )
         )
         // Replace rather than append when the id is already present: mergeAgainst() does not
@@ -445,6 +454,7 @@ class DeviceSyncDelegateImpl(
                 screenBrightness = local.screenBrightness ?: remote.screenBrightness,
                 screenOffDelay = local.screenOffDelay ?: remote.screenOffDelay,
                 displayWindow = local.displayWindow ?: remote.displayWindow,
+                boltMode = local.boltMode ?: remote.boltMode,
             )
         }
         val mergedLocal = clampedLocal.copy(
@@ -476,6 +486,7 @@ class DeviceSyncDelegateImpl(
         screenBrightness = screenBrightness,
         screenOffDelay = screenOffDelay,
         displayWindow = displayWindow,
+        boltMode = boltMode,
     )
 
     /**
@@ -500,6 +511,7 @@ class DeviceSyncDelegateImpl(
             boardValuesMatch(bs.screenBrightness, screenBrightness) &&
             boardValuesMatch(bs.screenOffDelay, screenOffDelay) &&
             boardValuesMatch(bs.displayWindow, displayWindow) &&
+            boardValuesMatch(bs.boltMode, boltMode) &&
             // The source slot is not a setting, so it raises no conflict.
             knownProfiles.equalsIgnoringSourceSlots(bs.knownProfiles)
 
@@ -522,4 +534,5 @@ private fun Device.deviceFieldsEqual(other: Device): Boolean =
         boardValuesMatch(screenBrightness, other.screenBrightness) &&
         boardValuesMatch(screenOffDelay, other.screenOffDelay) &&
         boardValuesMatch(displayWindow, other.displayWindow) &&
+        boardValuesMatch(boltMode, other.boltMode) &&
         knownProfiles.equalsIgnoringSourceSlots(other.knownProfiles)

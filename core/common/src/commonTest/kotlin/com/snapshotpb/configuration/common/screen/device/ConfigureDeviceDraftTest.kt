@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.common.screen.device
 import com.snapshotpb.configuration.common.testDevice
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -25,6 +26,7 @@ class ConfigureDeviceDraftTest {
             bootText = "Hello",
             language = BoardLanguage.DE,
             screenOffDelay = 30,
+            boltMode = MarkerBoltMode.OPEN,
         )
 
         val draft = ConfigureDeviceDraft().hydratedFrom(device)
@@ -34,12 +36,13 @@ class ConfigureDeviceDraftTest {
         assertEquals("Hello", draft.bootText)
         assertEquals(BoardLanguage.DE, draft.language)
         assertEquals(30, draft.screenOffDelay)
+        assertEquals(MarkerBoltMode.OPEN, draft.boltMode)
     }
 
     @Test
     fun hydratedFrom_aLaterDeviceFillsOnlyEmptyBoardSettings() {
         // The user renamed the device and chose a language. Then the board read finished and
-        // reported its own language and a brightness.
+        // reported its own language, a brightness, and a bolt mode.
         val edited = ConfigureDeviceDraft()
             .hydratedFrom(testDevice(name = "Marker"))
             .copy(deviceName = "Renamed", language = BoardLanguage.FR)
@@ -49,11 +52,13 @@ class ConfigureDeviceDraftTest {
                 name = "Marker",
                 language = BoardLanguage.EN,
                 screenBrightness = BoardScreenBrightness.HIGH,
+                boltMode = MarkerBoltMode.OPEN,
             )
         )
 
         assertEquals("Renamed", draft.deviceName, "an edit is never replaced")
         assertEquals(BoardLanguage.FR, draft.language, "a choice is never replaced")
         assertEquals(BoardScreenBrightness.HIGH, draft.screenBrightness, "an empty setting fills")
+        assertEquals(MarkerBoltMode.OPEN, draft.boltMode, "an empty bolt mode fills")
     }
 }

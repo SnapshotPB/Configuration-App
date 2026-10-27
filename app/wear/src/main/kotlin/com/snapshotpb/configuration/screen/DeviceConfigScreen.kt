@@ -10,10 +10,12 @@ import androidx.wear.compose.material.*
 import coil3.compose.AsyncImage
 import com.snapshotpb.configuration.common.composable.boardLanguageLabel
 import com.snapshotpb.configuration.common.composable.boardScreenBrightnessLabel
+import com.snapshotpb.configuration.common.composable.displayName
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_label
 import com.snapshotpb.core.resources.board_screen_off_delay_seconds
+import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_label
 import com.snapshotpb.core.resources.configure_device_screen_brightness_label
 import com.snapshotpb.core.resources.configure_device_screen_language_label
 import com.snapshotpb.core.resources.configure_device_screen_lockout_label
@@ -51,6 +53,7 @@ fun DeviceConfigScreen(
     photoUri: (String) -> String,
     onSelectProfileTriggered: () -> Unit,
     onTuneProfileTriggered: () -> Unit,
+    onSelectBoltModeTriggered: () -> Unit = {},
     onSelectLanguageTriggered: () -> Unit,
     onSelectBrightnessTriggered: () -> Unit,
     onSelectScreenOffDelayTriggered: () -> Unit,
@@ -111,6 +114,22 @@ fun DeviceConfigScreen(
                         .testTag(DEVICE_CONFIG_TUNE_PROFILE_TAG)
                 ) {
                     Text(activeProfile.name, style = MaterialTheme.typography.body1)
+                }
+            }
+        }
+
+        // Bolt Mode Card. Only a board that reported a bolt mode shows it: firmware from
+        // before the field reports none and ignores a choice.
+        device.boltMode?.let { boltMode ->
+            item {
+                TitleCard(
+                    onClick = onSelectBoltModeTriggered,
+                    title = { Text(stringResource(Res.string.configure_device_screen_bolt_mode_label)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(boltMode.displayName(), style = MaterialTheme.typography.body1)
                 }
             }
         }

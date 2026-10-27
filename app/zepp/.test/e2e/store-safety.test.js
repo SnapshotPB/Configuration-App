@@ -36,6 +36,7 @@ describe('device store safety', () => {
     expect(profile.cockingSolenoidTimeout).toBe(5000);
     expect(profile.triggerDebounceOn).toBe(20);
     expect(profile.searSolenoidDwell).toBe(45);
+    expect(profile.searSolenoidDelay).toBe(60);
     expect(profile.cockingSolenoidDwellClosed).toBe(300);
     expect(profile.eyeMode).toBe('OFF');
     // A stored value is kept.

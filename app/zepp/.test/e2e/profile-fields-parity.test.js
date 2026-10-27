@@ -171,6 +171,7 @@ describe('profile field table parity', () => {
       language: null,
       screenBrightness: null,
       screenOffDelay: null,
+      boltMode: null,
       knownProfiles: [profile]
     });
     // The watch holds a local edit of the boot text, and no profile edit. With no local edit, a
@@ -186,7 +187,8 @@ describe('profile field table parity', () => {
         knownProfiles: [base],
         language: null,
         screenBrightness: null,
-        screenOffDelay: null
+        screenOffDelay: null,
+        boltMode: null
       }
     };
     const fields = [...PROFILE_SHAPE.required, ...Object.keys(PROFILE_SHAPE.defaults)];

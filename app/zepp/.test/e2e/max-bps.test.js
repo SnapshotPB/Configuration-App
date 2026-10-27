@@ -7,11 +7,13 @@
 // shortest open phase is then the smaller of the eye debounce and the timeout.
 
 import { describe, expect, test } from 'vitest';
-import { EyeMode, FireMode, NXL_2026_RATE_CAP, RATE_CAP_MAX } from '../../src/protocol/OtsModelMapper.js';
+import { EyeMode, FireMode, MarkerBoltMode, NXL_2026_RATE_CAP, RATE_CAP_MAX } from '../../src/protocol/OtsModelMapper.js';
 import {
   cockingOpenTenthsMs,
   effectiveFireRateCapTenths,
-  maxBpsForTiming
+  maxBpsForTiming,
+  usesBoltMode,
+  usesOpenBolt
 } from '../../src/utils/profileFields.js';
 
 // Uncapped, so the max BPS shows the timing rate. Delay 6.0 ms, open 5.0 ms, closed 30.0 ms.
@@ -21,6 +23,8 @@ function timing(overrides) {
     eyeMode: EyeMode.OFF,
     fireRateCapTenths: 0,
     eyeDebounce: 20,
+    searSolenoidDwell: 45,
+    searSolenoidDelay: 60,
     cockingSolenoidDelay: 60,
     cockingSolenoidDwellOpen: 50,
     cockingSolenoidDwellClosed: 300,
@@ -114,6 +118,60 @@ describe('maxBpsForTiming in the NXL 2026 mode', () => {
       const capped = timing({ fireMode, fireRateCapTenths: 150 });
       expect(effectiveFireRateCapTenths(capped), fireMode).toBe(150);
       expect(maxBpsForTiming(capped), fireMode).toBe('15.0');
+    }
+  });
+});
+
+describe('maxBpsForTiming in Open Bolt mode', () => {
+  test('when CON + COFF dominates over SDEL + SON, the cocking sequence sets the cycle time', () => {
+    // CON (50) + COFF (300) = 350 > SDEL (60) + SON (45) = 105; 10000 / 350 = 28.6 BPS.
+    for (const fireMode of EYE_GATED_FIRE_MODES) {
+      const profile = timing({
+        fireMode,
+        cockingSolenoidDelay: 900, // ignored in Open Bolt mode
+        searSolenoidDelay: 60,
+        searSolenoidDwell: 45
+      });
+      expect(usesBoltMode(fireMode)).toBe(true);
+      expect(usesOpenBolt(profile, MarkerBoltMode.OPEN)).toBe(true);
+      expect(maxBpsForTiming(profile, MarkerBoltMode.OPEN), fireMode).toBe(uncappedMaxBps(fireMode, '28.6'));
+    }
+  });
+
+  test('when SDEL + SON dominates over CON + COFF, the sear sequence sets the cycle time', () => {
+    // SDEL (360) + SON (45) = 405 > CON (50) + COFF (300) = 350; 10000 / 405 = 24.7 BPS.
+    const profile = timing({
+      fireMode: FireMode.SEMI,
+      cockingSolenoidDelay: 60,
+      searSolenoidDelay: 360,
+      searSolenoidDwell: 45
+    });
+    expect(maxBpsForTiming(profile, MarkerBoltMode.OPEN)).toBe('24.7');
+  });
+
+  test('eye on in Open Bolt mode replaces CON with eye debounce in max(CON + COFF, SDEL + SON)', () => {
+    // eyeDebounce (20) + COFF (300) = 320 > SDEL (60) + SON (45) = 105; 10000 / 320 = 31.3 BPS.
+    const profile = timing({
+      fireMode: FireMode.SEMI,
+      eyeMode: EyeMode.REFLECTIVE,
+      searSolenoidDelay: 60,
+      searSolenoidDwell: 45
+    });
+    expect(maxBpsForTiming(profile, MarkerBoltMode.OPEN)).toBe('31.3');
+  });
+
+  test('MECHANICAL, TRIGGER_ONLY and UNKNOWN ignore boltMode OPEN and use closed-bolt timing', () => {
+    for (const fireMode of [FireMode.MECHANICAL, FireMode.TRIGGER_ONLY, FireMode.UNKNOWN]) {
+      const profile = timing({
+        fireMode,
+        cockingSolenoidDelay: 60,
+        searSolenoidDelay: 500,
+        searSolenoidDwell: 500
+      });
+      expect(usesBoltMode(fireMode), fireMode).toBe(false);
+      expect(usesOpenBolt(profile, MarkerBoltMode.OPEN), fireMode).toBe(false);
+      // Uses closed-bolt cycle: 60 + 50 + 300 = 410 -> 24.4 BPS.
+      expect(maxBpsForTiming(profile, MarkerBoltMode.OPEN), fireMode).toBe('24.4');
     }
   });
 });

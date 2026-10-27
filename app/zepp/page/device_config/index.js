@@ -264,6 +264,7 @@ Page({
     // 6. Board setting cards. Each one shows only when the board reported a value for it:
     // firmware from before the field reports none and ignores a choice. They sit below Save
     // because they change rarely, so Save and its result message stay on the first screen.
+    currentY = this.drawBoardSettingCard(currentY, 'boltMode', 'BOLT MODE');
     currentY = this.drawBoardSettingCard(currentY, 'language', 'BOARD LANGUAGE');
     currentY = this.drawBoardSettingCard(currentY, 'screenBrightness', 'SCREEN BRIGHTNESS');
     currentY = this.drawBoardSettingCard(currentY, 'screenOffDelay', 'SCREEN OFF DELAY');

@@ -45,8 +45,8 @@ export const OTS_OBJECTS = [
     writable: true,
     // Fields the board keeps when the client says nothing for them.
     // display_window has explicit message presence; the rest are "0 = leave
-    // alone" scalars/enums (device_config.proto fields 3-7).
-    mergeOnZero: ['displayWindow', 'language', 'screenBrightness', 'screenOffDelay', 'batteryType'],
+    // alone" scalars/enums (device_config.proto fields 3-8).
+    mergeOnZero: ['displayWindow', 'language', 'screenBrightness', 'screenOffDelay', 'batteryType', 'boltMode'],
     // The board clamps rather than rejects, so the other fields still apply.
     clampMax: { screenOffDelay: 999 }
   }
@@ -70,6 +70,7 @@ export const BOARD_MODEL = snapshotpb.v1.BoardModel;
 export const LANGUAGE = snapshotpb.v1.Language;
 export const SCREEN_BRIGHTNESS = snapshotpb.v1.ScreenBrightness;
 export const BATTERY_TYPE = snapshotpb.v1.BatteryType;
+export const BOLT_MODE = snapshotpb.v1.BoltMode;
 
 /**
  * A Profile fixture, using the generated bindings' JS property names.
@@ -95,6 +96,7 @@ export function createProfile(overrides = {}) {
     triggerDebounceOn: 4,
     triggerDebounceOff: 4,
     cockingSolenoidTimeout: 5000,
+    searSolenoidDelay: 60,
     ...(overrides.autococker || {})
   };
   return {
@@ -129,7 +131,7 @@ export function createBoardState(overrides = {}) {
       activeProfile: 1,
       bootText: 'SNAPSHOT',
       // Board-owned settings the watch can leave alone. display_window is never
-      // written by the watch at all; the other three are omitted whenever the
+      // written by the watch at all; the other four are omitted whenever the
       // watch holds no value for them.
       displayWindow: { x: 0, y: 3, w: 110, h: 26 },
       language: LANGUAGE.LANGUAGE_EN,
@@ -138,6 +140,7 @@ export function createBoardState(overrides = {}) {
       // The watch has no battery setting, and it never writes one. The board holds a 2S LiPo
       // pack, and not the 9 V default, so a write that sends a concrete type fails a test.
       batteryType: BATTERY_TYPE.BATTERY_TYPE_2S_LIPO,
+      boltMode: BOLT_MODE.BOLT_MODE_CLOSED,
       ...(overrides.deviceConfig || {})
     },
     // Client-writable (profile.proto).

@@ -1,6 +1,7 @@
 import {
   BoardLanguage,
   BoardScreenBrightness,
+  MarkerBoltMode,
   SCREEN_OFF_DELAY_DEFAULT,
   SCREEN_OFF_DELAY_MAX
 } from '../protocol/OtsModelMapper';
@@ -58,6 +59,15 @@ export const BOARD_SETTINGS = {
     options: SCREEN_OFF_DELAY_PRESETS,
     optionsFor: screenOffDelayOptions,
     names: null // a delay shows as seconds; see boardSettingLabel
+  },
+  boltMode: {
+    title: 'Bolt Mode',
+    field: 'boltMode',
+    options: Object.values(MarkerBoltMode),
+    names: {
+      [MarkerBoltMode.CLOSED]: 'Closed Bolt',
+      [MarkerBoltMode.OPEN]: 'Open Bolt'
+    }
   }
 };
 

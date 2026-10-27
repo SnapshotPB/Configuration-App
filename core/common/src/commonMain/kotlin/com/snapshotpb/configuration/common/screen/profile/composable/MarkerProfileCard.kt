@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.snapshotpb.configuration.common.composable.MarkerProfileItem
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.button_delete
@@ -42,6 +43,7 @@ fun MarkerProfileCard(
     index: Int,
     activeProfile: Boolean,
     profile: MarkerProfile,
+    boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
     isDiverged: Boolean = false,
     /** False for the last profile: the board keeps at least one, so the swipe shows no delete. */
     deletable: Boolean = true,
@@ -131,6 +133,7 @@ fun MarkerProfileCard(
                     index = index,
                     activeProfile = activeProfile,
                     profile = profile,
+                    boltMode = boltMode,
                     isDiverged = isDiverged,
                     onClick = { onProfileSelected(profile) }
                 )

@@ -10,6 +10,7 @@ import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
 import snapshotpb.v1.BatteryType
 import snapshotpb.v1.BoardModel
+import snapshotpb.v1.BoltMode
 import snapshotpb.v1.Device
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
@@ -119,6 +120,7 @@ class DecodeDeviceTest {
                         triggerDebounceOn = 10u,
                         triggerDebounceOff = 11u,
                         cockingSolenoidTimeout = 12u,
+                        searSolenoidDelay = 13u,
                     ),
                 ),
                 Profile(name = "P1"),
@@ -128,6 +130,28 @@ class DecodeDeviceTest {
 
         assertContentEquals(encoded, ProtoBuf.encodeToByteArray(ProfilesWire.serializer(), original.toWire()))
         assertEquals(original, decodeProfiles(encoded))
+    }
+
+    @Test
+    fun decodesProfileFromOlderFirmwareOmittingSearSolenoidDelayAsZero() {
+        // A board on older firmware that predates tag 15 omits it on the wire;
+        // searSolenoidDelay decodes as 0.
+        val legacy = Profiles(
+            profiles = listOf(
+                Profile(
+                    name = "Legacy",
+                    autococker = AutocockerConfig(
+                        fireMode = AutocockerFireMode.AUTOCOCKER_FIRE_MODE_SEMI,
+                        searSolenoidDwell = 45u,
+                        cockingSolenoidDelay = 60u,
+                    ),
+                ),
+            ),
+        )
+        val encoded = ProtoBuf.encodeToByteArray(Profiles.serializer(), legacy)
+        val decoded = decodeProfiles(encoded).profiles.single()?.autococker
+
+        assertEquals(0u, decoded?.searSolenoidDelay)
     }
 
     @Test
@@ -178,11 +202,26 @@ class DecodeDeviceTest {
             language = Language.LANGUAGE_FR,
             screenBrightness = ScreenBrightness.SCREEN_BRIGHTNESS_HIGH,
             screenOffDelay = 45u,
+            boltMode = BoltMode.BOLT_MODE_OPEN,
         )
 
         val encoded = ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), original)
 
         assertEquals(original, decodeDeviceConfig(encoded))
+    }
+
+    @Test
+    fun decodesADeviceConfigWithABoltModeThisAppDoesNotKnow() {
+        // Field 8 (bolt_mode) = 99: a bolt mode added to newer firmware. The rest must still decode.
+        val encoded = ProtoBuf.encodeToByteArray(
+            DeviceConfig.serializer(),
+            DeviceConfig(activeProfile = 2u, screenOffDelay = 30u),
+        ) + byteArrayOf(0x40, 99)
+        val decoded = decodeDeviceConfig(encoded)
+
+        assertEquals(2u, decoded.activeProfile)
+        assertEquals(30u, decoded.screenOffDelay)
+        assertEquals(BoltMode.BOLT_MODE_UNSPECIFIED, decoded.boltMode)
     }
 
     @Test

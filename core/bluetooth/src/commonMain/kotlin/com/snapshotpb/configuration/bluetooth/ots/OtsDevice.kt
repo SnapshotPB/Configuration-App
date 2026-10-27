@@ -6,6 +6,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumber
+import snapshotpb.v1.BoltMode
 import snapshotpb.v1.Device
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
@@ -115,6 +116,7 @@ private class DeviceConfigWire(
     @ProtoNumber(4) val language: Int = 0,
     @ProtoNumber(5) val screenBrightness: Int = 0,
     @ProtoNumber(6) val screenOffDelay: UInt = 0U,
+    @ProtoNumber(8) val boltMode: Int = 0,
 )
 
 /**
@@ -145,10 +147,13 @@ private val languagesByProtoNumber: Map<Int, Language> =
 private val brightnessesByProtoNumber: Map<Int, ScreenBrightness> =
     protoNumbersOf(ScreenBrightness.serializer(), ScreenBrightness.entries)
 
+private val boltModesByProtoNumber: Map<Int, BoltMode> =
+    protoNumbersOf(BoltMode.serializer(), BoltMode.entries)
+
 /**
  * Decodes the raw bytes of a "device_config" OTS object into the typed [DeviceConfig] message. A
- * language or brightness number that this app does not know decodes as its `UNSPECIFIED` value: the
- * board holds no value that the app can show.
+ * language, brightness or bolt mode number that this app does not know decodes as its `UNSPECIFIED`
+ * value: the board holds no value that the app can show.
  */
 fun decodeDeviceConfig(bytes: ByteArray): DeviceConfig {
     val trimmed = trimProtobufPadding(bytes)
@@ -161,6 +166,7 @@ fun decodeDeviceConfig(bytes: ByteArray): DeviceConfig {
         screenBrightness = brightnessesByProtoNumber[wire.screenBrightness]
             ?: ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED,
         screenOffDelay = wire.screenOffDelay,
+        boltMode = boltModesByProtoNumber[wire.boltMode] ?: BoltMode.BOLT_MODE_UNSPECIFIED,
     )
 }
 

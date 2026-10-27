@@ -12,6 +12,7 @@ import com.snapshotpb.configuration.bluetooth.ots.getCurrentLocalDate
 import com.snapshotpb.configuration.common.screen.device.BOARD_ADVERTISED_NAME
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DiscoveredDevice
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.withProfilesInWrittenSlots
@@ -173,6 +174,7 @@ internal class WearFakeBoard(
         ),
         activeProfileId = PROFILE_1_ID,
         bootText = "SnapshotPB Mock",
+        boltMode = MarkerBoltMode.CLOSED,
         lastModified = System.currentTimeMillis(),
     )
 

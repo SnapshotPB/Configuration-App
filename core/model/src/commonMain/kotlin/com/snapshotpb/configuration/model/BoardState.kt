@@ -27,4 +27,10 @@ data class BoardState(
      * than raised as a conflict.
      */
     val displayWindow: DisplayWindow? = null,
+    /**
+     * The bolt mode the board last reported. `null` in a baseline stored before the app read it,
+     * or when the board reported none, so the first read that carries one is adopted rather than
+     * raised as a conflict.
+     */
+    val boltMode: MarkerBoltMode? = null,
 )

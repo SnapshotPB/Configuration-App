@@ -54,6 +54,7 @@ import com.snapshotpb.configuration.common.screen.profile.composable.ConnectionC
 import com.snapshotpb.configuration.common.screen.profile.composable.DeviceConfigurationCard
 import com.snapshotpb.configuration.common.screen.profile.composable.MarkerProfileCard
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.Photo
 import com.snapshotpb.core.resources.Res
@@ -301,6 +302,7 @@ fun ProfilesScreen(
                                         index = index,
                                         activeProfile = profile.id == device?.activeProfileId,
                                         profile = profile,
+                                        boltMode = device?.boltMode ?: MarkerBoltMode.CLOSED,
                                         isDiverged = device?.isProfileDiverged(profile.id) ?: false,
                                         deletable = canDeleteProfile,
                                         onProfileSelected = {
@@ -402,6 +404,7 @@ fun ProfilesScreen(
                                 index = index,
                                 activeProfile = profile.id == device?.activeProfileId,
                                 profile = profile,
+                                boltMode = device?.boltMode ?: MarkerBoltMode.CLOSED,
                                 isDiverged = device?.isProfileDiverged(profile.id) ?: false,
                                 deletable = canDeleteProfile,
                                 onProfileSelected = {

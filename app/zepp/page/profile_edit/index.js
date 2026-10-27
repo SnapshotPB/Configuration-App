@@ -107,6 +107,7 @@ Page({
 
     const deviceId = this.device.id;
     const profile = this.profile;
+    const boltMode = this.device.boltMode || 'CLOSED';
     const profileDiverged = deviceStore.isProfileDiverged(deviceId, profile.id);
 
     let currentY = px(85);
@@ -121,7 +122,7 @@ Page({
       text_size: px(18),
       align_h: align.CENTER_H,
       align_v: align.CENTER_V,
-      text: `Max BPS: ${maxBpsForTiming(profile)}`
+      text: `Max BPS: ${maxBpsForTiming(profile, boltMode)}`
     });
     this.dynamicWidgets.push(bpsLine);
     currentY += px(28);
@@ -148,8 +149,8 @@ Page({
     currentY = this.drawChoiceRow(currentY, 'fireMode', 'Fire Mode');
     currentY = this.drawChoiceRow(currentY, 'eyeMode', 'Eye Mode');
 
-    // 4. One row per numeric field the fire mode and the eye mode show.
-    visibleProfileFields(profile).forEach(def => {
+    // 4. One row per numeric field the fire mode, bolt mode and eye mode show.
+    visibleProfileFields(profile, boltMode).forEach(def => {
       currentY = this.drawFieldRow(currentY, def);
     });
     currentY += px(10);

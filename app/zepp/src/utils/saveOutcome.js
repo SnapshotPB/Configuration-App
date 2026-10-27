@@ -5,7 +5,7 @@ export const SAVE_COLOR_OK = 0x00C853;
 export const SAVE_COLOR_WARN = 0xFFAB00;
 export const SAVE_COLOR_FAIL = 0xFF0000;
 
-const BOARD_SETTING_KEYS = ['language', 'screenBrightness', 'screenOffDelay'];
+const BOARD_SETTING_KEYS = ['language', 'screenBrightness', 'screenOffDelay', 'boltMode'];
 
 // The message a page shows after the board accepted a write, as { text, color }.
 //

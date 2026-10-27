@@ -41,6 +41,7 @@ import androidx.wear.compose.material.ToggleChip
 import com.snapshotpb.configuration.common.composable.rememberRepeatingClick
 import com.snapshotpb.configuration.common.composable.markerProfileFieldLabel
 import com.snapshotpb.configuration.common.composable.markerProfileFieldValueLabel
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.core.resources.Res
@@ -75,6 +76,7 @@ const val PROFILE_FIELD_PLUS_TAG = "profile_field_plus"
 fun ProfileFieldStepperScreen(
     profile: MarkerProfile,
     field: MarkerProfileField,
+    boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
     onCommit: (Int) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -177,7 +179,7 @@ fun ProfileFieldStepperScreen(
             Text(
                 text = stringResource(
                     Res.string.profile_marker_max_bps,
-                    field.set(profile, value).maxBpsForTiming(),
+                    field.set(profile, value).maxBpsForTiming(boltMode),
                 ),
                 style = MaterialTheme.typography.caption2,
                 textAlign = TextAlign.Center,
