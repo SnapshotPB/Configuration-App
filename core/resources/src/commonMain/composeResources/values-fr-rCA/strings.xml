@@ -157,18 +157,17 @@
     <!-- Display Area section on the Configure Device screen -->
     <string name="configure_device_screen_display_window_label">Zone d’affichage</string>
     <string name="configure_device_screen_display_window_details">La partie de l’écran de la carte que le cadre de poignée laisse voir. Sélectionnez un cadre, ou définissez votre propre zone.</string>
-    <string name="configure_device_screen_display_window_none">La carte n’a signalé aucune zone. Sélectionnez un cadre, ou sélectionnez une zone personnalisée.</string>
     <string name="configure_device_screen_display_window_unset">Non défini</string>
-    <string name="configure_device_screen_display_window_custom">Zone personnalisée</string>
+    <string name="configure_device_screen_display_window_custom">Cadre personnalisé</string>
     <string name="configure_device_screen_display_window_drawing">Dessin de l’écran de la carte avec la zone visible marquée</string>
     <string name="configure_device_screen_display_window_hint">Faites glisser la zone marquée pour la déplacer.</string>
     <string name="configure_device_screen_display_window_width_label">Largeur visible</string>
     <string name="configure_device_screen_display_window_height_label">Hauteur visible</string>
     <!-- Visible area readout: width, height, then the corner offsets -->
     <string name="configure_device_screen_display_window_summary">Largeur %1$s, hauteur %2$s, à %3$s, %4$s</string>
-    <string name="grip_frame_full_panel">Panneau entier</string>
     <string name="grip_frame_e1">Cadre E1</string>
     <string name="grip_frame_e2">Cadre E2</string>
+    <string name="grip_frame_86">Cadre 86</string>
     <string name="configure_device_screen_save_button">Enregistrer</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icône Bluetooth</string>

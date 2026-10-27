@@ -157,18 +157,17 @@
     <!-- Display Area section on the Configure Device screen -->
     <string name="configure_device_screen_display_window_label">Display Area</string>
     <string name="configure_device_screen_display_window_details">The part of the board screen that the grip frame shows. Select a frame, or set your own area.</string>
-    <string name="configure_device_screen_display_window_none">The board reported no area. Select a frame, or select a custom area.</string>
     <string name="configure_device_screen_display_window_unset">Not set</string>
-    <string name="configure_device_screen_display_window_custom">Custom area</string>
+    <string name="configure_device_screen_display_window_custom">Custom frame</string>
     <string name="configure_device_screen_display_window_drawing">Drawing of the board screen with the visible area marked</string>
     <string name="configure_device_screen_display_window_hint">Drag the marked area to move it.</string>
     <string name="configure_device_screen_display_window_width_label">Visible width</string>
     <string name="configure_device_screen_display_window_height_label">Visible height</string>
     <!-- Visible area readout: width, height, then the corner offsets -->
     <string name="configure_device_screen_display_window_summary">Width %1$s, height %2$s, at %3$s, %4$s</string>
-    <string name="grip_frame_full_panel">Full panel</string>
     <string name="grip_frame_e1">E1 frame</string>
     <string name="grip_frame_e2">E2 frame</string>
+    <string name="grip_frame_86">86 frame</string>
     <string name="configure_device_screen_save_button">Save</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth Icon</string>

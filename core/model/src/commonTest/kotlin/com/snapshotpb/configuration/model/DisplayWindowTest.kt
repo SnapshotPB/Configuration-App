@@ -66,7 +66,9 @@ class DisplayWindowTest {
 
     @Test
     fun matchingGripFrame_namesAPresetAndReportsNoneForACustomRectangle() {
-        assertEquals(GripFrame.FULL_PANEL, DisplayWindow.FULL_PANEL.matchingGripFrame())
+        assertEquals(GripFrame.E1, GripFrame.E1.window.matchingGripFrame())
+        assertEquals(GripFrame.E2, GripFrame.E2.window.matchingGripFrame())
+        assertEquals(GripFrame.FRAME_86, DisplayWindow.FULL_PANEL.matchingGripFrame())
         assertNull(DisplayWindow(x = 4, y = 2, w = 100, h = 28).matchingGripFrame())
     }
 
@@ -78,29 +80,10 @@ class DisplayWindowTest {
     }
 
     @Test
-    fun matchingGripFrame_doesNotNameAFrameThatIsNotMeasured() {
-        // A device that stored the placeholder rectangle of E1 or E2 shows it as a custom
-        // rectangle, so the user sees the numbers and not a preset name that is not correct.
-        GripFrame.entries.filterNot { it.measured }.forEach { frame ->
-            assertNull(frame.window.matchingGripFrame(), "${frame.name} is named but not measured")
-        }
-    }
-
-    @Test
-    fun offered_holdsOnlyMeasuredFramesWithTheFullPanelFirst() {
-        // The full panel is the way back from a bad window, so it must always be the first entry.
-        assertEquals(GripFrame.FULL_PANEL, GripFrame.offered.first())
-        assertEquals(GripFrame.entries.filter { it.measured }, GripFrame.offered)
-    }
-
-    @Test
-    fun offered_hidesTheE1AndE2PlaceholderFrames() {
-        // The E1 and E2 rectangles are placeholders until someone measures the frames (issue
-        // #112). When a measured rectangle replaces a placeholder, set its measured flag and
-        // remove it from this test.
-        assertFalse(GripFrame.E1.measured)
-        assertFalse(GripFrame.E2.measured)
-        assertFalse(GripFrame.E1 in GripFrame.offered)
-        assertFalse(GripFrame.E2 in GripFrame.offered)
+    fun offered_listsE1E2And86FramesInOrder() {
+        assertEquals(
+            listOf(GripFrame.E1, GripFrame.E2, GripFrame.FRAME_86),
+            GripFrame.offered,
+        )
     }
 }

@@ -97,10 +97,9 @@ class AppJsonTest {
     }
 
     @Test
-    fun decodesADeviceThatStoredTheE1PlaceholderRectangle() {
-        // An older build offered the E1 preset and stored its placeholder rectangle. The app now
-        // hides E1 until someone measures the frame. Only the rectangle is stored, so the device
-        // still loads, keeps its rectangle, and shows it as a custom rectangle.
+    fun decodesADeviceThatStoredTheE1Rectangle() {
+        // Only the rectangle is stored, so a device with the E1 rectangle loads and matches the E1
+        // grip frame preset.
         val stored = """
             [{"id":"00000000-0000-0000-0000-000000000001","name":"Old Device",
               "lastSeen":"2026-01-01","knownProfiles":[],"bootText":"Hello",
@@ -114,8 +113,8 @@ class AppJsonTest {
 
         assertEquals(GripFrame.E1.window, device.displayWindow)
         assertEquals(GripFrame.E1.window, device.boardState?.displayWindow)
-        assertNull(device.displayWindow?.matchingGripFrame())
-        assertFalse(device.hasDiverged(), "hiding a preset must not show an unsaved change")
+        assertEquals(GripFrame.E1, device.displayWindow?.matchingGripFrame())
+        assertFalse(device.hasDiverged())
     }
 
     @Test

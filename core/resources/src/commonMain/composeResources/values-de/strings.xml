@@ -157,18 +157,17 @@
     <!-- Display Area section on the Configure Device screen -->
     <string name="configure_device_screen_display_window_label">Anzeigebereich</string>
     <string name="configure_device_screen_display_window_details">Der Teil des Platinenbildschirms, den der Griffrahmen zeigt. Wählen Sie einen Rahmen, oder legen Sie einen eigenen Bereich fest.</string>
-    <string name="configure_device_screen_display_window_none">Die Platine hat keinen Bereich gemeldet. Wählen Sie einen Rahmen, oder wählen Sie einen eigenen Bereich.</string>
     <string name="configure_device_screen_display_window_unset">Nicht festgelegt</string>
-    <string name="configure_device_screen_display_window_custom">Eigener Bereich</string>
+    <string name="configure_device_screen_display_window_custom">Eigener Rahmen</string>
     <string name="configure_device_screen_display_window_drawing">Zeichnung des Platinenbildschirms mit dem markierten sichtbaren Bereich</string>
     <string name="configure_device_screen_display_window_hint">Ziehen Sie den markierten Bereich, um ihn zu verschieben.</string>
     <string name="configure_device_screen_display_window_width_label">Sichtbare Breite</string>
     <string name="configure_device_screen_display_window_height_label">Sichtbare Höhe</string>
     <!-- Visible area readout: width, height, then the corner offsets -->
     <string name="configure_device_screen_display_window_summary">Breite %1$s, Höhe %2$s, bei %3$s, %4$s</string>
-    <string name="grip_frame_full_panel">Ganzes Panel</string>
     <string name="grip_frame_e1">E1-Rahmen</string>
     <string name="grip_frame_e2">E2-Rahmen</string>
+    <string name="grip_frame_86">86-Rahmen</string>
     <string name="configure_device_screen_save_button">Speichern</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth-Symbol</string>
