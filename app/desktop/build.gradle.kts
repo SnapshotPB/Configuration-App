@@ -92,9 +92,9 @@ nucleus.application {
         packageName = "Snapshot PB"
         // The native packagers validate this at CONFIGURATION time and reject anything
         // non-numeric, so the `-dev+<sha>` marker must be stripped here or every local and
-        // PR build fails at `./gradlew help`. The marker still reaches project.version and
+        // PR build fails at `./gradlew help`. The marker still reaches rootProject.version and
         // Android's versionName; see packagingVersion() for the full rationale.
-        packageVersion = packagingVersion(project.version.toString())
+        packageVersion = packagingVersion(rootProject.version.toString())
         description = "The Snapshot PB board configuration application."
         copyright = "© 2026 Snapshot PB"
         vendor = "Snapshot PB"

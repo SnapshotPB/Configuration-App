@@ -256,6 +256,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # A tag is not master, so a release run only reads the caches. Only a run on master
+          # writes them (validation.yml).
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+          # The key of the configuration cache entries that validation.yml saves.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       # -------------------------------------------------------------------------------
       # macOS Developer ID signing + notarization (§7). Dormant until the secrets exist.
@@ -397,6 +403,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # A tag is not master, so a release run only reads the caches.
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+          # The key of the configuration cache entries that validation.yml saves.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       # This step must come before the build: the release signingConfig exists only when
       # ANDROID_KEYSTORE_FILE names the decrypted keystore (§7). gpg reads the passphrase
@@ -484,6 +495,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # A tag is not master, so a release run only reads the caches.
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+          # The key of the configuration cache entries that validation.yml saves.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Build wasm distribution
         run: |
@@ -846,6 +862,11 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # A tag is not master, so a release run only reads the caches.
+          cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+          # The key of the configuration cache entries that validation.yml saves.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       # -------------------------------------------------------------------------------
       # Signing uses an App Store Connect API key with -allowProvisioningUpdates, so Xcode

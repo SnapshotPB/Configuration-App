@@ -11,7 +11,7 @@ import javax.inject.Inject
 /**
  * Single source of truth for the app's calendar-derived version, per
  * `docs/versioning-and-release-plan.md`. There is no committed `VERSION` file; the
- * version is resolved from `git describe` so every module in [`allprojects`] agrees.
+ * version is resolved from `git describe` for the root project.
  *
  * The scheme is `<2-digit ISO week-year>.<ISO week>.<count>`:
  *
@@ -97,6 +97,12 @@ fun wearVersionCode(version: String): Int = WEAR_VERSION_CODE_OFFSET + projectVe
 fun packagingVersion(version: String): String = version.substringBefore('-')
 
 /**
+ * The `git describe --match` glob of a release tag. `scripts/cut_version.py` makes only tags of
+ * this form.
+ */
+internal const val RELEASE_TAG_GLOB = "v[0-9]*.[0-9]*.[0-9]*"
+
+/**
  * Turns raw `git describe --tags --always --dirty` output into the version string.
  * Pure and side-effect free so the mapping is easy to reason about; kept `internal`
  * for the [GitVersionValueSource] and any future unit test.
@@ -148,7 +154,9 @@ abstract class GitVersionValueSource : ValueSource<String, GitVersionValueSource
         val raw = runCatching {
             execOperations.exec {
                 workingDir = java.io.File(parameters.workingDir.get())
-                commandLine("git", "describe", "--tags", "--always", "--dirty")
+                // Only a release tag `v<year>.<week>.<count>` counts. A different tag on the
+                // branch (for example a backup tag) does not change the version.
+                commandLine("git", "describe", "--tags", "--match", RELEASE_TAG_GLOB, "--always", "--dirty")
                 standardOutput = stdout
                 errorOutput = ByteArrayOutputStream()
                 isIgnoreExitValue = true

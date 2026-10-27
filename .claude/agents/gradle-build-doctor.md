@@ -52,9 +52,9 @@ A `Copy` task copies the BASE locale only (`core/resources/src/commonMain/compos
 
 ## Version Management
 
-- `resolveProjectVersion()` (`composite/.../util/Version.kt`) runs `git describe --tags --always --dirty` once, in a configuration-cache-safe `ValueSource`, and the root `build.gradle.kts` sets it on `allprojects`.
+- `resolveProjectVersion()` (`composite/.../util/Version.kt`) runs `git describe --tags --match "v[0-9]*.[0-9]*.[0-9]*" --always --dirty` once, in a configuration-cache-safe `ValueSource`, and the root `build.gradle.kts` sets it on the root project only (`rootProject.version`). Library modules keep the default version `"unspecified"` so that per-commit version changes do not invalidate `compileTestKotlinJvm` or Android `lintAnalyze*` cache keys.
 - The scheme is `<2-digit ISO week-year>.<ISO week>.<count>` (for example `26.30.1`). A build that is not exactly on a tag gets a `-dev+<metadata>` suffix. A dirty tree gives `-dev+dirty`.
-- Android uses `projectVersionCode(project.version)`, Wear uses `wearVersionCode(project.version)` (`100_000_000 + projectVersionCode`), and both set `versionName = project.version`. Desktop uses `packagingVersion()`, which removes the suffix, because the native packagers accept only numbers.
+- Android uses `projectVersionCode(rootProject.version)`, Wear uses `wearVersionCode(rootProject.version)` (`100_000_000 + projectVersionCode`), and both set `versionName = rootProject.version`. Desktop uses `packagingVersion()`, which removes the suffix, because the native packagers accept only numbers. `core:app-version` reads `rootProject.version` and strips the `+` build metadata by default.
 - `scripts/cut_version.py` computes the next tag. `release.yml` cuts the tag and dispatches `build-release.yml`.
 - In CI, do not edit a tracked file before Gradle runs: `--dirty` then stamps a `-dev` version into a release. The iOS job gives the version to `xcodebuild` as build settings for this reason.
 

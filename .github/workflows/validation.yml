@@ -215,10 +215,14 @@ jobs:
           #
           # Only a run on master writes the caches. A PR run reads them, so parallel PR jobs
           # cannot evict the master entries, and every PR job skips the slow cache-save step.
-          # The configuration cache is not stored: setup-gradle stores it only with an
-          # encryption key, and the entry would be invalid on the next commit in any case,
-          # because resolveProjectVersion() puts the `git describe` output into the build inputs.
+          # Each matrix job writes its own Gradle User Home entry (the key holds the job name
+          # and the matrix values). The action also saves the caches when the job fails.
           cache-read-only: ${{ github.ref != 'refs/heads/master' }}
+          # The action saves the configuration cache only with this key (a base64 AES key).
+          # scripts/set_gradle_encryption_key.sh makes the secret. Without it, each job calculates
+          # the task graph again, which takes 25 to 40 s. With no secret, the action only skips the
+          # configuration cache.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           # Five jobs would otherwise post five scan comments per PR — only comment when one fails.
           add-job-summary-as-pr-comment: 'on-failure'
 
@@ -238,8 +242,13 @@ jobs:
       # family, so org.gradle.parallel (gradle.properties) and the setup-gradle-managed daemon are back
       # on and peak RAM stays under the 15.6 GiB of the Linux runner. The macos target is the
       # exception: its `gradle-args` sets one worker (see the matrix comment).
+      #
+      # --continue runs the independent tasks after a failure, and `if: ${{ !cancelled() }}` runs
+      # this step even when the composite test step fails. On master, setup-gradle then saves the
+      # build cache entries of all the tasks that succeeded.
       - name: Build ${{ matrix.target }}
-        run: ./gradlew ${{ matrix.tasks }} ${{ matrix.gradle-args }} --stacktrace -Dorg.gradle.console=plain
+        if: ${{ !cancelled() }}
+        run: ./gradlew ${{ matrix.tasks }} ${{ matrix.gradle-args }} --continue --stacktrace -Dorg.gradle.console=plain
 
       # The console gives only the name of a failed test. A browser test that Mocha stops after
       # its time limit shows as the bare text "Error". The reports hold the message and the stack

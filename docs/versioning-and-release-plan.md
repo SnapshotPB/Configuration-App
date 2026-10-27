@@ -109,9 +109,13 @@ There is no committed version file. One resolver calculates the version, and eve
 module uses it. Thus all targets always show the same version.
 
 `resolveProjectVersion()` in the composite build (`Version.kt`) runs
-`git describe --tags --always --dirty` one time, through a Gradle `ValueSource`. The
-`ValueSource` keeps the configuration cache valid. The root `build.gradle.kts` sets the
-result on `allprojects`. `parseGitDescribe()` changes the `git describe` output as
+`git describe --tags --match "v[0-9]*.[0-9]*.[0-9]*" --always --dirty` one time, through a
+Gradle `ValueSource`. The `ValueSource` keeps the configuration cache valid. A tag of a
+different form on `master` does not change the version. The root `build.gradle.kts` sets the
+result on the root project only. The Android and Wear apps, the desktop package, and
+`core:app-version` read `rootProject.version`. A library module has no version: the version
+changes at each commit, and it is an input of the test compile and of the lint analysis of a
+module. `parseGitDescribe()` changes the `git describe` output as
 follows:
 
 | `git describe` output | Version | Build type |
@@ -127,7 +131,7 @@ build metadata. The resolver changes a `+` in that part to a `.`.
 
 **Where the version goes:**
 
-- **Desktop.** `packageVersion = packagingVersion(project.version)`. This function
+- **Desktop.** `packageVersion = packagingVersion(rootProject.version)`. This function
   removes all text from the first `-`, so `26.29.1-dev+7-gabc123` becomes `26.29.1`.
   The function is necessary: jpackage rejects a suffix at configuration time (§3).
 - **Android and Wear.** `versionName` is the full version, with the marker.

@@ -125,4 +125,12 @@ class VersionTest {
         val major = packagingVersion("26.30.1").substringBefore('.').toInt()
         assert(major <= 255) { "MSI rejects a major version above 255" }
     }
+
+    // --- RELEASE_TAG_GLOB -------------------------------------------------------------
+
+    @Test
+    fun `the release tag glob agrees with the tag form of the release script`() {
+        // `git describe --match` uses this glob. scripts/cut_version.py makes `v<int>.<int>.<int>`.
+        assertEquals("v[0-9]*.[0-9]*.[0-9]*", RELEASE_TAG_GLOB)
+    }
 }

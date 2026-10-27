@@ -7,9 +7,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
 }
 
-// The resolved version reaches shared code only through generated source: `project.version` is a
-// Gradle-side value, and commonMain must stay platform-agnostic (so no BuildConfig, which is
-// Android-only). Mirrors the generateDesktopConfig task in app/desktop/build.gradle.kts.
+// The resolved version reaches shared code only through generated source: `rootProject.version`
+// is a Gradle-side value, and commonMain must stay platform-agnostic (so no BuildConfig, which is
+// Android-only). Only the root project has the version (see the root build.gradle.kts). Mirrors
+// the generateDesktopConfig task in app/desktop/build.gradle.kts.
 //
 // WHAT IS STAMPED, AND WHY IT IS NOT THE WHOLE STRING
 //
@@ -38,7 +39,7 @@ val stampBuildMetadata = providers.gradleProperty("snapshotpb.stampBuildMetadata
 
 val generateAppVersion by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/appVersion")
-    val fullVersion = project.version.toString()
+    val fullVersion = rootProject.version.toString()
     val versionName = if (stampBuildMetadata) fullVersion else fullVersion.substringBefore('+')
     val versionCode = projectVersionCode(fullVersion)
     outputs.dir(outputDir)
