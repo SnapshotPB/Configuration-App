@@ -48,6 +48,10 @@ android {
 
     buildTypes {
         getByName("release") {
+            // R8 shrinks and optimizes the release build, as in app/android. The consumer
+            // rules of the libraries are enough, so the Wear app has no rules file.
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
