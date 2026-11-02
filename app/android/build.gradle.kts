@@ -48,6 +48,7 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -61,6 +62,7 @@ android {
         create("benchmark") {
             isDebuggable = false
             isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
