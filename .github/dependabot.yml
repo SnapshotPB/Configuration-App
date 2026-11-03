@@ -1,6 +1,9 @@
 # Dependabot keeps the GitHub Actions in .github/workflows up to date. The third-party
 # actions are pinned to full commit SHAs, with the tag in a trailing comment. Dependabot
 # changes the SHA and the comment together when a new release comes out.
+#
+# Dependabot also keeps the Gradle dependencies up to date. It reads the version catalog
+# gradle/libs.versions.toml and the two Gradle wrappers (the root build and composite).
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -13,3 +16,47 @@ updates:
           - "*"
     commit-message:
       prefix: "ci"
+
+  # The root build and composite share the version catalog, but each has its own wrapper.
+  # Merge the two wrapper PRs together.
+  #
+  # A Kotlin, AGP or Gradle bump needs a manual republish of composite. Run
+  # `./gradlew -p composite clean test publish` on the PR branch and commit composite/m2.
+  # The digest of composite does not cover the catalog, so CI does not find a missed
+  # republish.
+  #
+  # A BlueFalcon bump needs a comparison of EmulatorEngine with the new JsEngine
+  # (see CLAUDE.md).
+  - package-ecosystem: "gradle"
+    directories:
+      - "/"
+      - "/composite"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    ignore:
+      # A placeholder version. settings.gradle.kts replaces it with a digest version.
+      - dependency-name: "composite"
+      # Pinned on purpose: 0.1.1 has no tag and no documentation. Examine the generated
+      # code before a bump.
+      - dependency-name: "io.github.dogacel:kotlinx-protobuf-gen"
+    # Dependabot puts a dependency in the first group that it matches, so kotlinx comes
+    # before the Kotlin toolchain.
+    groups:
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx*"
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.compose*"
+          - "com.android*"
+      androidx:
+        patterns:
+          - "androidx.*"
+          - "org.jetbrains.androidx*"
+      ktor:
+        patterns:
+          - "io.ktor*"
+    commit-message:
+      prefix: "deps"
