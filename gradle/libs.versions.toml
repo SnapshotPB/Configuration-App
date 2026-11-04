@@ -27,9 +27,9 @@ kotlinx-browser = "0.5.0"
 # Ktor 3.6.0 needs kotlinx-coroutines 1.11.0 and kotlinx-io 0.9.1. The catalog names these
 # versions, so each module compiles and tests against the versions that the apps run with.
 kotlinx-coroutines = "1.11.0"
-kotlinx-datetime = "0.7.1"
-kotlinx-io = "0.9.1"
-kotlinx-serialization = "1.11.0"
+kotlinx-datetime = "0.8.0"
+kotlinx-io = "0.9.2"
+kotlinx-serialization = "1.12.0"
 ktor = "3.6.0"
 material3 = "1.10.0-alpha05"
 protobuf = "0.9.6"
