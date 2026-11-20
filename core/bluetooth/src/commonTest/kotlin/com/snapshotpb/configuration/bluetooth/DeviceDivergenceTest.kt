@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
@@ -81,19 +82,31 @@ class DeviceDivergenceTest {
             screenBrightness = BoardScreenBrightness.DEFAULT,
             screenOffDelay = 5,
             boltMode = MarkerBoltMode.CLOSED,
+            bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
             boardState = baseBoardState.copy(
                 screenBrightness = BoardScreenBrightness.DEFAULT,
                 screenOffDelay = 5,
                 boltMode = MarkerBoltMode.CLOSED,
+                bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
             ),
         )
         assertFalse(withScreen.hasDiverged())
         assertTrue(withScreen.copy(screenBrightness = BoardScreenBrightness.HIGH).hasDiverged())
         assertTrue(withScreen.copy(screenOffDelay = 30).hasDiverged())
         assertTrue(withScreen.copy(boltMode = MarkerBoltMode.OPEN).hasDiverged())
+        assertTrue(withScreen.copy(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE).hasDiverged())
         assertFalse(baseDevice.copy(screenOffDelay = 30).hasDiverged())
         assertFalse(baseDevice.copy(boltMode = MarkerBoltMode.OPEN).hasDiverged())
-        assertFalse(withScreen.copy(screenBrightness = null, screenOffDelay = null, boltMode = null).hasDiverged())
+        assertFalse(baseDevice.copy(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE).hasDiverged())
+        assertFalse(withScreen.copy(bluetoothAtBoot = null).hasDiverged())
+        assertFalse(
+            withScreen.copy(
+                screenBrightness = null,
+                screenOffDelay = null,
+                boltMode = null,
+                bluetoothAtBoot = null,
+            ).hasDiverged(),
+        )
 
         // lockoutEnabled is a read-only board fact, NOT a divergence field: changing it alone must
         // not raise an unsaved/conflict state the user cannot push back to the board.
@@ -136,6 +149,7 @@ class DeviceDivergenceTest {
             screenBrightness = bs.screenBrightness ?: editedDevice.screenBrightness,
             screenOffDelay = bs.screenOffDelay ?: editedDevice.screenOffDelay,
             boltMode = bs.boltMode ?: editedDevice.boltMode,
+            bluetoothAtBoot = bs.bluetoothAtBoot ?: editedDevice.bluetoothAtBoot,
         )
 
         // Verify restoration
@@ -201,6 +215,7 @@ class DeviceDivergenceTest {
             boardValuesMatch(bs.screenBrightness, screenBrightness) &&
             boardValuesMatch(bs.screenOffDelay, screenOffDelay) &&
             boardValuesMatch(bs.boltMode, boltMode) &&
+            boardValuesMatch(bs.bluetoothAtBoot, bluetoothAtBoot) &&
             knownProfiles.equalsIgnoringSourceSlots(bs.knownProfiles)
 
     @Test

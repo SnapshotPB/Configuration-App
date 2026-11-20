@@ -32,6 +32,8 @@ data class Device(
     val displayWindow: DisplayWindow? = null,
     /** Bolt actuation order of the marker (`DeviceConfig.bolt_mode`); `null` until the board reports one. */
     val boltMode: MarkerBoltMode? = null,
+    /** State of the Bluetooth radio when the board turns on (`DeviceConfig.bluetooth_at_boot`); `null` until the board reports one. */
+    val bluetoothAtBoot: BoardBluetoothAtBoot? = null,
     /** Board-reported model. Read-only board fact; not part of divergence. */
     val boardModel: BoardModel = BoardModel.AUTOCOCKER,
     /** Number of profile slots the board supports. Read-only board fact; drives slot UI. */
@@ -50,6 +52,7 @@ data class Device(
             !boardValuesMatch(screenBrightness, bs.screenBrightness) ||
             !boardValuesMatch(screenOffDelay, bs.screenOffDelay) ||
             !boardValuesMatch(boltMode, bs.boltMode) ||
+            !boardValuesMatch(bluetoothAtBoot, bs.bluetoothAtBoot) ||
             displayWindowDiverged(displayWindow, bs.displayWindow) ||
             hasProfilesDiverged()
     }

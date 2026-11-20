@@ -33,4 +33,10 @@ data class BoardState(
      * raised as a conflict.
      */
     val boltMode: MarkerBoltMode? = null,
+    /**
+     * The Bluetooth at boot setting that the board last reported. It is `null` in a baseline
+     * stored before the app read it, or when the board reported none. The app then adopts the
+     * first read that carries a value and raises no conflict.
+     */
+    val bluetoothAtBoot: BoardBluetoothAtBoot? = null,
 )
