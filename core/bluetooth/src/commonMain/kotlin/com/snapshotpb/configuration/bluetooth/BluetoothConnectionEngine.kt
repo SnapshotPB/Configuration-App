@@ -920,13 +920,13 @@ class BluetoothConnectionEngine(
             // source slot. A later delete or add then still knows the slot of each profile.
             val written = clamped.copy(knownProfiles = clamped.knownProfiles.withModesAsWritten(profiles))
                 .withProfilesInWrittenSlots()
-            // The board ignores a language or a brightness that it does not know, and it clamps
-            // the screen-off delay. Firmware that predates the display window stores no rectangle.
-            // The protocol says that a client must not assume the write took effect, so read every
-            // DeviceConfig setting back and report those (L15). Without the display window here the
-            // baseline would hold a rectangle the board never kept, and every later read would
-            // raise a conflict the user has to resolve by hand. The write itself succeeded, so a
-            // failed read-back keeps the values that were written.
+            // The board ignores an unknown language, brightness, bolt mode, or Bluetooth at boot
+            // setting, and it clamps the screen-off delay. Firmware that predates the display window
+            // stores no rectangle. The protocol says that a client must not assume the write took
+            // effect, so read every DeviceConfig setting back and report those (L15). Without the
+            // display window here, the baseline would hold a rectangle the board never kept, and
+            // every later read would raise a conflict. The write itself succeeded, so a failed
+            // read-back keeps the values that were written.
             val readBack = readBackOrNull(deviceId, "device_config") {
                 client.readDeviceConfigObjectAfterCommit()
             }
@@ -960,6 +960,7 @@ class BluetoothConnectionEngine(
                     screenOffDelay = back.screenOffDelay.screenOffDelayToDomain(),
                     displayWindow = back.displayWindow?.toDomain(),
                     boltMode = back.boltMode.toDomain(),
+                    bluetoothAtBoot = back.bluetoothAtBoot.toDomain(),
                 )
             } ?: written
             // Report the CLAMPED device (what the board stored) plus the pre-clamp requested device,
@@ -1034,6 +1035,7 @@ class BluetoothConnectionEngine(
                 screenOffDelay = device.screenOffDelay,
                 displayWindow = device.displayWindow,
                 boltMode = device.boltMode,
+                bluetoothAtBoot = device.bluetoothAtBoot,
             )
         }
 
