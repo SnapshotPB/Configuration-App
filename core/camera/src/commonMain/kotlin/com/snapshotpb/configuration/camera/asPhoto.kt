@@ -1,7 +1,7 @@
 package com.snapshotpb.configuration.camera
 
 import com.snapshotpb.configuration.model.Photo
-import io.github.ismoy.imagepickerkmp.domain.models.PhotoResult
+import io.github.ismoy.imagepickerkmp.picker.PhotoResult
 
 internal fun PhotoResult.asPhoto() = Photo(
     uri = uri,
