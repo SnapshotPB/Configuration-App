@@ -51,6 +51,10 @@ device = "{label}"
 label = "configure_device_screen_active_profile_label"
 description = "The profile that the board uses. The app lists the profiles of the board, and you select one. The board changes to that profile at once."
 
+[settings."device_config.bluetooth_at_boot"]
+label = "configure_device_screen_bluetooth_at_boot_label"
+description = "The state of Bluetooth when the board starts. When the switch is on, the board starts Bluetooth in the last state that you selected on the board. When the switch is off, Bluetooth is off each time that the board starts. Lockout always turns Bluetooth off, and a board that starts in lockout does not start Bluetooth. The app shows this setting only when the board reports it."
+
 [settings."device_config.bolt_mode"]
 label = "configure_device_screen_bolt_mode_label"
 description = "The firing order of the marker. In Closed Bolt mode the board starts the sear solenoid first and then the cocking solenoid. In Open Bolt mode the board starts the cocking solenoid first and then the sear solenoid. One bolt mode serves every profile. The Mechanical and Trigger Only fire modes do not use this setting."

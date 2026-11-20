@@ -182,6 +182,8 @@
     <string name="configure_device_screen_bolt_mode_label">Bolt Mode</string>
     <string name="configure_device_screen_bolt_mode_details">Firing order of the marker: closed bolt fires the sear solenoid first, while open bolt fires the cocking solenoid first.</string>
     <string name="configure_device_screen_bolt_mode_unavailable">The board has not reported a bolt mode. Connect to the board, or update its firmware.</string>
+    <string name="configure_device_screen_bluetooth_at_boot_label">Remember Bluetooth State</string>
+    <string name="configure_device_screen_bluetooth_at_boot_details">When this is on, the board starts Bluetooth in its last state after power on. When it is off, Bluetooth stays off at each power on. Lockout always turns Bluetooth off.</string>
     <string name="configure_device_screen_save_button">Save</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth Icon</string>

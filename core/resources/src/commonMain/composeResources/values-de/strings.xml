@@ -182,6 +182,8 @@
     <string name="configure_device_screen_bolt_mode_label">Bolzenmodus</string>
     <string name="configure_device_screen_bolt_mode_details">Schussreihenfolge des Markierers: Geschlossener Bolzen löst zuerst das Sear-Magnetventil aus, während offener Bolzen zuerst das Cocking-Magnetventil auslöst.</string>
     <string name="configure_device_screen_bolt_mode_unavailable">Die Platine hat keinen Bolzenmodus gemeldet. Verbinden Sie sich mit der Platine oder aktualisieren Sie ihre Firmware.</string>
+    <string name="configure_device_screen_bluetooth_at_boot_label">Bluetooth-Zustand merken</string>
+    <string name="configure_device_screen_bluetooth_at_boot_details">Wenn dies an ist, startet die Platine Bluetooth nach dem Einschalten im letzten Zustand. Wenn es aus ist, bleibt Bluetooth bei jedem Einschalten aus. Die Sperre schaltet Bluetooth immer aus.</string>
     <string name="configure_device_screen_save_button">Speichern</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Bluetooth-Symbol</string>

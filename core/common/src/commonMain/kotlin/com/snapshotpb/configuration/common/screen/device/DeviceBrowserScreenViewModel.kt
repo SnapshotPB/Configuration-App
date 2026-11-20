@@ -10,6 +10,7 @@ import com.snapshotpb.configuration.bluetooth.ots.getProfileUuid
 import com.snapshotpb.configuration.bluetooth.resolveBoardId
 import com.snapshotpb.configuration.bluetooth.toDeviceUuid
 import com.snapshotpb.configuration.model.AdvertisementData
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardModel
 import com.snapshotpb.configuration.model.BoardScreenBrightness
@@ -178,6 +179,7 @@ abstract class DeviceBrowserScreenViewModel(
             screenOffDelay = 30,
             displayWindow = DisplayWindow.FULL_PANEL,
             boltMode = MarkerBoltMode.CLOSED,
+            bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
             boardModel = BoardModel.AUTOCOCKER,
             supportedProfileCount = Device.DEFAULT_PROFILE_COUNT,
             boardState = BoardState(
@@ -190,6 +192,7 @@ abstract class DeviceBrowserScreenViewModel(
                 screenOffDelay = 30,
                 displayWindow = DisplayWindow.FULL_PANEL,
                 boltMode = MarkerBoltMode.CLOSED,
+                bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
             ),
             advertisementData = AdvertisementData(
                 boardType = "FAKE",

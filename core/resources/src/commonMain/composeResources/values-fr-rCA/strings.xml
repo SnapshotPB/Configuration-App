@@ -182,6 +182,8 @@
     <string name="configure_device_screen_bolt_mode_label">Mode de culasse</string>
     <string name="configure_device_screen_bolt_mode_details">Ordre de tir du marqueur&#160;: la culasse fermée déclenche d’abord le solénoïde de sear, tandis que la culasse ouverte déclenche d’abord le solénoïde d’armement.</string>
     <string name="configure_device_screen_bolt_mode_unavailable">La carte n’a signalé aucun mode de culasse. Connectez-vous à la carte ou mettez à jour son micrologiciel.</string>
+    <string name="configure_device_screen_bluetooth_at_boot_label">Mémoriser l’état Bluetooth</string>
+    <string name="configure_device_screen_bluetooth_at_boot_details">Si cette option est activée, la carte démarre Bluetooth dans son dernier état à la mise sous tension. Si elle est désactivée, Bluetooth reste éteint à chaque mise sous tension. Le verrouillage éteint toujours Bluetooth.</string>
     <string name="configure_device_screen_save_button">Enregistrer</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icône Bluetooth</string>

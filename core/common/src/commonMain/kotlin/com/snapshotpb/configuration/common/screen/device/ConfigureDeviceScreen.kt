@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +59,7 @@ import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.common.navigation.ScreenKeyFirmwareUpdate
 import com.snapshotpb.configuration.common.screen.device.composable.DisplayWindowEditor
 import com.snapshotpb.configuration.common.screen.firmware.FirmwareSection
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
@@ -74,6 +77,8 @@ import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_details
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_empty
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_label
+import com.snapshotpb.core.resources.configure_device_screen_bluetooth_at_boot_details
+import com.snapshotpb.core.resources.configure_device_screen_bluetooth_at_boot_label
 import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_details
 import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_label
 import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_unavailable
@@ -241,6 +246,8 @@ private fun ColumnScope.ConfigureDeviceForm(
         boardState?.let { displayWindowDiverged(draft.displayWindow, it.displayWindow) } ?: false
     val isBoltModeDiverged =
         boardState?.let { !boardValuesMatch(draft.boltMode, it.boltMode) } ?: false
+    val isBluetoothAtBootDiverged =
+        boardState?.let { !boardValuesMatch(draft.bluetoothAtBoot, it.bluetoothAtBoot) } ?: false
     val knownProfiles = device?.knownProfiles.orEmpty()
 
     ActionContainer {
@@ -345,6 +352,14 @@ private fun ColumnScope.ConfigureDeviceForm(
         isDiverged = isBoltModeDiverged,
         onSelect = { choice -> onEdit { it.copy(boltMode = choice) } },
     )
+
+    draft.bluetoothAtBoot?.let { selected ->
+        BluetoothAtBootSection(
+            selected = selected,
+            isDiverged = isBluetoothAtBootDiverged,
+            onSelect = { choice -> onEdit { it.copy(bluetoothAtBoot = choice) } },
+        )
+    }
 
     LockoutStatusRow(enabled = device?.lockoutEnabled == true)
 
@@ -605,6 +620,49 @@ private fun BoltModeSection(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Switch for the state of the Bluetooth radio when the board turns on.
+ *
+ * When the switch is on, the board starts Bluetooth in the last state that the user selected.
+ * When it is off, Bluetooth stays off at each start. Lockout always turns Bluetooth off. The
+ * screen shows this row only when the board reports a value.
+ */
+@Composable
+private fun BluetoothAtBootSection(
+    selected: BoardBluetoothAtBoot,
+    isDiverged: Boolean,
+    onSelect: (BoardBluetoothAtBoot) -> Unit,
+) {
+    ActionContainer(
+        containerColor = if (isDiverged) MaterialTheme.colorScheme.tertiaryContainer else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = selected.remembersState,
+                    role = Role.Switch,
+                    onValueChange = { onSelect(BoardBluetoothAtBoot.of(it)) },
+                )
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                SectionHeader(
+                    label = stringResource(Res.string.configure_device_screen_bluetooth_at_boot_label),
+                    description = stringResource(Res.string.configure_device_screen_bluetooth_at_boot_details),
+                    isDiverged = isDiverged,
+                )
+            }
+            Space(8.dp)
+            Switch(
+                checked = selected.remembersState,
+                onCheckedChange = null,
+            )
         }
     }
 }

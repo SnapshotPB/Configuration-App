@@ -182,6 +182,8 @@
     <string name="configure_device_screen_bolt_mode_label">Modo de cerrojo</string>
     <string name="configure_device_screen_bolt_mode_details">Orden de disparo del marcador: el cerrojo cerrado activa primero el solenoide del fiador, mientras que el cerrojo abierto activa primero el solenoide de carga.</string>
     <string name="configure_device_screen_bolt_mode_unavailable">La placa no ha indicado un modo de cerrojo. Conéctese a la placa o actualice su firmware.</string>
+    <string name="configure_device_screen_bluetooth_at_boot_label">Recordar estado de Bluetooth</string>
+    <string name="configure_device_screen_bluetooth_at_boot_details">Si está activado, la placa inicia Bluetooth en su último estado al encenderse. Si está desactivado, Bluetooth queda apagado en cada encendido. El bloqueo siempre apaga Bluetooth.</string>
     <string name="configure_device_screen_save_button">Guardar</string>
     <!-- Needs Permission pop up when application lacks system permissions for bluetooth -->
     <string name="bluetooth_needs_permission_icon">Icono de Bluetooth</string>
