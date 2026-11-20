@@ -1,5 +1,6 @@
 import * as ble from '@zos/ble';
 import {
+  bluetoothAtBootToDomain,
   boltModeToDomain,
   languageToDomain,
   screenBrightnessToDomain,
@@ -611,9 +612,9 @@ export class OtsClient {
     }
   }
 
-  // On success, onSuccess receives { language, screenBrightness, screenOffDelay }: the values the
-  // board reported after the write (null for one it reports none for). It receives null when that
-  // read-back failed.
+  // On success, onSuccess receives { language, screenBrightness, screenOffDelay, boltMode,
+  // bluetoothAtBoot }: the values that the board reported after the write (null when absent).
+  // It receives null when that read-back failed.
   async writeDeviceConfiguration(domainDevice, onSuccess, onFailure) {
     try {
       // A Profiles object with no profiles has zero length, and the board keeps at least one
@@ -659,7 +660,8 @@ export class OtsClient {
           language: languageToDomain(backConfig.language),
           screenBrightness: screenBrightnessToDomain(backConfig.screenBrightness),
           screenOffDelay: screenOffDelayToDomain(backConfig.screenOffDelay),
-          boltMode: boltModeToDomain(backConfig.boltMode)
+          boltMode: boltModeToDomain(backConfig.boltMode),
+          bluetoothAtBoot: bluetoothAtBootToDomain(backConfig.bluetoothAtBoot)
         };
       } catch (readBackError) {
         console.log("Read-back after the write failed:", readBackError);

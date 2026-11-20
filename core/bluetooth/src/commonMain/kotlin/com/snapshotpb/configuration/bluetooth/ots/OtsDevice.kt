@@ -6,6 +6,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.protobuf.ProtoNumber
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoltMode
 import snapshotpb.v1.Device
 import snapshotpb.v1.DeviceConfig
@@ -117,6 +118,7 @@ private class DeviceConfigWire(
     @ProtoNumber(5) val screenBrightness: Int = 0,
     @ProtoNumber(6) val screenOffDelay: UInt = 0U,
     @ProtoNumber(8) val boltMode: Int = 0,
+    @ProtoNumber(9) val bluetoothAtBoot: Int = 0,
 )
 
 /**
@@ -150,10 +152,14 @@ private val brightnessesByProtoNumber: Map<Int, ScreenBrightness> =
 private val boltModesByProtoNumber: Map<Int, BoltMode> =
     protoNumbersOf(BoltMode.serializer(), BoltMode.entries)
 
+private val bluetoothAtBootByProtoNumber: Map<Int, BluetoothAtBoot> =
+    protoNumbersOf(BluetoothAtBoot.serializer(), BluetoothAtBoot.entries)
+
 /**
- * Decodes the raw bytes of a "device_config" OTS object into the typed [DeviceConfig] message. A
- * language, brightness or bolt mode number that this app does not know decodes as its `UNSPECIFIED`
- * value: the board holds no value that the app can show.
+ * Decodes the raw bytes of a "device_config" OTS object into the typed [DeviceConfig] message.
+ *
+ * A language, brightness, bolt mode, or Bluetooth at boot number that this app does not know
+ * decodes as its `UNSPECIFIED` value. The board then holds no value that the app can show.
  */
 fun decodeDeviceConfig(bytes: ByteArray): DeviceConfig {
     val trimmed = trimProtobufPadding(bytes)
@@ -167,6 +173,8 @@ fun decodeDeviceConfig(bytes: ByteArray): DeviceConfig {
             ?: ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED,
         screenOffDelay = wire.screenOffDelay,
         boltMode = boltModesByProtoNumber[wire.boltMode] ?: BoltMode.BOLT_MODE_UNSPECIFIED,
+        bluetoothAtBoot = bluetoothAtBootByProtoNumber[wire.bluetoothAtBoot]
+            ?: BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED,
     )
 }
 

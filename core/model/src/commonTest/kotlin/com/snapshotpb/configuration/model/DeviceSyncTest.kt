@@ -24,6 +24,7 @@ class DeviceSyncTest {
         language: BoardLanguage? = null,
         displayWindow: DisplayWindow? = null,
         boltMode: MarkerBoltMode? = null,
+        bluetoothAtBoot: BoardBluetoothAtBoot? = null,
         profiles: List<MarkerProfile> = listOf(MarkerProfile(id = profileId, name = "P0")),
         lastSeen: LocalDate = LocalDate(2026, 9, 1),
     ) = Device(
@@ -36,6 +37,7 @@ class DeviceSyncTest {
         language = language,
         displayWindow = displayWindow,
         boltMode = boltMode,
+        bluetoothAtBoot = bluetoothAtBoot,
         boardState = boardState,
     )
 
@@ -78,6 +80,14 @@ class DeviceSyncTest {
     }
 
     @Test
+    fun syncedConfigEquals_seesABluetoothAtBootOnlyChange() {
+        assertFalse(
+            device(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+                .syncedConfigEquals(device(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)),
+        )
+    }
+
+    @Test
     fun syncedConfigEquals_ignoresLastModifiedAndLastSeen() {
         assertTrue(
             device(lastModified = 1L, lastSeen = LocalDate(2026, 1, 1))
@@ -106,6 +116,7 @@ class DeviceSyncTest {
             language = BoardLanguage.DE,
             displayWindow = DisplayWindow.FULL_PANEL,
             boltMode = MarkerBoltMode.OPEN,
+            bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE,
             lastSeen = LocalDate(2026, 9, 20),
         )
         val merged = local.mergeFromPeer(device(lastSeen = LocalDate(2026, 9, 2)))
@@ -115,7 +126,24 @@ class DeviceSyncTest {
         assertEquals(BoardLanguage.DE, merged.language)
         assertEquals(DisplayWindow.FULL_PANEL, merged.displayWindow)
         assertEquals(MarkerBoltMode.OPEN, merged.boltMode)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, merged.bluetoothAtBoot)
         assertEquals(LocalDate(2026, 9, 20), merged.lastSeen)
+    }
+
+    @Test
+    fun mergeFromPeer_keepsTheLocalBluetoothAtBootForAPeerWithNone() {
+        val local = device(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        val merged = local.mergeFromPeer(device(bluetoothAtBoot = null))
+
+        assertEquals(BoardBluetoothAtBoot.RESTORE, merged.bluetoothAtBoot)
+    }
+
+    @Test
+    fun mergeFromPeer_takesTheBluetoothAtBootOfThePeer() {
+        val local = device(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val merged = local.mergeFromPeer(device(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE))
+
+        assertEquals(BoardBluetoothAtBoot.RESTORE, merged.bluetoothAtBoot)
     }
 
     // --- applyPeerDevice ---
@@ -175,6 +203,17 @@ class DeviceSyncTest {
         // overwrite open-bolt settings.
         val current = listOf(device(lastModified = 100L))
         val result = applyPeerDevice(current, device(name = "Old build"), 900L, peerSchemaVersion = 4)
+
+        assertEquals(PeerSyncOutcome.IGNORED_OLD_SCHEMA, result.outcome)
+        assertSame(current, result.devices)
+    }
+
+    @Test
+    fun applyPeerDevice_rejectsAPeerFromBeforeBluetoothAtBoot() {
+        // Version 5 peers do not know Device.bluetoothAtBoot or BoardState.bluetoothAtBoot.
+        // They decode them as null, and their baseline replaces the newer baseline.
+        val current = listOf(device(lastModified = 100L))
+        val result = applyPeerDevice(current, device(name = "Old build"), 900L, peerSchemaVersion = 5)
 
         assertEquals(PeerSyncOutcome.IGNORED_OLD_SCHEMA, result.outcome)
         assertSame(current, result.devices)

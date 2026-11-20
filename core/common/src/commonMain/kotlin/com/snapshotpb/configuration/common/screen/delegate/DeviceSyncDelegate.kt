@@ -184,6 +184,7 @@ class DeviceSyncDelegateImpl(
                                     screenOffDelay = remote.screenOffDelay,
                                     displayWindow = remote.displayWindow,
                                     boltMode = remote.boltMode,
+                                    bluetoothAtBoot = remote.bluetoothAtBoot,
                                     boardState = BoardState(
                                         bootText = remote.bootText,
                                         activeProfileId = remote.activeProfileId,
@@ -194,6 +195,7 @@ class DeviceSyncDelegateImpl(
                                         screenOffDelay = remote.screenOffDelay,
                                         displayWindow = remote.displayWindow,
                                         boltMode = remote.boltMode,
+                                        bluetoothAtBoot = remote.bluetoothAtBoot,
                                     )
                                 )
                             } else device
@@ -224,6 +226,9 @@ class DeviceSyncDelegateImpl(
                 }
                 if (remote.boltMode == null && local.boltMode != null) {
                     log.d { "OTS read: board ${remote.id} reports no bolt mode, clearing the stored one" }
+                }
+                if (remote.bluetoothAtBoot == null && local.bluetoothAtBoot != null) {
+                    log.d { "OTS read: board ${remote.id} reports no Bluetooth at boot setting, clearing the stored one" }
                 }
                 deviceStore.update { current ->
                     current.map { device ->
@@ -259,6 +264,8 @@ class DeviceSyncDelegateImpl(
                                     ?.let { device.displayWindow ?: it },
                                 boltMode = remote.boltMode
                                     ?.let { device.boltMode ?: it },
+                                bluetoothAtBoot = remote.bluetoothAtBoot
+                                    ?.let { device.bluetoothAtBoot ?: it },
                                 boardState = device.boardState?.let { base ->
                                     base.copy(
                                         // The same settings as before, with the source slots of this
@@ -274,6 +281,7 @@ class DeviceSyncDelegateImpl(
                                         screenOffDelay = remote.screenOffDelay,
                                         displayWindow = remote.displayWindow,
                                         boltMode = remote.boltMode,
+                                        bluetoothAtBoot = remote.bluetoothAtBoot,
                                     )
                                 },
                             )
@@ -321,6 +329,7 @@ class DeviceSyncDelegateImpl(
                 screenOffDelay = pending.device.screenOffDelay,
                 displayWindow = pending.device.displayWindow,
                 boltMode = pending.device.boltMode,
+                bluetoothAtBoot = pending.device.bluetoothAtBoot,
             )
         )
         // Replace rather than append when the id is already present: mergeAgainst() does not
@@ -455,6 +464,7 @@ class DeviceSyncDelegateImpl(
                 screenOffDelay = local.screenOffDelay ?: remote.screenOffDelay,
                 displayWindow = local.displayWindow ?: remote.displayWindow,
                 boltMode = local.boltMode ?: remote.boltMode,
+                bluetoothAtBoot = local.bluetoothAtBoot ?: remote.bluetoothAtBoot,
             )
         }
         val mergedLocal = clampedLocal.copy(
@@ -487,6 +497,7 @@ class DeviceSyncDelegateImpl(
         screenOffDelay = screenOffDelay,
         displayWindow = displayWindow,
         boltMode = boltMode,
+        bluetoothAtBoot = bluetoothAtBoot,
     )
 
     /**
@@ -512,6 +523,7 @@ class DeviceSyncDelegateImpl(
             boardValuesMatch(bs.screenOffDelay, screenOffDelay) &&
             boardValuesMatch(bs.displayWindow, displayWindow) &&
             boardValuesMatch(bs.boltMode, boltMode) &&
+            boardValuesMatch(bs.bluetoothAtBoot, bluetoothAtBoot) &&
             // The source slot is not a setting, so it raises no conflict.
             knownProfiles.equalsIgnoringSourceSlots(bs.knownProfiles)
 
@@ -535,4 +547,5 @@ private fun Device.deviceFieldsEqual(other: Device): Boolean =
         boardValuesMatch(screenOffDelay, other.screenOffDelay) &&
         boardValuesMatch(displayWindow, other.displayWindow) &&
         boardValuesMatch(boltMode, other.boltMode) &&
+        boardValuesMatch(bluetoothAtBoot, other.bluetoothAtBoot) &&
         knownProfiles.equalsIgnoringSourceSlots(other.knownProfiles)

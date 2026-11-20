@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegate
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
@@ -27,6 +28,7 @@ data class ConfigureDeviceDraft(
     val screenOffDelay: Int? = null,
     val displayWindow: DisplayWindow? = null,
     val boltMode: MarkerBoltMode? = null,
+    val bluetoothAtBoot: BoardBluetoothAtBoot? = null,
     /**
      * Whether the user chose the custom display window entry. It is kept apart from the window,
      * because a custom rectangle that equals a known frame must keep the custom entry selected.
@@ -52,6 +54,7 @@ internal fun ConfigureDeviceDraft.hydratedFrom(loaded: Device?): ConfigureDevice
         screenOffDelay = loaded.screenOffDelay,
         displayWindow = loaded.displayWindow,
         boltMode = loaded.boltMode,
+        bluetoothAtBoot = loaded.bluetoothAtBoot,
         hydrated = true,
     )
     else -> copy(
@@ -60,6 +63,7 @@ internal fun ConfigureDeviceDraft.hydratedFrom(loaded: Device?): ConfigureDevice
         screenOffDelay = screenOffDelay ?: loaded.screenOffDelay,
         displayWindow = displayWindow ?: loaded.displayWindow,
         boltMode = boltMode ?: loaded.boltMode,
+        bluetoothAtBoot = bluetoothAtBoot ?: loaded.bluetoothAtBoot,
     )
 }
 
@@ -105,6 +109,7 @@ class ConfigureDeviceViewModel(
             screenOffDelay = current.screenOffDelay,
             displayWindow = current.displayWindow,
             boltMode = current.boltMode,
+            bluetoothAtBoot = current.bluetoothAtBoot,
         )
     }
 }

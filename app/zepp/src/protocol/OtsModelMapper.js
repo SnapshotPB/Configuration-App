@@ -202,6 +202,15 @@ export const MarkerBoltMode = {
 };
 export const BoltMode = MarkerBoltMode;
 
+// State of the Bluetooth radio when the board starts (proto BluetoothAtBoot on DeviceConfig).
+// The values are the KMP BoardBluetoothAtBoot names. It is a BOARD setting. The board records
+// the last state that the user selected, and the app cannot read or write it. Lockout always
+// turns Bluetooth off. A device holds null when the board has not reported one.
+export const BoardBluetoothAtBoot = {
+  OFF: 'OFF',
+  RESTORE: 'RESTORE'
+};
+
 // Proto enums now carry a 0 = UNSPECIFIED value, so wire values are shifted by +1
 // relative to the old schema. The numbers are those of AutocockerFireMode in fire_mode.proto.
 export function fireModeToDomain(protoVal) {
@@ -311,6 +320,24 @@ export function boltModeToProto(domainVal) {
   }
 }
 
+// An unknown value from newer firmware maps to null, so the watch never shows or writes a value
+// it cannot name. Mirrors the KMP BluetoothAtBoot.toDomain().
+export function bluetoothAtBootToDomain(protoVal) {
+  switch (protoVal) {
+    case 1: return BoardBluetoothAtBoot.OFF;
+    case 2: return BoardBluetoothAtBoot.RESTORE;
+    default: return null; // incl. 0 (UNSPECIFIED)
+  }
+}
+
+export function bluetoothAtBootToProto(domainVal) {
+  switch (domainVal) {
+    case BoardBluetoothAtBoot.OFF: return 1;
+    case BoardBluetoothAtBoot.RESTORE: return 2;
+    default: return 0; // UNSPECIFIED: the board keeps its current setting
+  }
+}
+
 // The screen-off delay is 1-999 seconds. On the wire 0 means that the board reported no delay, so
 // it maps to null rather than to a literal zero. Mirrors the KMP screenOffDelayToDomain().
 export function screenOffDelayToDomain(protoVal) {
@@ -389,6 +416,7 @@ export function toDomainDevice(protoDevice, protoDeviceConfig, protoProfiles, de
     screenBrightness: screenBrightnessToDomain(protoDeviceConfig.screenBrightness),
     screenOffDelay: screenOffDelayToDomain(protoDeviceConfig.screenOffDelay),
     boltMode: boltModeToDomain(protoDeviceConfig.boltMode),
+    bluetoothAtBoot: bluetoothAtBootToDomain(protoDeviceConfig.bluetoothAtBoot),
     lockoutEnabled: protoDevice.lockoutEnabled,
     boardModel: boardModelToDomain(protoDevice.model),
     supportedProfileCount: protoDevice.supportedProfileCount || mappedProfiles.length
@@ -640,6 +668,9 @@ export function toProtocolConfig(domainDevice, lastReadProfiles = null) {
 
   const boltMode = boltModeToProto(domainDevice.boltMode);
   if (boltMode !== 0) deviceConfig.boltMode = boltMode;
+
+  const bluetoothAtBoot = bluetoothAtBootToProto(domainDevice.bluetoothAtBoot);
+  if (bluetoothAtBoot !== 0) deviceConfig.bluetoothAtBoot = bluetoothAtBoot;
 
   const boardProfiles = (lastReadProfiles && lastReadProfiles.profiles) || [];
 

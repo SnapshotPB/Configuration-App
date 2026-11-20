@@ -387,6 +387,22 @@ export const snapshotpb = $root.snapshotpb = (() => {
             return values;
         })();
 
+        /**
+         * BluetoothAtBoot enum.
+         * @name snapshotpb.v1.BluetoothAtBoot
+         * @enum {number}
+         * @property {number} BLUETOOTH_AT_BOOT_UNSPECIFIED=0 BLUETOOTH_AT_BOOT_UNSPECIFIED value
+         * @property {number} BLUETOOTH_AT_BOOT_OFF=1 BLUETOOTH_AT_BOOT_OFF value
+         * @property {number} BLUETOOTH_AT_BOOT_RESTORE=2 BLUETOOTH_AT_BOOT_RESTORE value
+         */
+        v1.BluetoothAtBoot = (function() {
+            const valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "BLUETOOTH_AT_BOOT_UNSPECIFIED"] = 0;
+            values[valuesById[1] = "BLUETOOTH_AT_BOOT_OFF"] = 1;
+            values[valuesById[2] = "BLUETOOTH_AT_BOOT_RESTORE"] = 2;
+            return values;
+        })();
+
         v1.DeviceConfig = (function() {
 
             /**
@@ -401,6 +417,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
              * @property {number|null} [screenOffDelay] DeviceConfig screenOffDelay
              * @property {snapshotpb.v1.BatteryType|null} [batteryType] DeviceConfig batteryType
              * @property {snapshotpb.v1.BoltMode|null} [boltMode] DeviceConfig boltMode
+             * @property {snapshotpb.v1.BluetoothAtBoot|null} [bluetoothAtBoot] DeviceConfig bluetoothAtBoot
              */
 
             /**
@@ -483,6 +500,14 @@ export const snapshotpb = $root.snapshotpb = (() => {
             DeviceConfig.prototype.boltMode = 0;
 
             /**
+             * DeviceConfig bluetoothAtBoot.
+             * @member {snapshotpb.v1.BluetoothAtBoot} bluetoothAtBoot
+             * @memberof snapshotpb.v1.DeviceConfig
+             * @instance
+             */
+            DeviceConfig.prototype.bluetoothAtBoot = 0;
+
+            /**
              * Creates a new DeviceConfig instance using the specified properties.
              * @function create
              * @memberof snapshotpb.v1.DeviceConfig
@@ -526,6 +551,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batteryType);
                 if (message.boltMode != null && Object.hasOwnProperty.call(message, "boltMode"))
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.boltMode);
+                if (message.bluetoothAtBoot != null && Object.hasOwnProperty.call(message, "bluetoothAtBoot"))
+                    writer.uint32(/* id 9, wireType 0 =*/72).int32(message.bluetoothAtBoot);
                 return writer;
             };
 
@@ -606,6 +633,10 @@ export const snapshotpb = $root.snapshotpb = (() => {
                         }
                     case 8: {
                             message.boltMode = reader.int32();
+                            break;
+                        }
+                    case 9: {
+                            message.bluetoothAtBoot = reader.int32();
                             break;
                         }
                     default:
@@ -700,6 +731,15 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     switch (message.boltMode) {
                     default:
                         return "boltMode: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                        break;
+                    }
+                if (message.bluetoothAtBoot != null && Object.hasOwnProperty.call(message, "bluetoothAtBoot"))
+                    switch (message.bluetoothAtBoot) {
+                    default:
+                        return "bluetoothAtBoot: enum value expected";
                     case 0:
                     case 1:
                     case 2:
@@ -829,6 +869,26 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     message.boltMode = 2;
                     break;
                 }
+                switch (object.bluetoothAtBoot) {
+                default:
+                    if (typeof object.bluetoothAtBoot === "number") {
+                        message.bluetoothAtBoot = object.bluetoothAtBoot;
+                        break;
+                    }
+                    break;
+                case "BLUETOOTH_AT_BOOT_UNSPECIFIED":
+                case 0:
+                    message.bluetoothAtBoot = 0;
+                    break;
+                case "BLUETOOTH_AT_BOOT_OFF":
+                case 1:
+                    message.bluetoothAtBoot = 1;
+                    break;
+                case "BLUETOOTH_AT_BOOT_RESTORE":
+                case 2:
+                    message.bluetoothAtBoot = 2;
+                    break;
+                }
                 return message;
             };
 
@@ -858,6 +918,7 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     object.screenOffDelay = 0;
                     object.batteryType = options.enums === String ? "BATTERY_TYPE_UNSPECIFIED" : 0;
                     object.boltMode = options.enums === String ? "BOLT_MODE_UNSPECIFIED" : 0;
+                    object.bluetoothAtBoot = options.enums === String ? "BLUETOOTH_AT_BOOT_UNSPECIFIED" : 0;
                 }
                 if (message.activeProfile != null && Object.hasOwnProperty.call(message, "activeProfile"))
                     object.activeProfile = message.activeProfile;
@@ -875,6 +936,8 @@ export const snapshotpb = $root.snapshotpb = (() => {
                     object.batteryType = options.enums === String ? $root.snapshotpb.v1.BatteryType[message.batteryType] === undefined ? message.batteryType : $root.snapshotpb.v1.BatteryType[message.batteryType] : message.batteryType;
                 if (message.boltMode != null && Object.hasOwnProperty.call(message, "boltMode"))
                     object.boltMode = options.enums === String ? $root.snapshotpb.v1.BoltMode[message.boltMode] === undefined ? message.boltMode : $root.snapshotpb.v1.BoltMode[message.boltMode] : message.boltMode;
+                if (message.bluetoothAtBoot != null && Object.hasOwnProperty.call(message, "bluetoothAtBoot"))
+                    object.bluetoothAtBoot = options.enums === String ? $root.snapshotpb.v1.BluetoothAtBoot[message.bluetoothAtBoot] === undefined ? message.bluetoothAtBoot : $root.snapshotpb.v1.BluetoothAtBoot[message.bluetoothAtBoot] : message.bluetoothAtBoot;
                 return object;
             };
 

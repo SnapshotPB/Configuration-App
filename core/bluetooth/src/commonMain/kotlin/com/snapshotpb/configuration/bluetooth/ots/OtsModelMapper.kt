@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth.ots
 
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardModel
 import com.snapshotpb.configuration.model.BoardScreenBrightness
@@ -11,6 +12,7 @@ import com.snapshotpb.configuration.model.clampedScreenOffDelay
 import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoltMode
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
@@ -150,6 +152,25 @@ fun BoltMode.toDomain(): MarkerBoltMode? = when (this) {
 fun MarkerBoltMode.toProtocol(): BoltMode = when (this) {
     MarkerBoltMode.CLOSED -> BoltMode.BOLT_MODE_CLOSED
     MarkerBoltMode.OPEN -> BoltMode.BOLT_MODE_OPEN
+}
+
+/**
+ * Maps protocol [BluetoothAtBoot] to domain [BoardBluetoothAtBoot]. An unset (`UNSPECIFIED`) value
+ * maps to `null`, so the board has no Bluetooth at boot setting to show. Older firmware omits the
+ * field, and [decodeDeviceConfig] reads an unknown number as `UNSPECIFIED`.
+ */
+fun BluetoothAtBoot.toDomain(): BoardBluetoothAtBoot? = when (this) {
+    BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF -> BoardBluetoothAtBoot.OFF
+    BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE -> BoardBluetoothAtBoot.RESTORE
+    BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED -> null
+}
+
+/**
+ * Maps domain [BoardBluetoothAtBoot] to protocol [BluetoothAtBoot].
+ */
+fun BoardBluetoothAtBoot.toProtocol(): BluetoothAtBoot = when (this) {
+    BoardBluetoothAtBoot.OFF -> BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF
+    BoardBluetoothAtBoot.RESTORE -> BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE
 }
 
 /**
@@ -337,11 +358,11 @@ fun MarkerProfile.toProtocol(): Profile {
 }
 
 /**
- * Converts the board's read-only Device + DeviceConfig + Profiles messages to a domain Device.
+ * Converts the board's read-only Device, DeviceConfig, and Profiles messages to a domain Device.
  *
- * `device_id`, `lockoutEnabled`, `model` and `supportedProfileCount` come from the read-only
- * [protoDevice]; the writable `activeProfile`, `bootText`, `language`, `screenBrightness` and
- * `screenOffDelay` come from [protoDeviceConfig].
+ * `device_id`, `lockoutEnabled`, `model`, and `supportedProfileCount` come from [protoDevice].
+ * The writable `activeProfile`, `bootText`, `displayWindow`, `language`, `screenBrightness`,
+ * `screenOffDelay`, `boltMode`, and `bluetoothAtBoot` fields come from [protoDeviceConfig].
  */
 fun toDomainDevice(
     protoDevice: snapshotpb.v1.Device,
@@ -394,6 +415,7 @@ fun toDomainDevice(
         screenOffDelay = protoDeviceConfig.screenOffDelay.screenOffDelayToDomain(),
         displayWindow = protoDeviceConfig.displayWindow?.toDomain(),
         boltMode = protoDeviceConfig.boltMode.toDomain(),
+        bluetoothAtBoot = protoDeviceConfig.bluetoothAtBoot.toDomain(),
         boardModel = protoDevice.model.toDomain(),
         supportedProfileCount = protoDevice.supportedProfileCount.toInt()
             .takeIf { it > 0 } ?: mappedProfiles.size,
@@ -419,9 +441,9 @@ internal fun DeviceConfig.bootTextToDomain(): String =
 private const val DEFAULT_BOOT_TEXT = "SnapshotPB"
 
 /**
- * Converts a domain Device to the writable protocol DeviceConfig message (active profile, boot
- * text, language, screen brightness, screen-off delay and display window). The read-only Device
- * message is never written by clients.
+ * Converts a domain Device to the writable protocol DeviceConfig message. It encodes active
+ * profile, boot text, display window, language, screen brightness, screen-off delay, bolt mode,
+ * and Bluetooth at boot. Clients never write the read-only Device message.
  *
  * `battery_type` is never set, so it goes out as `BATTERY_TYPE_UNSPECIFIED`. The app has no
  * battery setting, and the unset value leaves the board's own battery type alone. Do not send a
@@ -462,6 +484,9 @@ fun toProtocolDeviceConfig(
         displayWindow = domainDevice.displayWindow?.toProtocol(),
         // An unknown bolt mode (null) sends UNSPECIFIED, which leaves the board's bolt mode alone.
         boltMode = domainDevice.boltMode?.toProtocol() ?: BoltMode.BOLT_MODE_UNSPECIFIED,
+        // An unknown Bluetooth at boot setting (null) sends UNSPECIFIED to leave the board value alone.
+        bluetoothAtBoot = domainDevice.bluetoothAtBoot?.toProtocol()
+            ?: BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED,
     )
 }
 

@@ -28,7 +28,8 @@ function boardStateOf(device) {
     language: device.language || null,
     screenBrightness: device.screenBrightness || null,
     screenOffDelay: device.screenOffDelay || null,
-    boltMode: device.boltMode || null
+    boltMode: device.boltMode || null,
+    bluetoothAtBoot: device.bluetoothAtBoot || null
   };
 }
 
@@ -75,6 +76,7 @@ function configEqual(a, b) {
     boardValuesMatch(a.screenBrightness, b.screenBrightness) &&
     boardValuesMatch(a.screenOffDelay, b.screenOffDelay) &&
     boardValuesMatch(a.boltMode, b.boltMode) &&
+    boardValuesMatch(a.bluetoothAtBoot, b.bluetoothAtBoot) &&
     profilesEqual(a.knownProfiles, b.knownProfiles);
 }
 
@@ -271,6 +273,7 @@ export class DeviceStore {
         screenBrightness: remoteDevice.screenBrightness,
         screenOffDelay: remoteDevice.screenOffDelay,
         boltMode: remoteDevice.boltMode,
+        bluetoothAtBoot: remoteDevice.bluetoothAtBoot,
         activeProfileId: remoteDevice.activeProfileId,
         lockoutEnabled: remoteDevice.lockoutEnabled,
         knownProfiles: remoteDevice.knownProfiles,
@@ -310,13 +313,17 @@ export class DeviceStore {
       boltMode: remoteDevice.boltMode == null
         ? null
         : (d.boltMode || remoteDevice.boltMode),
+      bluetoothAtBoot: remoteDevice.bluetoothAtBoot == null
+        ? null
+        : (d.bluetoothAtBoot || remoteDevice.bluetoothAtBoot),
       boardState: {
         ...d.boardState,
         lockoutEnabled: !!remoteDevice.lockoutEnabled,
         language: remoteDevice.language || null,
         screenBrightness: remoteDevice.screenBrightness || null,
         screenOffDelay: remoteDevice.screenOffDelay || null,
-        boltMode: remoteDevice.boltMode || null
+        boltMode: remoteDevice.boltMode || null,
+        bluetoothAtBoot: remoteDevice.bluetoothAtBoot || null
       }
     }));
     return { type: 'Synced', device: local };
@@ -376,6 +383,7 @@ export class DeviceStore {
         screenBrightness: local.screenBrightness || remoteDevice.screenBrightness || null,
         screenOffDelay: local.screenOffDelay || remoteDevice.screenOffDelay || null,
         boltMode: local.boltMode || remoteDevice.boltMode || null,
+        bluetoothAtBoot: local.bluetoothAtBoot || remoteDevice.bluetoothAtBoot || null,
         // The board owns lockoutEnabled, so the local copy adopts the board's value.
         lockoutEnabled: remoteDevice.lockoutEnabled,
         lastSeen: remoteDevice.lastSeen,
@@ -389,8 +397,8 @@ export class DeviceStore {
     this._saveDevice(deviceId, d => ({ ...d, activeProfileId }));
   }
 
-  // Stores one board setting the user chose: 'language', 'screenBrightness' or 'screenOffDelay'.
-  // The board gets it on the next save.
+  // Stores one board setting the user chose: 'language', 'screenBrightness', 'screenOffDelay',
+  // 'boltMode', or 'bluetoothAtBoot'. The board gets it on the next save.
   //
   // The invariant every reader depends on: a setting is either null, meaning that the board
   // reported none, or a real value. screenOffDelay is therefore null or 1 to 999, and NEVER 0 --
@@ -462,7 +470,8 @@ export class DeviceStore {
       language: bs.language,
       screenBrightness: bs.screenBrightness,
       screenOffDelay: bs.screenOffDelay,
-      boltMode: bs.boltMode
+      boltMode: bs.boltMode,
+      bluetoothAtBoot: bs.bluetoothAtBoot
     }));
   }
 
@@ -501,13 +510,15 @@ export class DeviceStore {
         language: source.language,
         screenBrightness: source.screenBrightness,
         screenOffDelay: source.screenOffDelay,
-        boltMode: source.boltMode
+        boltMode: source.boltMode,
+        bluetoothAtBoot: source.bluetoothAtBoot
       };
       const settled = {
         language: settledBoardValue(reported.language, base.language),
         screenBrightness: settledBoardValue(reported.screenBrightness, base.screenBrightness),
         screenOffDelay: settledBoardValue(reported.screenOffDelay, base.screenOffDelay),
-        boltMode: settledBoardValue(reported.boltMode, base.boltMode)
+        boltMode: settledBoardValue(reported.boltMode, base.boltMode),
+        bluetoothAtBoot: settledBoardValue(reported.bluetoothAtBoot, base.bluetoothAtBoot)
       };
       const baseline = {
         bootText: source.bootText,
@@ -523,6 +534,7 @@ export class DeviceStore {
         (d.screenBrightness || null) === (requested.screenBrightness || null) &&
         (d.screenOffDelay || null) === (requested.screenOffDelay || null) &&
         (d.boltMode || null) === (requested.boltMode || null) &&
+        (d.bluetoothAtBoot || null) === (requested.bluetoothAtBoot || null) &&
         profilesEqual(d.knownProfiles, requested.knownProfiles)
       );
       if (editedInFlight) {
@@ -535,7 +547,8 @@ export class DeviceStore {
         language: d.language || null,
         screenBrightness: d.screenBrightness || null,
         screenOffDelay: d.screenOffDelay || null,
-        boltMode: d.boltMode || null
+        boltMode: d.boltMode || null,
+        bluetoothAtBoot: d.bluetoothAtBoot || null
       };
       return {
         ...d,

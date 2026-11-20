@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.common
 
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
@@ -79,6 +80,7 @@ fun testDevice(
     screenOffDelay: Int? = null,
     displayWindow: com.snapshotpb.configuration.model.DisplayWindow? = null,
     boltMode: MarkerBoltMode? = null,
+    bluetoothAtBoot: BoardBluetoothAtBoot? = null,
 ): Device = Device(
     id = id,
     name = name,
@@ -90,5 +92,6 @@ fun testDevice(
     screenOffDelay = screenOffDelay,
     displayWindow = displayWindow,
     boltMode = boltMode,
+    bluetoothAtBoot = bluetoothAtBoot,
     boardState = boardState,
 )

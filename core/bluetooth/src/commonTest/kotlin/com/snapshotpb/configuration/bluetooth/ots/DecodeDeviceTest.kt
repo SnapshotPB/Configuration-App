@@ -1,14 +1,18 @@
 package com.snapshotpb.configuration.bluetooth.ots
 
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.uuid.Uuid
 import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
 import snapshotpb.v1.BatteryType
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoardModel
 import snapshotpb.v1.BoltMode
 import snapshotpb.v1.Device
@@ -203,6 +207,7 @@ class DecodeDeviceTest {
             screenBrightness = ScreenBrightness.SCREEN_BRIGHTNESS_HIGH,
             screenOffDelay = 45u,
             boltMode = BoltMode.BOLT_MODE_OPEN,
+            bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE,
         )
 
         val encoded = ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), original)
@@ -222,6 +227,46 @@ class DecodeDeviceTest {
         assertEquals(2u, decoded.activeProfile)
         assertEquals(30u, decoded.screenOffDelay)
         assertEquals(BoltMode.BOLT_MODE_UNSPECIFIED, decoded.boltMode)
+    }
+
+    @Test
+    fun decodesADeviceConfigWithABluetoothAtBootThisAppDoesNotKnow() {
+        // Field 9 (bluetooth_at_boot) = 99: a setting from newer firmware. The rest must still decode.
+        val encoded = ProtoBuf.encodeToByteArray(
+            DeviceConfig.serializer(),
+            DeviceConfig(activeProfile = 2u, screenOffDelay = 30u),
+        ) + byteArrayOf(0x48, 99)
+        val decoded = decodeDeviceConfig(encoded)
+
+        assertEquals(2u, decoded.activeProfile)
+        assertEquals(30u, decoded.screenOffDelay)
+        assertEquals(BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED, decoded.bluetoothAtBoot)
+    }
+
+    @Test
+    fun decodesADeviceConfigFromOlderFirmwareWithNoBluetoothAtBoot() {
+        // Older firmware omits tag 9. The wire value decodes as UNSPECIFIED and maps to null.
+        val encoded = ProtoBuf.encodeToByteArray(
+            DeviceConfig.serializer(),
+            DeviceConfig(activeProfile = 1u, bootText = "HI"),
+        )
+        val decoded = decodeDeviceConfig(encoded)
+
+        assertEquals(BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED, decoded.bluetoothAtBoot)
+
+        val deviceUuid = Uuid.parse("12345678-1234-5678-1234-567812345678")
+        val domainDevice = toDomainDevice(
+            protoDevice = Device(
+                deviceId = deviceUuid.toByteArray(),
+                model = BoardModel.BOARD_MODEL_AUTOCOCKER,
+                supportedProfileCount = 1u,
+            ),
+            protoDeviceConfig = decoded,
+            protoProfiles = Profiles(profiles = listOf(Profile(name = "P0"))),
+            deviceName = "n",
+            lastSeenDate = LocalDate(2026, 5, 23),
+        )
+        assertNull(domainDevice.bluetoothAtBoot)
     }
 
     @Test

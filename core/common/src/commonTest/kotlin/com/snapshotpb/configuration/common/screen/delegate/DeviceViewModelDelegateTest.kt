@@ -12,6 +12,7 @@ import com.snapshotpb.configuration.common.testDeviceId
 import com.snapshotpb.configuration.common.testDeviceStore
 import com.snapshotpb.configuration.common.testProfile
 import com.snapshotpb.configuration.common.testProfileId
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
@@ -57,6 +58,7 @@ class DeviceViewModelDelegateTest {
         screenOffDelay: Int? = null,
         displayWindow: DisplayWindow? = null,
         boltMode: MarkerBoltMode? = null,
+        bluetoothAtBoot: BoardBluetoothAtBoot? = null,
     ) = BoardState(
         bootText = bootText,
         activeProfileId = null,
@@ -67,6 +69,7 @@ class DeviceViewModelDelegateTest {
         screenOffDelay = screenOffDelay,
         displayWindow = displayWindow,
         boltMode = boltMode,
+        bluetoothAtBoot = bluetoothAtBoot,
     )
 
     private class Fixture(
@@ -705,6 +708,7 @@ class DeviceViewModelDelegateTest {
             screenOffDelay = 20,
             displayWindow = DisplayWindow.FULL_PANEL,
             boltMode = MarkerBoltMode.CLOSED,
+            bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
         )
         val requested = testDevice(
             language = BoardLanguage.EN,
@@ -712,6 +716,7 @@ class DeviceViewModelDelegateTest {
             screenOffDelay = 30,
             displayWindow = GripFrame.E1.window,
             boltMode = MarkerBoltMode.OPEN,
+            bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE,
             boardState = board,
         )
         val f = fixture(testScheduler, requested)
@@ -723,6 +728,7 @@ class DeviceViewModelDelegateTest {
             screenOffDelay = null,
             displayWindow = null,
             boltMode = null,
+            bluetoothAtBoot = null,
         )
         f.bus.emit(DeviceWriteResult(written, error = null, requestedDevice = requested))
         testScheduler.advanceUntilIdle()
@@ -733,11 +739,13 @@ class DeviceViewModelDelegateTest {
         assertNull(after.boardState?.screenOffDelay)
         assertNull(after.boardState?.displayWindow)
         assertNull(after.boardState?.boltMode)
+        assertNull(after.boardState?.bluetoothAtBoot)
         assertNull(after.language)
         assertNull(after.screenBrightness)
         assertNull(after.screenOffDelay)
         assertNull(after.displayWindow)
         assertNull(after.boltMode)
+        assertNull(after.bluetoothAtBoot)
         assertFalse(after.hasDiverged())
     }
 
@@ -931,6 +939,152 @@ class DeviceViewModelDelegateTest {
         testScheduler.advanceUntilIdle()
 
         assertEquals(BoardLanguage.EN, f.store.knownDevices.value.single().language)
+    }
+
+    @Test
+    fun updateDeviceConfiguration_storesTheBluetoothAtBootChoiceAsAnUnsavedChange() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val f = fixture(testScheduler, testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF, boardState = board))
+        testScheduler.advanceUntilIdle()
+
+        f.delegate.updateDeviceConfiguration(
+            deviceId = testDeviceId.toString(),
+            name = "Marker",
+            bootText = "SnapshotPB",
+            activeProfileId = null,
+            language = null,
+            screenBrightness = null,
+            screenOffDelay = null,
+            displayWindow = null,
+            bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE,
+        )
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.OFF, after.boardState?.bluetoothAtBoot)
+        assertTrue(after.hasDiverged())
+    }
+
+    @Test
+    fun updateDeviceConfiguration_withNoBluetoothAtBootKeepsTheKnownOne() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        val f = fixture(testScheduler, testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = board))
+        testScheduler.advanceUntilIdle()
+
+        f.delegate.updateDeviceConfiguration(
+            deviceId = testDeviceId.toString(),
+            name = "Marker",
+            bootText = "SnapshotPB",
+            activeProfileId = null,
+            language = null,
+            screenBrightness = null,
+            screenOffDelay = null,
+            displayWindow = null,
+            bluetoothAtBoot = null,
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BoardBluetoothAtBoot.RESTORE, f.store.knownDevices.value.single().bluetoothAtBoot)
+    }
+
+    @Test
+    fun onWriteResult_success_movesTheBaselineToTheWrittenBluetoothAtBoot() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val device = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = board)
+        val f = fixture(testScheduler, device)
+        testScheduler.advanceUntilIdle()
+
+        f.bus.emit(DeviceWriteResult(device = device, error = null, requestedDevice = device))
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.boardState?.bluetoothAtBoot)
+        assertFalse(after.hasDiverged())
+    }
+
+    @Test
+    fun onWriteResult_success_adoptsTheBluetoothAtBootTheBoardReportedBack() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val requested = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = board)
+        val f = fixture(testScheduler, requested)
+        testScheduler.advanceUntilIdle()
+
+        val stored = requested.copy(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        f.bus.emit(DeviceWriteResult(device = stored, error = null, requestedDevice = requested))
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.OFF, after.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.OFF, after.boardState?.bluetoothAtBoot)
+        assertFalse(after.hasDiverged())
+    }
+
+    @Test
+    fun onWriteResult_success_keepsABluetoothAtBootChosenWhileTheWriteWasInFlight() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val f = fixture(testScheduler, testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF, boardState = board))
+        testScheduler.advanceUntilIdle()
+
+        // The write sent RESTORE, and the user changed the switch back to OFF while it ran.
+        val requested = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        f.bus.emit(DeviceWriteResult(device = requested, error = null, requestedDevice = requested))
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.OFF, after.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.boardState?.bluetoothAtBoot)
+        assertTrue(after.hasDiverged())
+    }
+
+    @Test
+    fun onWriteResult_success_keepsTheBoardBluetoothAtBootForAWriteWithNoBluetoothAtBoot() = runTest {
+        val board = boardState(bootText = "Old", bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        val device = testDevice(bootText = "Edited", boardState = board)
+        val f = fixture(testScheduler, device)
+        testScheduler.advanceUntilIdle()
+
+        f.bus.emit(DeviceWriteResult(device = device, error = null, requestedDevice = device))
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.boardState?.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.bluetoothAtBoot)
+        assertFalse(after.hasDiverged())
+    }
+
+    @Test
+    fun discardPendingChanges_restoresTheBoardBluetoothAtBoot() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val f = fixture(testScheduler, testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = board))
+        testScheduler.advanceUntilIdle()
+
+        f.delegate.discardPendingChanges(testDeviceId.toString())
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(BoardBluetoothAtBoot.OFF, f.store.knownDevices.value.single().bluetoothAtBoot)
+        assertFalse(f.store.knownDevices.value.single().hasDiverged())
+    }
+
+    @Test
+    fun updateBoardSettings_setsBluetoothAtBoot() = runTest {
+        val board = boardState(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val f = fixture(testScheduler, testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF, boardState = board))
+        testScheduler.advanceUntilIdle()
+
+        f.delegate.updateBoardSettings(testDeviceId.toString()) {
+            it.copy(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        }
+        testScheduler.advanceUntilIdle()
+
+        val after = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, after.bluetoothAtBoot)
+        assertTrue(after.hasDiverged())
+
+        // A null result keeps the stored setting.
+        f.delegate.updateBoardSettings(testDeviceId.toString()) { it.copy(bluetoothAtBoot = null) }
+        testScheduler.advanceUntilIdle()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, f.store.knownDevices.value.single().bluetoothAtBoot)
     }
 
     @Test

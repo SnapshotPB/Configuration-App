@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth.ots
 
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardModel
 import com.snapshotpb.configuration.model.BoardScreenBrightness
@@ -11,6 +12,7 @@ import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
 import snapshotpb.common.v1.EyeMode
 import snapshotpb.v1.BatteryType
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoltMode
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.DisplayWindow
@@ -521,6 +523,80 @@ class OtsModelMapperTest {
         assertEquals(ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED, written.screenBrightness)
         assertEquals(0u, written.screenOffDelay)
         assertEquals(BoltMode.BOLT_MODE_UNSPECIFIED, written.boltMode)
+    }
+
+    @Test
+    fun testBluetoothAtBootMapsBothWays() {
+        assertNull(BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED.toDomain())
+        assertEquals(BoardBluetoothAtBoot.OFF, BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF.toDomain())
+        assertEquals(BoardBluetoothAtBoot.RESTORE, BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE.toDomain())
+
+        assertEquals(BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF, BoardBluetoothAtBoot.OFF.toProtocol())
+        assertEquals(BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE, BoardBluetoothAtBoot.RESTORE.toProtocol())
+        assertEquals(BluetoothAtBoot.entries.size - 1, BoardBluetoothAtBoot.entries.size)
+    }
+
+    @Test
+    fun testDeviceConfigBluetoothAtBootReadAndWrite() {
+        val protoDevice = snapshotpb.v1.Device(
+            deviceId = testDeviceUuid.toByteArray(),
+            model = snapshotpb.v1.BoardModel.BOARD_MODEL_AUTOCOCKER,
+            supportedProfileCount = 1u,
+        )
+        val protoProfiles = Profiles(profiles = listOf(Profile(name = "P0")))
+
+        val withOff = toDomainDevice(
+            protoDevice = protoDevice,
+            protoDeviceConfig = DeviceConfig(
+                activeProfile = 1u,
+                bootText = "Hi",
+                bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF,
+            ),
+            protoProfiles = protoProfiles,
+            deviceName = "n",
+            lastSeenDate = testLocalDate,
+        )
+        assertEquals(BoardBluetoothAtBoot.OFF, withOff.bluetoothAtBoot)
+
+        val withRestore = toDomainDevice(
+            protoDevice = protoDevice,
+            protoDeviceConfig = DeviceConfig(
+                activeProfile = 1u,
+                bootText = "Hi",
+                bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE,
+            ),
+            protoProfiles = protoProfiles,
+            deviceName = "n",
+            lastSeenDate = testLocalDate,
+        )
+        assertEquals(BoardBluetoothAtBoot.RESTORE, withRestore.bluetoothAtBoot)
+
+        val withUnspecified = toDomainDevice(
+            protoDevice = protoDevice,
+            protoDeviceConfig = DeviceConfig(
+                activeProfile = 1u,
+                bootText = "Hi",
+                bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED,
+            ),
+            protoProfiles = protoProfiles,
+            deviceName = "n",
+            lastSeenDate = testLocalDate,
+        )
+        assertNull(withUnspecified.bluetoothAtBoot)
+
+        val base = domainDevice()
+        assertEquals(
+            BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED,
+            toProtocolDeviceConfig(base.copy(bluetoothAtBoot = null)).bluetoothAtBoot,
+        )
+        assertEquals(
+            BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF,
+            toProtocolDeviceConfig(base.copy(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)).bluetoothAtBoot,
+        )
+        assertEquals(
+            BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE,
+            toProtocolDeviceConfig(base.copy(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)).bluetoothAtBoot,
+        )
     }
 
     @Test

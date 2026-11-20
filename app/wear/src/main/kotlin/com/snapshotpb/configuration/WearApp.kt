@@ -484,6 +484,11 @@ fun WearApp(
                     onSelectBoltModeTriggered = {
                         currentScreen = WearScreen.BoltModeSelection
                     },
+                    onBluetoothAtBootChange = { bluetoothAtBoot ->
+                        deviceViewModelDelegate.updateBoardSettings(device.id.toString()) {
+                            it.copy(bluetoothAtBoot = bluetoothAtBoot)
+                        }
+                    },
                     onSelectLanguageTriggered = {
                         currentScreen = WearScreen.LanguageSelection
                     },

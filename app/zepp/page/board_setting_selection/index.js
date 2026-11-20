@@ -6,11 +6,11 @@ import { PROFILE_CHOICES, profileChoiceLabel } from '../../src/utils/profileFiel
 import { px, screenWidth, screenHeight } from '../../src/utils/px';
 
 // Choice of one value from a short list with one active value: a board setting (the bolt mode,
-// the board language, the screen brightness, or the screen-off delay), or a list-valued profile
-// field (the fire mode or the eye mode). They share a page rather than repeat it six times.
+// Bluetooth at boot, the board language, the screen brightness, or the screen-off delay), or a
+// list-valued profile field (the fire mode or the eye mode). They share one page.
 // The page that pushes this one names the choice in globalData.selection:
 //
-//   { scope: 'device', key: 'boltMode' | 'language' | 'screenBrightness' | 'screenOffDelay' }
+//   { scope: 'device', key: 'boltMode' | 'bluetoothAtBoot' | 'language' | 'screenBrightness' | 'screenOffDelay' }
 //   { scope: 'profile', key: 'fireMode' | 'eyeMode', profileId }
 //
 // The choice stays on the watch until the user saves to the board. The board can refuse a board

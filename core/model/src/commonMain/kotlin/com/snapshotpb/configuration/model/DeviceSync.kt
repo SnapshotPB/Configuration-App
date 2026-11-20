@@ -23,6 +23,9 @@ package com.snapshotpb.configuration.model
  * - Version 5 adds [Device.boltMode], [BoardState.boltMode], and
  *   [MarkerProfile.searSolenoidDelay]. A peer on an older version decodes them as their defaults
  *   (`null` and `60`) and would overwrite open-bolt or custom sear-delay values on its next edit.
+ * - Version 6 adds [Device.bluetoothAtBoot] and [BoardState.bluetoothAtBoot]. A peer on an older
+ *   version decodes them as `null`. Its baseline then has no value and replaces the baseline of
+ *   the newer build, so the watch and the phone show different values.
  *
  * The check protects the store of the newer build only. A peer on an older build still accepts a
  * payload with a higher version, and it keeps the default in its own store. That peer can then
@@ -30,7 +33,7 @@ package com.snapshotpb.configuration.model
  * update. No change to a new build can correct a build that is already released, so the two apps
  * must get the update before the user selects a value that the older build does not know.
  */
-const val DEVICE_SYNC_SCHEMA_VERSION: Int = 5
+const val DEVICE_SYNC_SCHEMA_VERSION: Int = 6
 
 /** Data map key of [DEVICE_SYNC_SCHEMA_VERSION]. A payload without the key has version 0. */
 const val DEVICE_SYNC_SCHEMA_VERSION_KEY: String = "schema_version"
@@ -57,6 +60,7 @@ fun Device.syncedConfigEquals(other: Device): Boolean =
         screenOffDelay == other.screenOffDelay &&
         displayWindow == other.displayWindow &&
         boltMode == other.boltMode &&
+        bluetoothAtBoot == other.bluetoothAtBoot &&
         activeProfileId == other.activeProfileId &&
         lockoutEnabled == other.lockoutEnabled &&
         // Plain equality, so a change of MarkerProfile.sourceSlot alone goes to the peer as well.
@@ -83,6 +87,7 @@ fun Device.mergeFromPeer(incoming: Device): Device =
         screenOffDelay = incoming.screenOffDelay ?: screenOffDelay,
         displayWindow = incoming.displayWindow ?: displayWindow,
         boltMode = incoming.boltMode ?: boltMode,
+        bluetoothAtBoot = incoming.bluetoothAtBoot ?: bluetoothAtBoot,
         boardState = incoming.boardState ?: boardState,
         advertisementData = incoming.advertisementData ?: advertisementData,
     )

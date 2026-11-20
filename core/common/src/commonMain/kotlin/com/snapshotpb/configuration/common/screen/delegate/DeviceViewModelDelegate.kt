@@ -5,6 +5,7 @@ import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
 import com.snapshotpb.configuration.bluetooth.BoardChangedBeforeWriteException
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
@@ -84,6 +85,7 @@ interface DeviceViewModelDelegate {
         screenOffDelay: Int?,
         displayWindow: DisplayWindow?,
         boltMode: MarkerBoltMode? = null,
+        bluetoothAtBoot: BoardBluetoothAtBoot? = null,
     )
 
     /**
@@ -113,11 +115,12 @@ interface DeviceViewModelDelegate {
     /**
      * Applies [change] to the board settings of the device that the store holds at commit time,
      * inside one atomic store update. The board settings are the active profile, the language, the
-     * screen brightness and the screen-off delay; the other fields of the result are ignored. A
-     * `null` language, brightness or delay keeps the stored value, as in
-     * [updateDeviceConfiguration]. A watch list commits here, so a phone push that lands before the
-     * commit keeps its values. [change] can run more than once, so it must have no side effects. A
-     * result equal to the stored settings changes nothing.
+     * screen brightness, the screen-off delay, the bolt mode, and Bluetooth at boot. This call
+     * ignores other fields of the result. A `null` language, brightness, delay, bolt mode, or
+     * Bluetooth at boot keeps the stored value, as in [updateDeviceConfiguration]. A watch list
+     * commits here, so a phone push that lands before the commit keeps its values. [change] can
+     * run more than once, so it must have no side effects. A result equal to the stored settings
+     * changes nothing.
      */
     fun updateBoardSettings(deviceId: String, change: (Device) -> Device)
 
@@ -248,6 +251,7 @@ class DeviceViewModelDelegateImpl(
         screenOffDelay: Int?,
         displayWindow: DisplayWindow?,
         boltMode: MarkerBoltMode?,
+        bluetoothAtBoot: BoardBluetoothAtBoot?,
     ) {
         val deviceUuid = Uuid.parse(deviceId)
         val deviceToUpdate = deviceStore.knownDevices.value.firstOrNull { it.id == deviceUuid }
@@ -279,6 +283,7 @@ class DeviceViewModelDelegateImpl(
                         // after a save is the one the board will accept.
                         displayWindow = displayWindow?.clampedToPanel() ?: device.displayWindow,
                         boltMode = boltMode ?: device.boltMode,
+                        bluetoothAtBoot = bluetoothAtBoot ?: device.bluetoothAtBoot,
                         lastSeen = seenDate,
                     )
                 } else {
@@ -343,6 +348,7 @@ class DeviceViewModelDelegateImpl(
                 screenBrightness = changed.screenBrightness ?: device.screenBrightness,
                 screenOffDelay = changed.screenOffDelay ?: device.screenOffDelay,
                 boltMode = changed.boltMode ?: device.boltMode,
+                bluetoothAtBoot = changed.bluetoothAtBoot ?: device.bluetoothAtBoot,
             )
             if (updated == device) device else updated.copy(lastSeen = seenDate)
         }
@@ -544,6 +550,11 @@ class DeviceViewModelDelegateImpl(
                             requested = requested?.boltMode,
                             baseline = dev.boardState?.boltMode,
                         )
+                        val baselineBluetoothAtBoot = settledBoardValue(
+                            written = written.bluetoothAtBoot,
+                            requested = requested?.bluetoothAtBoot,
+                            baseline = dev.boardState?.bluetoothAtBoot,
+                        )
                         val baseline = dev.boardState?.copy(
                             bootText = written.bootText,
                             activeProfileId = written.activeProfileId,
@@ -553,6 +564,7 @@ class DeviceViewModelDelegateImpl(
                             screenOffDelay = baselineDelay,
                             displayWindow = baselineDisplayWindow,
                             boltMode = baselineBoltMode,
+                            bluetoothAtBoot = baselineBluetoothAtBoot,
                         ) ?: BoardState(
                             bootText = written.bootText,
                             activeProfileId = written.activeProfileId,
@@ -563,6 +575,7 @@ class DeviceViewModelDelegateImpl(
                             screenOffDelay = baselineDelay,
                             displayWindow = baselineDisplayWindow,
                             boltMode = baselineBoltMode,
+                            bluetoothAtBoot = baselineBluetoothAtBoot,
                         )
                         // Adopt the clamped values into the EDITABLE device only if it has not been
                         // edited since this write was dispatched — otherwise a concurrent in-flight
@@ -578,6 +591,7 @@ class DeviceViewModelDelegateImpl(
                                 dev.screenOffDelay != requested.screenOffDelay ||
                                 dev.displayWindow != requested.displayWindow ||
                                 dev.boltMode != requested.boltMode ||
+                                dev.bluetoothAtBoot != requested.bluetoothAtBoot ||
                                 // A change of the source slots alone is not an edit.
                                 !dev.knownProfiles.equalsIgnoringSourceSlots(requested.knownProfiles)
                             )
@@ -602,6 +616,7 @@ class DeviceViewModelDelegateImpl(
                                 screenOffDelay = baselineDelay,
                                 displayWindow = baselineDisplayWindow,
                                 boltMode = baselineBoltMode,
+                                bluetoothAtBoot = baselineBluetoothAtBoot,
                                 boardState = baseline,
                             )
                         }
@@ -647,8 +662,8 @@ class DeviceViewModelDelegateImpl(
         // Restore local configuration to match cached boardState. lockoutEnabled is a read-only
         // board fact, not an editable field, so discarding local edits leaves it untouched.
         //
-        // The four board settings restore the baseline EXACTLY, with no fallback to the value the
-        // device holds: a fallback would keep the very value the user asked to discard.
+        // The six board settings restore the baseline EXACTLY, with no fallback to the value that
+        // the device holds. A fallback would keep the value that the user asked to discard.
         deviceStore.update { current ->
             current.map { dev ->
                 if (dev.id == deviceUuid) {
@@ -661,6 +676,7 @@ class DeviceViewModelDelegateImpl(
                         screenOffDelay = bs.screenOffDelay,
                         displayWindow = bs.displayWindow,
                         boltMode = bs.boltMode,
+                        bluetoothAtBoot = bs.bluetoothAtBoot,
                     )
                 } else dev
             }
@@ -679,8 +695,8 @@ class DeviceViewModelDelegateImpl(
 }
 
 /**
- * The value to store after a write, for one of the board settings the board can refuse: the
- * language, the screen brightness and the screen-off delay.
+ * The value to store after a write for a board setting that the board can refuse. These settings
+ * are language, screen brightness, screen-off delay, bolt mode, and Bluetooth at boot.
  *
  * A null [written] value is positive evidence, not missing data: the engine reads the DeviceConfig
  * back after the write and falls back to the values it sent when that read fails, so a null here

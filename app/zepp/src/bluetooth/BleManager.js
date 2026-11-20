@@ -2,6 +2,7 @@ import * as ble from '@zos/ble';
 import { queryPermission, requestPermission } from '@zos/app';
 import { isTransportTimeout, OtsClient } from './OtsClient';
 import {
+  BoardBluetoothAtBoot,
   BoardLanguage,
   BoardScreenBrightness,
   FireMode,
@@ -517,6 +518,7 @@ class BleManagerImpl {
               screenBrightness: BoardScreenBrightness.DEFAULT,
               screenOffDelay: SCREEN_OFF_DELAY_DEFAULT,
               boltMode: MarkerBoltMode.CLOSED,
+              bluetoothAtBoot: BoardBluetoothAtBoot.OFF,
               lockoutEnabled: false,
               boardModel: "AUTOCOCKER",
               supportedProfileCount: 2
@@ -735,7 +737,8 @@ class BleManagerImpl {
           language: domainDevice.language || null,
           screenBrightness: domainDevice.screenBrightness || null,
           screenOffDelay: domainDevice.screenOffDelay || null,
-          boltMode: domainDevice.boltMode || null
+          boltMode: domainDevice.boltMode || null,
+          bluetoothAtBoot: domainDevice.bluetoothAtBoot || null
         });
       }, 500);
       return;

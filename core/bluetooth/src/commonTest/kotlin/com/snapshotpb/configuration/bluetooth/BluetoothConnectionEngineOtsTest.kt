@@ -7,6 +7,7 @@ import com.snapshotpb.configuration.bluetooth.ots.decodeDeviceConfig
 import com.snapshotpb.configuration.bluetooth.ots.decodeProfilesWire
 import com.snapshotpb.configuration.bluetooth.ots.toDomainDevice
 import com.snapshotpb.configuration.model.AdvertisementData
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.MarkerProfile
 import dev.bluefalcon.core.BlueFalcon
@@ -26,6 +27,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.serialization.protobuf.ProtoBuf
 import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoardModel
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.Profile
@@ -260,6 +262,44 @@ class BluetoothConnectionEngineOtsTest {
         // The result reports what the board kept, not what the app sent (L15).
         assertEquals("BOARD", result.device.bootText)
         assertEquals(synced.knownProfiles[1].id, result.device.activeProfileId)
+    }
+
+    @Test
+    fun write_recordsTheBluetoothAtBootThatTheBoardReadsBack() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        val initialConfig = BOARD_CONFIG.copy(bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF)
+        f.board.setContent("device_config", ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), initialConfig))
+        val synced = connectAndSync(f)
+
+        var writtenOnWire: BluetoothAtBoot? = null
+        // Firmware that keeps OFF on commit when the app sends RESTORE.
+        f.board.onCommit = { name, bytes ->
+            if (name == "device_config") {
+                val sent = decodeDeviceConfig(bytes)
+                writtenOnWire = sent.bluetoothAtBoot
+                ProtoBuf.encodeToByteArray(
+                    DeviceConfig.serializer(),
+                    sent.copy(bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF),
+                )
+            } else {
+                bytes
+            }
+        }
+
+        f.engine.writeDeviceConfiguration(
+            DEVICE_ID,
+            synced.copy(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE),
+            requestId = 8L,
+        )
+        advanceTimeBy(WRITE_MILLIS)
+        runCurrent()
+
+        assertEquals(BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE, writtenOnWire)
+        val result = f.writes.single()
+        assertNull(result.error)
+        assertEquals(8L, result.requestId)
+        // The result reports the value that the board read back, not the value that the app sent.
+        assertEquals(BoardBluetoothAtBoot.OFF, result.device.bluetoothAtBoot)
     }
 
     @Test
@@ -511,6 +551,28 @@ class BluetoothConnectionEngineOtsTest {
 
             assertTrue(f.board.writtenObjects.isEmpty())
             assertEquals(synced.knownProfiles[1].id, f.reads.last().device.activeProfileId)
+            assertIs<BoardChangedBeforeWriteException>(f.writes.single().error)
+        }
+
+    @Test
+    fun write_afterABoardMenuEditOfBluetoothAtBoot_doesNotWriteAndReportsTheBoard() =
+        runTest(UnconfinedTestDispatcher()) {
+            val f = newFixture()
+            val initialConfig = BOARD_CONFIG.copy(bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_OFF)
+            f.board.setContent("device_config", ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), initialConfig))
+            val synced = connectAndSync(f)
+            assertEquals(BoardBluetoothAtBoot.OFF, synced.bluetoothAtBoot)
+
+            // The user changes Bluetooth at boot in the board menu or shell.
+            val editedConfig = initialConfig.copy(bluetoothAtBoot = BluetoothAtBoot.BLUETOOTH_AT_BOOT_RESTORE)
+            f.board.setContent("device_config", ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), editedConfig))
+
+            f.engine.writeDeviceConfiguration(DEVICE_ID, synced.copy(bootText = "APP"))
+            advanceTimeBy(WRITE_MILLIS)
+            runCurrent()
+
+            assertTrue(f.board.writtenObjects.isEmpty())
+            assertEquals(BoardBluetoothAtBoot.RESTORE, f.reads.last().device.bluetoothAtBoot)
             assertIs<BoardChangedBeforeWriteException>(f.writes.single().error)
         }
 

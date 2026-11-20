@@ -11,10 +11,12 @@ import coil3.compose.AsyncImage
 import com.snapshotpb.configuration.common.composable.boardLanguageLabel
 import com.snapshotpb.configuration.common.composable.boardScreenBrightnessLabel
 import com.snapshotpb.configuration.common.composable.displayName
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_active_profile_label
 import com.snapshotpb.core.resources.board_screen_off_delay_seconds
+import com.snapshotpb.core.resources.configure_device_screen_bluetooth_at_boot_label
 import com.snapshotpb.core.resources.configure_device_screen_bolt_mode_label
 import com.snapshotpb.core.resources.configure_device_screen_brightness_label
 import com.snapshotpb.core.resources.configure_device_screen_language_label
@@ -43,6 +45,9 @@ const val DEVICE_CONFIG_ACTIVE_PROFILE_TAG = "device_config_active_profile"
 /** The test tag of the Tune Profile card. */
 const val DEVICE_CONFIG_TUNE_PROFILE_TAG = "device_config_tune_profile"
 
+/** The test tag of the Bluetooth at boot toggle chip. */
+const val DEVICE_CONFIG_BLUETOOTH_AT_BOOT_TAG = "device_config_bluetooth_at_boot"
+
 @Composable
 fun DeviceConfigScreen(
     device: Device,
@@ -54,6 +59,7 @@ fun DeviceConfigScreen(
     onSelectProfileTriggered: () -> Unit,
     onTuneProfileTriggered: () -> Unit,
     onSelectBoltModeTriggered: () -> Unit = {},
+    onBluetoothAtBootChange: (BoardBluetoothAtBoot) -> Unit = {},
     onSelectLanguageTriggered: () -> Unit,
     onSelectBrightnessTriggered: () -> Unit,
     onSelectScreenOffDelayTriggered: () -> Unit,
@@ -131,6 +137,23 @@ fun DeviceConfigScreen(
                 ) {
                     Text(boltMode.displayName(), style = MaterialTheme.typography.body1)
                 }
+            }
+        }
+
+        // Bluetooth at Boot toggle. Only a board that reported this setting shows it: older
+        // firmware reports none and ignores a choice.
+        device.bluetoothAtBoot?.let { bluetoothAtBoot ->
+            item {
+                ToggleChip(
+                    checked = bluetoothAtBoot.remembersState,
+                    onCheckedChange = { on -> onBluetoothAtBootChange(BoardBluetoothAtBoot.of(on)) },
+                    label = { Text(stringResource(Res.string.configure_device_screen_bluetooth_at_boot_label)) },
+                    toggleControl = { Switch(checked = bluetoothAtBoot.remembersState) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .testTag(DEVICE_CONFIG_BLUETOOTH_AT_BOOT_TAG),
+                )
             }
         }
 
