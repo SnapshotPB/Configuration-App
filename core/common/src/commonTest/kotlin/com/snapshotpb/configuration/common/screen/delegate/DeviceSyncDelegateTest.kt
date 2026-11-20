@@ -11,6 +11,7 @@ import com.snapshotpb.configuration.common.testDeviceId
 import com.snapshotpb.configuration.common.testDeviceStore
 import com.snapshotpb.configuration.common.testProfile
 import com.snapshotpb.configuration.model.AdvertisementData
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
@@ -82,6 +83,7 @@ class DeviceSyncDelegateTest {
         screenOffDelay = device.screenOffDelay,
         displayWindow = device.displayWindow,
         boltMode = device.boltMode,
+        bluetoothAtBoot = device.bluetoothAtBoot,
     )
 
     @Test
@@ -266,6 +268,7 @@ class DeviceSyncDelegateTest {
             screenOffDelay = 30,
             displayWindow = GripFrame.E1.window,
             boltMode = MarkerBoltMode.OPEN,
+            bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE,
         )
         f.readBus.emit(DeviceReadResult(changed))
         testScheduler.advanceUntilIdle()
@@ -279,6 +282,7 @@ class DeviceSyncDelegateTest {
         assertEquals(30, stored.screenOffDelay)
         assertEquals(GripFrame.E1.window, stored.displayWindow)
         assertEquals(MarkerBoltMode.OPEN, stored.boltMode)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
         assertEquals(baseline(changed), stored.boardState, "the baseline records the new board state")
         assertFalse(stored.hasDiverged())
         assertEquals("My Name", stored.name, "the local name is a user label, not board state")
@@ -615,6 +619,124 @@ class DeviceSyncDelegateTest {
         assertEquals(BoardLanguage.ES, write.device.language)
         assertEquals(BoardLanguage.ES, stored.language)
         assertEquals(BoardLanguage.ES, stored.boardState?.language)
+    }
+
+    @Test
+    fun readOfAKnownDeviceWithNoBaselineAdoptsTheBoardBluetoothAtBoot() = runTest {
+        val f = fixture(testScheduler, listOf(testDevice()))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)))
+        testScheduler.advanceUntilIdle()
+
+        val stored = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.boardState?.bluetoothAtBoot)
+        assertTrue(f.delegate.pendingSyncs.value.isEmpty())
+    }
+
+    @Test
+    fun reconnectToABaselineWithNoBluetoothAtBootAdoptsTheBoardValue() = runTest {
+        val local = testDevice(boardState = baseline(testDevice()))
+        val f = fixture(testScheduler, listOf(local))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)))
+        testScheduler.advanceUntilIdle()
+
+        val stored = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.boardState?.bluetoothAtBoot)
+        assertFalse(stored.hasDiverged())
+        assertTrue(f.delegate.pendingSyncs.value.isEmpty())
+    }
+
+    @Test
+    fun reconnectMatchingTheBaselineKeepsAnUnsavedBluetoothAtBootChoice() = runTest {
+        val board = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val local = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = baseline(board))
+        val f = fixture(testScheduler, listOf(local))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(board))
+        testScheduler.advanceUntilIdle()
+
+        val stored = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
+        assertTrue(stored.hasDiverged())
+        assertTrue(f.delegate.pendingSyncs.value.isEmpty())
+    }
+
+    @Test
+    fun reconnectToABoardThatReportsNoBluetoothAtBootClearsTheStoredOneWithoutAConflict() = runTest {
+        val board = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val local = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE, boardState = baseline(board))
+        val f = fixture(testScheduler, listOf(local))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(testDevice()))
+        testScheduler.advanceUntilIdle()
+
+        val stored = f.store.knownDevices.value.single()
+        assertNull(stored.bluetoothAtBoot)
+        assertNull(stored.boardState?.bluetoothAtBoot)
+        assertTrue(f.delegate.pendingSyncs.value.isEmpty())
+    }
+
+    @Test
+    fun reconnectAfterTheBoardBluetoothAtBootChangedWithNoLocalEditsTakesTheBoardValue() = runTest {
+        val board = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val f = fixture(testScheduler, listOf(board.copy(boardState = baseline(board))))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)))
+        testScheduler.advanceUntilIdle()
+
+        val stored = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.boardState?.bluetoothAtBoot)
+        assertTrue(f.delegate.pendingSyncs.value.isEmpty())
+    }
+
+    @Test
+    fun reconnectAfterTheBoardBluetoothAtBootChangedOverALocalEditRaisesAConflict() = runTest {
+        val board = testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.OFF)
+        val local = testDevice(
+            bootText = "Local",
+            bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
+            boardState = baseline(board),
+        )
+        val f = fixture(testScheduler, listOf(local))
+        testScheduler.advanceUntilIdle()
+
+        f.readBus.emit(DeviceReadResult(testDevice(bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)))
+        testScheduler.advanceUntilIdle()
+
+        assertIs<PendingSync.Conflict>(f.delegate.pendingSyncs.value[testDeviceId])
+        assertEquals(BoardBluetoothAtBoot.OFF, f.store.knownDevices.value.single().bluetoothAtBoot)
+    }
+
+    @Test
+    fun resolveConflict_takeLocal_fillsAMissingLocalBluetoothAtBootFromTheBoard() = runTest {
+        val f = fixture(testScheduler, listOf(testDevice(bootText = "Local")))
+        testScheduler.advanceUntilIdle()
+
+        val writes = mutableListOf<BluetoothRequest>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            f.requestManager.bus.collect { writes += it }
+        }
+
+        val board = testDevice(bootText = "Board", bluetoothAtBoot = BoardBluetoothAtBoot.RESTORE)
+        f.readBus.emit(DeviceReadResult(board))
+        testScheduler.advanceUntilIdle()
+        f.delegate.resolveConflict(testDeviceId, ConflictChoice.TakeLocal)
+        testScheduler.advanceUntilIdle()
+
+        val write = writes.filterIsInstance<BluetoothRequest.WriteDevice>().single()
+        val stored = f.store.knownDevices.value.single()
+        assertEquals(BoardBluetoothAtBoot.RESTORE, write.device.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.bluetoothAtBoot)
+        assertEquals(BoardBluetoothAtBoot.RESTORE, stored.boardState?.bluetoothAtBoot)
     }
 
     @Test
