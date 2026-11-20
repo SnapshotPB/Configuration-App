@@ -11,7 +11,7 @@ plugins {
     alias(libs.plugins.nucleus)
 }
 
-val generateDesktopConfig by tasks.registering {
+val generateDesktopConfig = tasks.register("generateDesktopConfig") {
     val outputFile = layout.buildDirectory.file("generated/desktopConfig/com/snapshotpb/configuration/DesktopConfig.kt")
     val enableAutoUpdater = project.findProperty("snapshotpb.enableAutoUpdater")?.toString()?.toBoolean() ?: false
     outputs.file(outputFile)

@@ -14,7 +14,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(projects.core.model)
 
@@ -27,12 +27,12 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json.io)
             }
         }
-        val wasmJsMain by getting {
+        wasmJsMain {
             dependencies {
                 implementation(libs.kotlinx.browser)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)

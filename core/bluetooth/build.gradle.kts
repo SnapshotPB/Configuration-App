@@ -14,7 +14,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(libs.blue.falcon)
                 implementation(libs.kotlinx.coroutines.core)
@@ -26,7 +26,7 @@ kotlin {
                 implementation(libs.arbor)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)

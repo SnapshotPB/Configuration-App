@@ -13,11 +13,11 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
             }

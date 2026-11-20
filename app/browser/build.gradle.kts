@@ -19,7 +19,7 @@ kotlin {
         binaries.executable()
     }
     sourceSets {
-        val wasmJsMain by getting {
+        wasmJsMain {
             dependencies {
                 implementation(projects.core.common)
                 implementation(projects.core.di)

@@ -10,7 +10,7 @@ kotlin {
     configureOptIns()
     wasmJs { browser() }
     sourceSets {
-        val wasmJsMain by getting {
+        wasmJsMain {
             dependencies {
                 implementation(projects.core.bluetooth)
                 implementation(projects.core.protocol)
@@ -25,7 +25,7 @@ kotlin {
                 implementation(libs.kotlinx.serialization.core)
             }
         }
-        val wasmJsTest by getting {
+        wasmJsTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)

@@ -14,7 +14,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             kotlin.srcDir(
                 project(projects.core.protocol.builder.path)
                     .layout
@@ -28,7 +28,7 @@ kotlin {
                 implementation(libs.kotlinx.serialization.protobuf)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
             }
