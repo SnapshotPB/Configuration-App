@@ -22,6 +22,7 @@ import com.snapshotpb.configuration.bluetooth.ots.toProtocolDeviceConfig
 import com.snapshotpb.configuration.bluetooth.ots.toProtocolProfiles
 import com.snapshotpb.configuration.common.screen.device.BOARD_ADVERTISED_NAME
 import com.snapshotpb.configuration.model.AdvertisementData
+import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
@@ -30,6 +31,7 @@ import com.snapshotpb.configuration.model.FirmwareUpdateFailure
 import com.snapshotpb.configuration.model.FirmwareUpdateProgress
 import com.snapshotpb.configuration.model.FirmwareVersion
 import com.snapshotpb.configuration.model.HardwareTarget
+import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -50,7 +52,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import snapshotpb.v1.BluetoothAtBoot
 import snapshotpb.v1.BoardModel
+import snapshotpb.v1.BoltMode
 import snapshotpb.v1.DeviceConfig
 import snapshotpb.v1.Language
 import snapshotpb.v1.Profiles
@@ -64,11 +68,11 @@ import kotlin.uuid.Uuid
  * buses, so device discovery, the 4-step connect flow, profile edits, divergence badges and the
  * sync dialogs all behave as they do against a real marker.
  *
- * The board holds its configuration in the PROTOCOL's own messages, and it reads and writes them
- * through the same mappers the real engine uses. That is what makes a divergence realistic: a boot
- * text longer than the firmware buffer comes back cut, a profile id comes back derived from its
- * slot, and an unset language, brightness, screen-off delay or display window leaves the board's own
- * value alone. What it does NOT exercise is everything below the mappers: BlueFalcon, the OTS
+ * The board holds its configuration in the protocol's own messages, and it reads and writes them
+ * through the same mappers the real engine uses. A boot text longer than the firmware buffer
+ * comes back cut, and a profile id derives from its slot. An unset language, brightness,
+ * screen-off delay, display window, bolt mode, or Bluetooth at boot setting leaves the board's
+ * own value alone. What it does NOT exercise is everything below the mappers: BlueFalcon, the OTS
  * control points, and the wire itself. Those need a real peripheral.
  *
  * The Demo entry in the launcher starts the app with this board; the normal entry starts it with
@@ -458,9 +462,10 @@ internal class FakeBoard(
     /**
      * Stores a write the way the board stores one. The value goes out through the same protocol
      * mapper the real write uses, so the board keeps the cut boot text and the slot order that a
-     * real one keeps, and an unset language, brightness, screen-off delay or display window leaves
-     * its own value alone. The result then reports what the board kept, which is the read-back the
-     * engine does after a commit. Without that the app caches a value the board never held.
+     * real one keeps. An unset language, brightness, screen-off delay, display window, bolt mode, or
+     * Bluetooth at boot setting leaves the board's own value alone. The result then reports what the
+     * board kept, which is the read-back the engine does after a commit. Without that, the app caches
+     * a value the board never held.
      */
     private suspend fun write(deviceId: String, device: Device, requestId: Long) {
         val clamped = device.clampedToFirmwareRanges()
@@ -481,23 +486,7 @@ internal class FakeBoard(
 
         delay(WRITE_DELAY_MILLIS)
         val written = toProtocolDeviceConfig(clamped)
-        boardConfig = boardConfig.copy(
-            activeProfile = written.activeProfile,
-            bootText = written.bootText,
-            // The board ignores a value it does not know, and the mapper sends the unset value for
-            // one the app does not hold, so each of these four keeps the board's own value.
-            language = written.language
-                .takeUnless { it == Language.LANGUAGE_UNSPECIFIED } ?: boardConfig.language,
-            screenBrightness = written.screenBrightness
-                .takeUnless { it == ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED }
-                ?: boardConfig.screenBrightness,
-            screenOffDelay = written.screenOffDelay
-                .takeUnless { it == 0U } ?: boardConfig.screenOffDelay,
-            displayWindow = written.displayWindow ?: boardConfig.displayWindow,
-            boltMode = written.boltMode
-                .takeUnless { it == snapshotpb.v1.BoltMode.BOLT_MODE_UNSPECIFIED }
-                ?: boardConfig.boltMode,
-        )
+        boardConfig = boardConfig.withWrittenSettings(written)
         // A board holds as many slots as it reports, and the protocol carries no more than four.
         boardProfiles = toProtocolProfiles(clamped, boardProfiles)
             .let { profiles -> profiles.copy(profiles = profiles.profiles.take(PROFILE_SLOTS)) }
@@ -515,6 +504,7 @@ internal class FakeBoard(
             screenOffDelay = boardNow.screenOffDelay,
             displayWindow = boardNow.displayWindow,
             boltMode = boardNow.boltMode,
+            bluetoothAtBoot = boardNow.bluetoothAtBoot,
         )
         log.d { "Fake board stored the boot text ${boardConfig.bootText}" }
         deviceWriteResultBus.emit(
@@ -616,11 +606,34 @@ private object FakePeripheral : BluetoothPeripheral {
 }
 
 /**
+ * The config that the board holds after it takes [written]. An unset value keeps the board's own
+ * value.
+ */
+internal fun DeviceConfig.withWrittenSettings(written: DeviceConfig): DeviceConfig = copy(
+    activeProfile = written.activeProfile,
+    bootText = written.bootText,
+    // The board ignores a value it does not know, and the mapper sends the unset value for one
+    // the app does not hold, so each of these settings keeps the board's own value.
+    language = written.language
+        .takeUnless { it == Language.LANGUAGE_UNSPECIFIED } ?: language,
+    screenBrightness = written.screenBrightness
+        .takeUnless { it == ScreenBrightness.SCREEN_BRIGHTNESS_UNSPECIFIED }
+        ?: screenBrightness,
+    screenOffDelay = written.screenOffDelay
+        .takeUnless { it == 0U } ?: screenOffDelay,
+    displayWindow = written.displayWindow ?: displayWindow,
+    boltMode = written.boltMode
+        .takeUnless { it == BoltMode.BOLT_MODE_UNSPECIFIED } ?: boltMode,
+    bluetoothAtBoot = written.bluetoothAtBoot
+        .takeUnless { it == BluetoothAtBoot.BLUETOOTH_AT_BOOT_UNSPECIFIED } ?: bluetoothAtBoot,
+)
+
+/**
  * The configuration the board starts with, as a domain device that the mappers then encode. Two
  * profiles sit in the board's first two slots, with ids derived from the device id and the slot, the
  * way the mapper derives them on every read.
  */
-private fun fakeBoardSeed(): Device {
+internal fun fakeBoardSeed(): Device {
     val deviceUuid = Uuid.parse(FAKE_DEVICE_ID)
     val profiles = listOf(
         MarkerProfile(
@@ -646,6 +659,7 @@ private fun fakeBoardSeed(): Device {
         screenBrightness = BoardScreenBrightness.DEFAULT,
         screenOffDelay = 30,
         displayWindow = DisplayWindow.FULL_PANEL,
-        boltMode = com.snapshotpb.configuration.model.MarkerBoltMode.CLOSED,
+        boltMode = MarkerBoltMode.CLOSED,
+        bluetoothAtBoot = BoardBluetoothAtBoot.OFF,
     )
 }
