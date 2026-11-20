@@ -1,4 +1,5 @@
 import {
+  BoardBluetoothAtBoot,
   BoardLanguage,
   BoardScreenBrightness,
   MarkerBoltMode,
@@ -67,6 +68,15 @@ export const BOARD_SETTINGS = {
     names: {
       [MarkerBoltMode.CLOSED]: 'Closed Bolt',
       [MarkerBoltMode.OPEN]: 'Open Bolt'
+    }
+  },
+  bluetoothAtBoot: {
+    title: 'Bluetooth at Boot',
+    field: 'bluetoothAtBoot',
+    options: Object.values(BoardBluetoothAtBoot),
+    names: {
+      [BoardBluetoothAtBoot.OFF]: 'Off at Start',
+      [BoardBluetoothAtBoot.RESTORE]: 'Remember State'
     }
   }
 };
