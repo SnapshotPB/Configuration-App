@@ -45,8 +45,11 @@ export const OTS_OBJECTS = [
     writable: true,
     // Fields the board keeps when the client says nothing for them.
     // display_window has explicit message presence; the rest are "0 = leave
-    // alone" scalars/enums (device_config.proto fields 3-8).
-    mergeOnZero: ['displayWindow', 'language', 'screenBrightness', 'screenOffDelay', 'batteryType', 'boltMode'],
+    // alone" scalars/enums (device_config.proto fields 3-9).
+    mergeOnZero: [
+      'displayWindow', 'language', 'screenBrightness', 'screenOffDelay',
+      'batteryType', 'boltMode', 'bluetoothAtBoot'
+    ],
     // The board clamps rather than rejects, so the other fields still apply.
     clampMax: { screenOffDelay: 999 }
   }
@@ -71,6 +74,7 @@ export const LANGUAGE = snapshotpb.v1.Language;
 export const SCREEN_BRIGHTNESS = snapshotpb.v1.ScreenBrightness;
 export const BATTERY_TYPE = snapshotpb.v1.BatteryType;
 export const BOLT_MODE = snapshotpb.v1.BoltMode;
+export const BLUETOOTH_AT_BOOT = snapshotpb.v1.BluetoothAtBoot;
 
 /**
  * A Profile fixture, using the generated bindings' JS property names.
@@ -141,6 +145,7 @@ export function createBoardState(overrides = {}) {
       // pack, and not the 9 V default, so a write that sends a concrete type fails a test.
       batteryType: BATTERY_TYPE.BATTERY_TYPE_2S_LIPO,
       boltMode: BOLT_MODE.BOLT_MODE_CLOSED,
+      bluetoothAtBoot: BLUETOOTH_AT_BOOT.BLUETOOTH_AT_BOOT_OFF,
       ...(overrides.deviceConfig || {})
     },
     // Client-writable (profile.proto).

@@ -28,6 +28,7 @@ describe('write device configuration', () => {
     device.bootText = 'NEWBOOT';
     device.activeProfileId = h.profileUuid(1); // slot 1 == 2 on the 1-based wire
     device.boltMode = 'OPEN';
+    device.bluetoothAtBoot = 'RESTORE';
     device.knownProfiles[0].fireRateCapTenths = 135;
     device.knownProfiles[0].fireMode = 'FULL_AUTO';
     device.knownProfiles[0].searSolenoidDwell = 72;
@@ -38,6 +39,7 @@ describe('write device configuration', () => {
     expect(h.board.state.deviceConfig.bootText).toBe('NEWBOOT');
     expect(h.board.state.deviceConfig.activeProfile).toBe(2);
     expect(h.board.state.deviceConfig.boltMode).toBe(2); // BOLT_MODE_OPEN
+    expect(h.board.state.deviceConfig.bluetoothAtBoot).toBe(2); // BLUETOOTH_AT_BOOT_RESTORE
     expect(h.board.state.profiles.profiles[0].fireRateCap).toBe(135);
     expect(h.board.state.profiles.profiles[0].autococker.fireMode).toBe(
       FIRE_MODE.AUTOCOCKER_FIRE_MODE_FULL_AUTO
@@ -90,6 +92,7 @@ describe('write device configuration', () => {
     device.screenBrightness = null;
     device.screenOffDelay = null;
     device.boltMode = null;
+    device.bluetoothAtBoot = null;
 
     await h.writeConfiguration(h.address, device);
 
@@ -98,6 +101,7 @@ describe('write device configuration', () => {
     expect(cfg.screenBrightness).toBe(2); // DEFAULT, untouched
     expect(cfg.screenOffDelay).toBe(5); // untouched
     expect(cfg.boltMode).toBe(1); // BOLT_MODE_CLOSED, untouched
+    expect(cfg.bluetoothAtBoot).toBe(1); // BLUETOOTH_AT_BOOT_OFF, untouched
     // display_window has explicit message presence and the watch never sends one.
     expect(cfg.displayWindow).toEqual({ x: 0, y: 3, w: 110, h: 26 });
     // The watch has no battery setting. A write must not move a 2S LiPo board to a 9 V cell.
@@ -113,6 +117,7 @@ describe('write device configuration', () => {
     device.screenBrightness = 'HIGH';
     device.screenOffDelay = 42;
     device.boltMode = 'OPEN';
+    device.bluetoothAtBoot = 'RESTORE';
 
     await h.writeConfiguration(h.address, device);
 
@@ -121,6 +126,7 @@ describe('write device configuration', () => {
     expect(cfg.screenBrightness).toBe(3); // HIGH
     expect(cfg.screenOffDelay).toBe(42);
     expect(cfg.boltMode).toBe(2); // BOLT_MODE_OPEN
+    expect(cfg.bluetoothAtBoot).toBe(2); // BLUETOOTH_AT_BOOT_RESTORE
     expect(cfg.displayWindow).toEqual({ x: 0, y: 3, w: 110, h: 26 });
   });
 
@@ -192,7 +198,29 @@ describe('write device configuration', () => {
     expect(reread.screenBrightness).toBe(device.screenBrightness);
     expect(reread.screenOffDelay).toBe(device.screenOffDelay);
     expect(reread.boltMode).toBe(device.boltMode);
+    expect(reread.bluetoothAtBoot).toBe(device.bluetoothAtBoot);
     expect(reread.knownProfiles).toEqual(device.knownProfiles.map(p => ({ ...p })));
+  });
+
+  test('writes bluetoothAtBoot RESTORE, updates store, and reads it back', async () => {
+    const { device } = await h.connect();
+    h.store.confirmNewDevice(device, 'My Board');
+    h.store.updateBoardSetting(device.id, 'bluetoothAtBoot', 'RESTORE');
+    const edited = h.store.getKnownDevices()[0];
+    expect(h.store.isDiverged(edited.id)).toBe(true);
+
+    const written = await h.writeConfiguration(h.address, edited);
+    expect(h.board.state.deviceConfig.bluetoothAtBoot).toBe(2); // BLUETOOTH_AT_BOOT_RESTORE
+    expect(written.bluetoothAtBoot).toBe('RESTORE');
+
+    h.store.applyWriteResult(edited.id, edited, written);
+    const stored = h.store.getKnownDevices()[0];
+    expect(stored.bluetoothAtBoot).toBe('RESTORE');
+    expect(stored.boardState.bluetoothAtBoot).toBe('RESTORE');
+    expect(h.store.isDiverged(edited.id)).toBe(false);
+
+    const { device: reread } = await h.connect();
+    expect(reread.bluetoothAtBoot).toBe('RESTORE');
   });
 
   test('truncates boot text and profile names to the firmware buffer limits', async () => {
