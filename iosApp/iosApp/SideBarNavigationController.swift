@@ -50,7 +50,6 @@ final class SideBarNavigationController: UINavigationController {
                 self.updateBarVisibility()
             }
         }
-        updateBarVisibility()
     }
 
     required init?(coder: NSCoder) {
@@ -59,6 +58,16 @@ final class SideBarNavigationController: UINavigationController {
 
     deinit {
         observation?.cancel()
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        updateBarVisibility()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        updateBarVisibility()
     }
 
     override func viewDidLayoutSubviews() {
@@ -92,7 +101,7 @@ final class SideBarNavigationController: UINavigationController {
         if isNavigationBarHidden != hidden {
             setNavigationBarHidden(hidden, animated: false)
         }
-        view.setNeedsLayout()
+        viewIfLoaded?.setNeedsLayout()
     }
 
     @objc private func goBack() {
