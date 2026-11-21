@@ -152,7 +152,7 @@ jobs:
         # `check` would instead run every project's checks, which is far more than this needs.
         include:
           - target: android
-            tasks: ":app:android:assembleDebug :app:android:assembleRelease :app:android:baseline:compileBenchmarkReleaseKotlin :app:android:compileDebugAndroidTestKotlin :app:wear:assembleDebug :app:wear:assembleRelease :app:wear:compileDebugAndroidTestKotlin lint"
+            tasks: ":app:android:assembleDebug :app:android:assembleRelease :app:android:baseline:compileBenchmarkReleaseKotlin :app:android:compileDebugAndroidTestKotlin :app:android:testDebugUnitTest :app:wear:assembleDebug :app:wear:assembleRelease :app:wear:compileDebugAndroidTestKotlin lint"
           - target: desktop
             tasks: ":app:desktop:build jvmTest :core:resources:localizationCheck"
           - target: browser
