@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -22,7 +25,12 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.composable.Space
+import com.snapshotpb.configuration.model.MarkerBoltMode
+import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.profile_eye_hint_eye_off
 import com.snapshotpb.core.resources.profile_eye_hint_fault
@@ -33,6 +41,8 @@ import com.snapshotpb.core.resources.profile_eye_level_bar_description
 import com.snapshotpb.core.resources.profile_eye_live_level
 import com.snapshotpb.core.resources.profile_eye_result_ball
 import com.snapshotpb.core.resources.profile_eye_result_empty
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -47,6 +57,30 @@ internal const val EYE_RESULT_TAG = "eyeResult"
 
 /** Semantics test tag of the live eye hint text. */
 internal const val EYE_HINT_TAG = "eyeHint"
+
+/**
+ * Collects the live eye state while the lifecycle of the screen is at least `STARTED` and
+ * [profileWatchesEye] is true.
+ *
+ * In each other case, this function gives `null`, and the screen is no eye watcher.
+ */
+@Composable
+internal fun collectProfileEyeReading(
+    profile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
+    eyeReading: () -> Flow<EyeReadingState?>,
+): EyeReadingState? {
+    val watches = profileWatchesEye(profile, boltMode)
+    val currentEyeReading by rememberUpdatedState(eyeReading)
+    val flow = remember(watches) {
+        if (watches) currentEyeReading() else flowOf(null)
+    }
+    val state by flow.collectAsStateWithLifecycle(
+        initialValue = null,
+        minActiveState = Lifecycle.State.STARTED,
+    )
+    return if (watches) state else null
+}
 
 /**
  * Shows the live eye level, the level bar, and the ball result, or a hint under `EYE_THRESHOLD`.

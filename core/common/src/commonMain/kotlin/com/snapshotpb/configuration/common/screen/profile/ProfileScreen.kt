@@ -148,7 +148,11 @@ fun ProfileScreen(
         profileLoad = profileLoad,
         boardProfile = boardProfile,
         boltMode = boltMode,
-        eyeReading = null, // Task 4 collects the value.
+        eyeReading = collectProfileEyeReading(
+            profile = profile,
+            boltMode = boltMode,
+            eyeReading = viewModel::eyeReading,
+        ),
         photoPath = photoPath,
         onProfileChange = { viewModel.editDraft(it) },
         onCancel = { navigationController.goBack() },
