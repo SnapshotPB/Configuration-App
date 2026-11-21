@@ -40,13 +40,13 @@ class ConnectingDeviceLayoutTest {
     }
 
     /**
-     * [ConnectingProgress] has no vertical scroll, so a window that is 445 dp high cuts its last
+     * [ConnectingProgress] has no vertical scroll, so a window that is 466 dp high cuts its last
      * rows. The plan records this as a known defect. When a change to the screen corrects the
      * defect, change this test to assert that no text is clipped.
      */
     @Test
     fun progress_clipsCancelInShortWindow_knownDefect() {
-        val landscapeReport = checkScreenLayout("connecting-progress", DuoSize.OUTER_LANDSCAPE) {
+        val landscapeReport = checkScreenLayout("connecting-progress", DuoSize.OUTER_LANDSCAPE_FULL) {
             ConnectingProgress(
                 deviceName = DEVICE_NAME,
                 fwVersion = FW_VERSION,
@@ -59,10 +59,10 @@ class ConnectingDeviceLayoutTest {
         }
         assertTrue(
             CANCEL_LABEL in landscapeReport.clippedTexts,
-            "Expected \"$CANCEL_LABEL\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE.label}, got ${landscapeReport.clippedTexts}",
+            "Expected \"$CANCEL_LABEL\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE_FULL.label}, got ${landscapeReport.clippedTexts}",
         )
 
-        val portraitReport = checkScreenLayout("connecting-progress", DuoSize.INNER_PORTRAIT) {
+        val portraitReport = checkScreenLayout("connecting-progress", DuoSize.INNER_ROTATED) {
             ConnectingProgress(
                 deviceName = DEVICE_NAME,
                 fwVersion = FW_VERSION,
@@ -75,7 +75,7 @@ class ConnectingDeviceLayoutTest {
         }
         assertFalse(
             CANCEL_LABEL in portraitReport.clippedTexts,
-            "Expected \"$CANCEL_LABEL\" not in clippedTexts at ${DuoSize.INNER_PORTRAIT.label}, got ${portraitReport.clippedTexts}",
+            "Expected \"$CANCEL_LABEL\" not in clippedTexts at ${DuoSize.INNER_ROTATED.label}, got ${portraitReport.clippedTexts}",
         )
     }
 

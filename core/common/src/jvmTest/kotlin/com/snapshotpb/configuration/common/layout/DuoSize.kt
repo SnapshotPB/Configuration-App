@@ -4,27 +4,43 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The PROVISIONAL sizes of the app content on the iPhone Duo displays, in dp (1 dp = 1 pt). Each
- * value is the content size after `safeDrawingPadding()`. Step 4.1 of `docs/iphone-duo-plan.md`
- * measures the real values on the simulator.
- *
- * The display sizes come from the screenshot sizes of App Store Connect at 3x. The outer display
- * is 466 x 678 pt (1398 x 2034 px). The inner display is 669 x 951 pt (2007 x 2853 px). Apple
- * gives no point sizes.
- *
- * The insets are estimates, because no public source gives them. In outer portrait, the status bar
- * and the camera are on the side (Apple HIG "Designing for iPhone Duo"). Outer portrait removes
- * 59 pt on the trailing side and 34 pt at the bottom. Outer landscape removes 59 pt on one side
- * and 21 pt at the bottom. [OUTER_LANDSCAPE_SYMMETRIC] removes 59 pt on each side, as an iPhone in
- * landscape does. That width (560 dp) is below the two-pane limit of 600 dp.
- *
- * Inner portrait removes 24 pt at the top and 20 pt at the bottom, as an iPad does. Inner
- * landscape removes 24 pt on the side and 20 pt at the bottom.
+ * The app content sizes for iPhone Duo displays, in dp (1 dp = 1 pt). Values marked measured come
+ * from the iOS 27.2 simulator (Xcode 27.2, 2026-11-21).
  */
 internal enum class DuoSize(val label: String, val width: Dp, val height: Dp) {
-    OUTER_PORTRAIT("outer-portrait", 407.dp, 644.dp),
-    OUTER_LANDSCAPE("outer-landscape", 619.dp, 445.dp),
-    OUTER_LANDSCAPE_SYMMETRIC("outer-landscape-symmetric", 560.dp, 445.dp),
-    INNER_PORTRAIT("inner-portrait", 669.dp, 907.dp),
-    INNER_LANDSCAPE("inner-landscape", 927.dp, 649.dp),
+    /**
+     * Measured on the simulator. The window is 466 x 678 pt. The status bar is a column of about
+     * 83 pt at the right edge, so the content is 383 dp wide. The small strips at the top and the
+     * bottom are not subtracted.
+     */
+    OUTER_PORTRAIT("outer-portrait", 383.dp, 678.dp),
+
+    /**
+     * PROVISIONAL: the outer display in landscape is not measured. The turned outer window is
+     * 678 x 466 pt. This entry assumes that the 83 pt status column stays at the side (595 dp,
+     * below the two-pane limit of 600 dp). Together with [OUTER_LANDSCAPE_FULL], it brackets the
+     * real value.
+     */
+    OUTER_LANDSCAPE_SIDE_BAR("outer-landscape-side-bar", 595.dp, 466.dp),
+
+    /**
+     * PROVISIONAL: the outer display in landscape is not measured. The turned outer window is
+     * 678 x 466 pt. This entry assumes no side inset (678 dp). Together with
+     * [OUTER_LANDSCAPE_SIDE_BAR], it brackets the real value.
+     */
+    OUTER_LANDSCAPE_FULL("outer-landscape-full", 678.dp, 466.dp),
+
+    /**
+     * Measured on the simulator. This is the normal state when the user opens the device. The
+     * window is 951 x 669 pt. The status bar is a column of about 83 pt at the right edge, so the
+     * content is 868 dp wide.
+     */
+    INNER_OPEN("inner-open", 868.dp, 669.dp),
+
+    /**
+     * Measured on the simulator. This state occurs after the user turns the open device with the
+     * rotate button of the Xcode Device Hub. The window is 669 x 951 pt. The status bar is a strip
+     * at the top; its height is not measured and is not subtracted.
+     */
+    INNER_ROTATED("inner-rotated", 669.dp, 951.dp),
 }
