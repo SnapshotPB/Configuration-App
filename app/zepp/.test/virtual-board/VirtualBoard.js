@@ -33,6 +33,12 @@ export const OTS_UUID = {
   OBJECT_DATA: '00000002-5350-4221-0000-5350425F4F54'
 };
 
+// Vendor live eye status service and characteristic UUIDs.
+export const EYE_UUID = {
+  SERVICE: '00000010-5350-4221-0000-5350425F4F54',
+  STATUS: '00000011-5350-4221-0000-5350425F4F54'
+};
+
 // OTS spec §3.11.2 / §3.12.2.
 const OACP_OP = { CREATE: 0x01, DELETE: 0x02, CHECKSUM: 0x03, EXECUTE: 0x04, READ: 0x05, WRITE: 0x06, ABORT: 0x07, RESPONSE: 0x60 };
 const OLCP_OP = { FIRST: 0x01, LAST: 0x02, PREVIOUS: 0x03, NEXT: 0x04, GOTO: 0x05, ORDER: 0x06, NUMBER_OF_OBJECTS: 0x07, CLEAR_MARKING: 0x08, RESPONSE: 0x70 };
@@ -81,6 +87,7 @@ export class VirtualBoard {
    * @param {number} [config.chunkSize]      ObjectData notification size (default 20, one ATT MTU)
    * @param {number} [config.padAlignment]   flash slot alignment for object padding
    * @param {boolean} [config.strictSubscriptions] drop notifications for unsubscribed characteristics
+   * @param {boolean} [config.eyeService]    expose the live eye status service (default true)
    */
   constructor(config = {}) {
     this.state = config.state || createBoardState();
@@ -88,6 +95,7 @@ export class VirtualBoard {
     this.chunkSize = config.chunkSize || 20;
     this.padAlignment = config.padAlignment === undefined ? 32 : config.padAlignment;
     this.strictSubscriptions = config.strictSubscriptions !== false;
+    this.eyeService = config.eyeService !== false;
 
     // Object list, in the order OLCP FIRST/NEXT walks it. Descriptors come from
     // the protocol table in boardState.js, so a new object needs no change here.
@@ -103,6 +111,13 @@ export class VirtualBoard {
 
   attach(transport) {
     this.transport = transport;
+  }
+
+  hasService(uuid) {
+    const short = normalizeUuid(uuid);
+    if (short === OTS_UUID.SERVICE) return true;
+    if (short === EYE_UUID.SERVICE) return this.eyeService;
+    return false;
   }
 
   /** Everything a GATT link owns. Called on connect and on disconnect. */
@@ -212,6 +227,9 @@ export class VirtualBoard {
 
   setSubscription(uuid, enable, kind) {
     const short = normalizeUuid(uuid);
+    if (short === EYE_UUID.STATUS && !this.eyeService) {
+      return { error: `characteristic ${short} is not present on this board` };
+    }
     if (enable) {
       this.subscriptions.set(short, kind);
     } else {
