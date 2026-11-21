@@ -21,6 +21,7 @@
     <string name="app_version_label">Version %1$s</string>
     <string name="device_screen_menu_description">More options</string>
     <string name="device_screen_add_demo_device">Add demo device</string>
+    <string name="device_screen_bluetooth_log">Bluetooth Log</string>
     <string name="device_screen_privacy_policy">Privacy Policy</string>
     <string name="device_screen_terms_of_service">Terms of Service</string>
     <!-- The name of a new device. Use a maximum of 10 characters (Device.MAX_NAME_LENGTH). -->
@@ -408,4 +409,18 @@
     <string name="firmware_failure_not_copied">The board did not install the new firmware. It still runs its previous firmware.</string>
     <string name="firmware_failure_no_advertisement">The app did not find the board after the restart. Turn on Bluetooth in the board menu, then try again.</string>
     <string name="firmware_failure_cancelled">You stopped the update.</string>
+    <!-- The Bluetooth log screen (opened from the device list menu). -->
+    <string name="bluetooth_log_title">Bluetooth Log</string>
+    <string name="bluetooth_log_export_button">Export</string>
+    <string name="bluetooth_log_export_title">Export the Bluetooth log</string>
+    <string name="bluetooth_log_clear_button">Clear</string>
+    <string name="bluetooth_log_empty">The log is empty. Connect to a board to see its log.</string>
+    <string name="bluetooth_log_no_session">No board is connected.</string>
+    <string name="bluetooth_log_requested">The app asked the board for its log.</string>
+    <string name="bluetooth_log_board_absent">This board does not send log lines.</string>
+    <string name="bluetooth_log_board_not_visible">The browser does not show the board log. Select the board again in the browser list.</string>
+    <string name="bluetooth_log_board_failed">The app could not start the board log.</string>
+    <string name="bluetooth_log_dropped">Lines not recorded: %1$d</string>
+    <string name="bluetooth_log_source_board">Board</string>
+    <string name="bluetooth_log_source_app">App</string>
 </resources>

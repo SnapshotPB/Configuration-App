@@ -22,6 +22,7 @@
     <string name="app_version_label">Version %1$s</string>
     <string name="device_screen_menu_description">Plus d’options</string>
     <string name="device_screen_add_demo_device">Ajouter un appareil de démonstration</string>
+    <string name="device_screen_bluetooth_log">Journal Bluetooth</string>
     <string name="device_screen_privacy_policy">Politique de confidentialité</string>
     <string name="device_screen_terms_of_service">Conditions d’utilisation</string>
     <string name="device_default_name">SnapshotPB</string>
@@ -407,4 +408,18 @@
     <string name="firmware_failure_not_copied">La carte n’a pas installé le nouveau micrologiciel. Elle utilise toujours son micrologiciel précédent.</string>
     <string name="firmware_failure_no_advertisement">L’application n’a pas trouvé la carte après le redémarrage. Activez le Bluetooth dans le menu de la carte, puis réessayez.</string>
     <string name="firmware_failure_cancelled">Vous avez arrêté la mise à jour.</string>
+    <!-- The Bluetooth log screen (opened from the device list menu). -->
+    <string name="bluetooth_log_title">Journal Bluetooth</string>
+    <string name="bluetooth_log_export_button">Exporter</string>
+    <string name="bluetooth_log_export_title">Exporter le journal Bluetooth</string>
+    <string name="bluetooth_log_clear_button">Effacer</string>
+    <string name="bluetooth_log_empty">Le journal est vide. Connectez-vous à une carte pour voir son journal.</string>
+    <string name="bluetooth_log_no_session">Aucune carte n’est connectée.</string>
+    <string name="bluetooth_log_requested">L’app a demandé son journal à la carte.</string>
+    <string name="bluetooth_log_board_absent">Cette carte n’envoie pas de lignes de journal.</string>
+    <string name="bluetooth_log_board_not_visible">Le navigateur n’affiche pas le journal de la carte. Sélectionnez de nouveau la carte dans la liste du navigateur.</string>
+    <string name="bluetooth_log_board_failed">L’app n’a pas pu démarrer le journal de la carte.</string>
+    <string name="bluetooth_log_dropped">Lignes non enregistrées&#160;: %1$d</string>
+    <string name="bluetooth_log_source_board">Carte</string>
+    <string name="bluetooth_log_source_app">App</string>
 </resources>

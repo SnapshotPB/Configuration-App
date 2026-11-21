@@ -46,6 +46,7 @@ import com.snapshotpb.configuration.common.composable.ClickableCard
 import com.snapshotpb.configuration.common.composable.Space
 import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.navigation.NavigationController
+import com.snapshotpb.configuration.common.navigation.ScreenKeyBluetoothLog
 import com.snapshotpb.configuration.common.navigation.ScreenKeyConnectingDevice
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfiles
 import com.snapshotpb.configuration.common.screen.device.composable.DeviceListTitle
@@ -72,6 +73,7 @@ import com.snapshotpb.core.resources.delete_device_dialog_title
 import com.snapshotpb.core.resources.device_discovered_card_info
 import com.snapshotpb.core.resources.device_fallback_name
 import com.snapshotpb.core.resources.device_screen_add_demo_device
+import com.snapshotpb.core.resources.device_screen_bluetooth_log
 import com.snapshotpb.core.resources.device_screen_bluetooth_options
 import com.snapshotpb.core.resources.device_screen_list_discovered_devices
 import com.snapshotpb.core.resources.device_screen_menu_description
@@ -92,6 +94,7 @@ private val log = Arbor.tag("DeviceScreen")
 
 const val DEVICE_SCREEN_OVERFLOW_MENU_TAG = "deviceScreenOverflowMenu"
 const val DEVICE_SCREEN_ADD_DEMO_DEVICE_TAG = "deviceScreenAddDemoDevice"
+const val DEVICE_SCREEN_BLUETOOTH_LOG_TAG = "deviceScreenBluetoothLog"
 const val DEVICE_SCREEN_PRIVACY_POLICY_TAG = "deviceScreenPrivacyPolicy"
 const val DEVICE_SCREEN_TERMS_OF_SERVICE_TAG = "deviceScreenTermsOfService"
 
@@ -224,6 +227,10 @@ fun DeviceBrowserScreen(
                 onAddDemoDevice = {
                     log.d { "Add demo device requested." }
                     deviceScreenViewModel.addDemoDevice(defaultDeviceName)
+                },
+                onOpenBluetoothLog = {
+                    log.d { "Bluetooth log requested." }
+                    navigationController.goTo(ScreenKeyBluetoothLog)
                 },
             )
         }
@@ -671,6 +678,7 @@ private fun DiscoveredDeviceCard(
 private fun DeviceScreenOverflowMenu(
     showAddDemoDevice: Boolean,
     onAddDemoDevice: () -> Unit,
+    onOpenBluetoothLog: () -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -706,6 +714,14 @@ private fun DeviceScreenOverflowMenu(
                     modifier = Modifier.testTag(DEVICE_SCREEN_ADD_DEMO_DEVICE_TAG),
                 )
             }
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.device_screen_bluetooth_log)) },
+                onClick = {
+                    expanded = false
+                    onOpenBluetoothLog()
+                },
+                modifier = Modifier.testTag(DEVICE_SCREEN_BLUETOOTH_LOG_TAG),
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(Res.string.device_screen_privacy_policy)) },
                 onClick = {

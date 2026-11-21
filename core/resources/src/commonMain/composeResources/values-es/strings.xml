@@ -22,6 +22,7 @@
     <string name="app_version_label">Version %1$s</string>
     <string name="device_screen_menu_description">Más opciones</string>
     <string name="device_screen_add_demo_device">Añadir marcador de demostración</string>
+    <string name="device_screen_bluetooth_log">Registro de Bluetooth</string>
     <string name="device_screen_privacy_policy">Política de privacidad</string>
     <string name="device_screen_terms_of_service">Términos de servicio</string>
     <string name="device_default_name">SnapshotPB</string>
@@ -407,4 +408,18 @@
     <string name="firmware_failure_not_copied">La placa no instaló el nuevo firmware. Sigue usando su firmware anterior.</string>
     <string name="firmware_failure_no_advertisement">La aplicación no encontró la placa después del reinicio. Activa el Bluetooth en el menú de la placa e inténtalo de nuevo.</string>
     <string name="firmware_failure_cancelled">Detuviste la actualización.</string>
+    <!-- The Bluetooth log screen (opened from the device list menu). -->
+    <string name="bluetooth_log_title">Registro de Bluetooth</string>
+    <string name="bluetooth_log_export_button">Exportar</string>
+    <string name="bluetooth_log_export_title">Exportar el registro de Bluetooth</string>
+    <string name="bluetooth_log_clear_button">Borrar</string>
+    <string name="bluetooth_log_empty">El registro está vacío. Conéctate a una placa para ver su registro.</string>
+    <string name="bluetooth_log_no_session">No hay ninguna placa conectada.</string>
+    <string name="bluetooth_log_requested">La app pidió su registro a la placa.</string>
+    <string name="bluetooth_log_board_absent">Esta placa no envía líneas de registro.</string>
+    <string name="bluetooth_log_board_not_visible">El navegador no muestra el registro de la placa. Vuelve a seleccionar la placa en la lista del navegador.</string>
+    <string name="bluetooth_log_board_failed">La app no pudo iniciar el registro de la placa.</string>
+    <string name="bluetooth_log_dropped">Líneas no registradas: %1$d</string>
+    <string name="bluetooth_log_source_board">Placa</string>
+    <string name="bluetooth_log_source_app">App</string>
 </resources>

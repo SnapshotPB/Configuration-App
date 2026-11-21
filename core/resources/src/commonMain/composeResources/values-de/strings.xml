@@ -22,6 +22,7 @@
     <string name="app_version_label">Version %1$s</string>
     <string name="device_screen_menu_description">Weitere Optionen</string>
     <string name="device_screen_add_demo_device">Demogerät hinzufügen</string>
+    <string name="device_screen_bluetooth_log">Bluetooth-Protokoll</string>
     <string name="device_screen_privacy_policy">Datenschutzerklärung</string>
     <string name="device_screen_terms_of_service">Nutzungsbedingungen</string>
     <string name="device_default_name">SnapshotPB</string>
@@ -407,4 +408,18 @@
     <string name="firmware_failure_not_copied">Die Platine hat die neue Firmware nicht installiert. Sie verwendet weiterhin ihre vorherige Firmware.</string>
     <string name="firmware_failure_no_advertisement">Die App hat die Platine nach dem Neustart nicht gefunden. Schalten Sie Bluetooth im Menü der Platine ein und versuchen Sie es erneut.</string>
     <string name="firmware_failure_cancelled">Sie haben das Update gestoppt.</string>
+    <!-- The Bluetooth log screen (opened from the device list menu). -->
+    <string name="bluetooth_log_title">Bluetooth-Protokoll</string>
+    <string name="bluetooth_log_export_button">Exportieren</string>
+    <string name="bluetooth_log_export_title">Bluetooth-Protokoll exportieren</string>
+    <string name="bluetooth_log_clear_button">Leeren</string>
+    <string name="bluetooth_log_empty">Das Protokoll ist leer. Verbinden Sie sich mit einer Platine, um ihr Protokoll zu sehen.</string>
+    <string name="bluetooth_log_no_session">Es ist keine Platine verbunden.</string>
+    <string name="bluetooth_log_requested">Die App hat das Protokoll der Platine angefordert.</string>
+    <string name="bluetooth_log_board_absent">Diese Platine sendet keine Protokollzeilen.</string>
+    <string name="bluetooth_log_board_not_visible">Der Browser gibt das Protokoll der Platine nicht frei. Wählen Sie die Platine in der Liste des Browsers erneut aus.</string>
+    <string name="bluetooth_log_board_failed">Die App konnte das Protokoll der Platine nicht starten.</string>
+    <string name="bluetooth_log_dropped">Nicht aufgezeichnete Zeilen: %1$d</string>
+    <string name="bluetooth_log_source_board">Platine</string>
+    <string name="bluetooth_log_source_app">App</string>
 </resources>
