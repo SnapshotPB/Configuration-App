@@ -12,11 +12,14 @@ import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
 import com.snapshotpb.configuration.bluetooth.currentBluetoothAuthorization
 import com.snapshotpb.configuration.common.App
+import com.snapshotpb.configuration.common.share.ShareRequest
+import com.snapshotpb.configuration.common.share.ShareRequestManager
 import com.snapshotpb.configuration.debug.DebugBoard
 import com.snapshotpb.configuration.di.platformModule
 import com.snapshotpb.configuration.media.MediaState
 import com.snapshotpb.configuration.media.MediaStateManager
 import com.snapshotpb.configuration.screen.screenModule
+import com.snapshotpb.configuration.share.shareOnIos
 import com.toxicbakery.logging.Arbor
 import com.toxicbakery.logging.Seedling
 import kotlin.coroutines.cancellation.CancellationException
@@ -81,12 +84,17 @@ private const val FAKE_BOARD_ARGUMENT = "--fake-board"
 private fun fakeBoardSwitch(): Boolean =
     NSProcessInfo.processInfo.arguments.contains(FAKE_BOARD_ARGUMENT)
 
+private fun ShareRequest.describe(): String = when (this) {
+    is ShareRequest.Text -> "$fileName (${text.length} characters)"
+}
+
 /**
  * One-time process bootstrap, mirroring the desktop [BaseApplication]:
  * seed Arbor logging, mark media Ready (no media/permission flow on iOS yet), and — critically —
  * bridge the [BluetoothRequestManager] bus to the [BluetoothManager]. The shared ViewModels only
  * ever `send` onto the bus, which is a zero-buffer [kotlinx.coroutines.flow.SharedFlow]; without a
- * collector every scan/connect/disconnect/write would suspend forever. Safe to call repeatedly.
+ * collector every scan/connect/disconnect/write would suspend forever. It also collects
+ * [ShareRequestManager.bus] and opens the iOS share sheet for each request. Safe to call repeatedly.
  */
 private fun startOnce() {
     if (started) return
@@ -116,6 +124,19 @@ private fun startOnce() {
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     log.e(error) { "Handling Bluetooth request $request failed" }
+                }
+        }
+    }
+
+    val shareRequestManager: ShareRequestManager = di.direct.instance()
+    appScope.launch {
+        shareRequestManager.bus.collect { request ->
+            val summary = request.describe()
+            log.d { "ShareRequestManager bus request: $summary" }
+            runCatching { shareOnIos(request) }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    log.e(error) { "Share request $summary failed" }
                 }
         }
     }
