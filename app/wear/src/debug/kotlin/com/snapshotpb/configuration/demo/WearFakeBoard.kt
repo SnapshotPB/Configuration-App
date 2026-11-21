@@ -7,12 +7,16 @@ import com.snapshotpb.configuration.bluetooth.DeviceReadResult
 import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.bluetooth.StepStatus
 import com.snapshotpb.configuration.bluetooth.ots.getCurrentLocalDate
 import com.snapshotpb.configuration.common.screen.device.BOARD_ADVERTISED_NAME
 import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DiscoveredDevice
+import com.snapshotpb.configuration.model.EYE_ADC_FULL_SCALE_RAW
+import com.snapshotpb.configuration.model.EyeReading
+import com.snapshotpb.configuration.model.EyeSensorState
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -23,6 +27,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
 
@@ -33,10 +41,12 @@ import kotlin.uuid.Uuid
  *
  * The board walks the same four connect steps as the real engine and puts its device on the read
  * bus, so the sync delegate treats it as a real board. A write reports success with the clamped
- * device, which is what the real engine reports after a commit.
+ * device, which is what the real engine reports after a commit. While the board is connected and
+ * has at least one eye watcher, it records a simulated eye level at 10 Hz.
  *
  * THREADING: [handle] gives the slow work to [scope] and returns at once, because the request bus
- * has no buffer. Everything here runs on the main thread.
+ * has no buffer. Everything here, also the eye simulation inside [connectionJob], runs on the main
+ * thread.
  */
 internal class WearFakeBoard(
     private val bluetoothStateManager: BluetoothStateManager,
@@ -139,6 +149,47 @@ internal class WearFakeBoard(
             )
         )
         deviceReadResultBus.emit(DeviceReadResult(demoDevice()))
+        simulateEye()
+    }
+
+    /**
+     * Records a simulated [EyeSensorState.ACTIVE] level while the board is connected and has at
+     * least one eye watcher.
+     *
+     * At zero watchers, or when [connectionJob] stops, this function clears the eye state of
+     * [DEMO_DEVICE_ID]. Thus a new watcher sees [EyeReadingState.Waiting], not an old level.
+     */
+    private suspend fun simulateEye() {
+        try {
+            combine(
+                bluetoothStateManager.connectedDevices.map { DEMO_DEVICE_ID in it },
+                bluetoothStateManager.eyeWatcherCount(DEMO_DEVICE_ID).map { it > 0 },
+            ) { connected, watched -> connected && watched }
+                .distinctUntilChanged()
+                .collectLatest { simulate ->
+                    if (!simulate) {
+                        bluetoothStateManager.clearEyeReading(DEMO_DEVICE_ID)
+                        return@collectLatest
+                    }
+                    var tick = 0
+                    while (true) {
+                        bluetoothStateManager.setEyeReading(
+                            DEMO_DEVICE_ID,
+                            EyeReadingState.Reading(
+                                EyeReading(
+                                    levelRaw = simulatedEyeLevelRaw(tick),
+                                    fullScaleRaw = EYE_ADC_FULL_SCALE_RAW,
+                                    state = EyeSensorState.ACTIVE,
+                                ),
+                            ),
+                        )
+                        tick++
+                        delay(EYE_TICK_MILLIS)
+                    }
+                }
+        } finally {
+            bluetoothStateManager.clearEyeReading(DEMO_DEVICE_ID)
+        }
     }
 
     private suspend fun write(device: Device, requestId: Long) {
@@ -203,3 +254,32 @@ private val DEMO_DISCOVERED_DEVICE = DiscoveredDevice(
     boardType = "Cocker",
     fwVersion = null,
 )
+
+/** Time between two simulated eye samples (10 Hz, the rate of the board). */
+private const val EYE_TICK_MILLIS = 100L
+
+/** Lowest raw ADC level of the simulated eye wave. */
+private const val EYE_LEVEL_LOW_RAW = 600
+
+/** Highest raw ADC level of the simulated eye wave. */
+private const val EYE_LEVEL_HIGH_RAW = 3500
+
+/** Number of ticks in one full cycle of the simulated eye wave (4 s at 10 Hz). */
+private const val EYE_PERIOD_TICKS = 40
+
+/** Number of ticks in one half cycle of the simulated eye wave. */
+private const val EYE_HALF_PERIOD_TICKS = EYE_PERIOD_TICKS / 2
+
+/**
+ * Gives the simulated raw eye level for [tick] on a triangle wave from [EYE_LEVEL_LOW_RAW] to
+ * [EYE_LEVEL_HIGH_RAW].
+ *
+ * One period is [EYE_PERIOD_TICKS] ticks (4 s at 10 Hz). The wave goes up for the first half and
+ * down for the second half, and passes the default threshold (2047) in each direction. Negative
+ * ticks wrap with [Int.mod].
+ */
+internal fun simulatedEyeLevelRaw(tick: Int): Int {
+    val phase = tick.mod(EYE_PERIOD_TICKS)
+    val step = if (phase <= EYE_HALF_PERIOD_TICKS) phase else EYE_PERIOD_TICKS - phase
+    return EYE_LEVEL_LOW_RAW + (EYE_LEVEL_HIGH_RAW - EYE_LEVEL_LOW_RAW) * step / EYE_HALF_PERIOD_TICKS
+}

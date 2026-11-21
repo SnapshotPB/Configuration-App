@@ -28,16 +28,21 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.ToggleChip
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.composable.rememberRepeatingClick
 import com.snapshotpb.configuration.common.composable.markerProfileFieldLabel
 import com.snapshotpb.configuration.common.composable.markerProfileFieldValueLabel
@@ -46,11 +51,16 @@ import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.navigation_back
+import com.snapshotpb.core.resources.profile_eye_live_level
+import com.snapshotpb.core.resources.profile_eye_result_ball
+import com.snapshotpb.core.resources.profile_eye_result_empty
 import com.snapshotpb.core.resources.profile_marker_max_bps
 import com.snapshotpb.core.resources.profile_step_coarse
 import com.snapshotpb.core.resources.profile_step_fine
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import org.jetbrains.compose.resources.stringResource
 
 /** The test tag of the large value text. */
@@ -58,6 +68,15 @@ const val PROFILE_FIELD_VALUE_TAG = "profile_field_value"
 
 /** The test tag of the button that steps the value up. */
 const val PROFILE_FIELD_PLUS_TAG = "profile_field_plus"
+
+/** The test tag of the live eye level text. */
+const val PROFILE_EYE_LEVEL_TAG = "profile_eye_level"
+
+/** The test tag of the ball result text of the live eye. */
+const val PROFILE_EYE_RESULT_TAG = "profile_eye_result"
+
+/** The test tag of the live eye hint text. */
+const val PROFILE_EYE_HINT_TAG = "profile_eye_hint"
 
 /**
  * The stepper for one numeric [field] of [profile].
@@ -70,13 +89,21 @@ const val PROFILE_FIELD_PLUS_TAG = "profile_field_plus"
  *
  * The fine step is one stored unit. The coarse step is [MarkerProfileField.COARSE_STEP_FACTOR]
  * units. The fields that set the firing cycle show the max BPS line, computed from [profile] with
- * the local value applied, so the user sees the effect of a change before the store has it.
+ * the local value applied, so the user sees the effect of a change before the store has it. For
+ * [MarkerProfileField.EYE_THRESHOLD] with an eye mode, the screen shows the live eye level and
+ * result for the edited threshold, or a hint.
+ *
+ * @param eyeReading The live eye state of the board of [profile]. The screen collects it only for
+ *   [MarkerProfileField.EYE_THRESHOLD] of a profile with an eye, and only while the screen is
+ *   started. A collection makes the screen an eye watcher. The flow is cold, so a flow that the
+ *   screen does not collect costs nothing.
  */
 @Composable
 fun ProfileFieldStepperScreen(
     profile: MarkerProfile,
     field: MarkerProfileField,
     boltMode: MarkerBoltMode = MarkerBoltMode.CLOSED,
+    eyeReading: Flow<EyeReadingState?> = emptyFlow(),
     onCommit: (Int) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -85,6 +112,16 @@ fun ProfileFieldStepperScreen(
     var isCoarse by remember { mutableStateOf(false) }
     val stepSize = if (isCoarse) MarkerProfileField.COARSE_STEP_FACTOR else 1
     val currentOnCommit by rememberUpdatedState(onCommit)
+
+    val watchesEye = stepperWatchesEye(field, profile, boltMode)
+    var eyeState by remember(profile.id, field) { mutableStateOf<EyeReadingState?>(null) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle, eyeReading, watchesEye) {
+        collectEyeReadingWhileStarted(lifecycle, eyeReading, watchesEye) { eyeState = it }
+    }
+    // The value is the edited threshold, so the result follows each step before a commit.
+    val eyeLine = if (watchesEye) stepperEyeLine(eyeState, profile.eyeMode, value) else null
+    val sectionGap = if (eyeLine != null) 4.dp else 8.dp
 
     val minusInteraction = remember { MutableInteractionSource() }
     val plusInteraction = remember { MutableInteractionSource() }
@@ -185,7 +222,60 @@ fun ProfileFieldStepperScreen(
                 textAlign = TextAlign.Center,
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        when (val line = eyeLine) {
+            is StepperEyeLine.Level -> {
+                Spacer(modifier = Modifier.height(4.dp))
+                // No live region here: the sensor level changes 10 times each second.
+                Text(
+                    text = stringResource(Res.string.profile_eye_live_level, line.percentText),
+                    style = MaterialTheme.typography.caption2,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    modifier = Modifier.testTag(PROFILE_EYE_LEVEL_TAG),
+                )
+                val seesBall = line.seesBall
+                if (seesBall != null) {
+                    Text(
+                        text = stringResource(
+                            if (seesBall) {
+                                Res.string.profile_eye_result_ball
+                            } else {
+                                Res.string.profile_eye_result_empty
+                            },
+                        ),
+                        style = MaterialTheme.typography.caption1,
+                        color = if (seesBall) {
+                            MaterialTheme.colors.primary
+                        } else {
+                            MaterialTheme.colors.onSurfaceVariant
+                        },
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                            .testTag(PROFILE_EYE_RESULT_TAG),
+                    )
+                }
+            }
+
+            is StepperEyeLine.Hint -> {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(line.text),
+                    style = MaterialTheme.typography.caption3,
+                    color = MaterialTheme.colors.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .testTag(PROFILE_EYE_HINT_TAG),
+                )
+            }
+
+            null -> Unit
+        }
+        Spacer(modifier = Modifier.height(sectionGap))
         ToggleChip(
             checked = isCoarse,
             onCheckedChange = { isCoarse = it },
@@ -201,7 +291,7 @@ fun ProfileFieldStepperScreen(
             toggleControl = { Switch(checked = isCoarse) },
             modifier = Modifier.padding(horizontal = 8.dp),
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(sectionGap))
         Button(
             onClick = onBack,
             modifier = Modifier.size(ButtonDefaults.SmallButtonSize),
