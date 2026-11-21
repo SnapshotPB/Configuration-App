@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothManagerState
 import kotlinx.coroutines.CompletableDeferred
@@ -46,6 +47,7 @@ class BluetoothConnectionEngineTest {
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
             bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = DeviceWriteResultBus(),
             seams = seams,

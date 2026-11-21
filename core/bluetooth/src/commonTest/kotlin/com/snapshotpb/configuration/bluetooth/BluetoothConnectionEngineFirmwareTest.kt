@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.toDomainDevice
 import com.snapshotpb.configuration.bluetooth.smp.FakeImageBoard
 import com.snapshotpb.configuration.bluetooth.smp.ImageCommand
@@ -89,6 +90,7 @@ class BluetoothConnectionEngineFirmwareTest {
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
             bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = writeBus,
             seams = seams,

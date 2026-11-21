@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OtsCharacteristicMissing
 import com.snapshotpb.configuration.bluetooth.ots.OtsClient
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
@@ -98,6 +99,7 @@ class WebBluetoothDiscoveryTest {
             blueFalcon = f.blueFalcon,
             bluetoothStateManager = f.stateManager,
             bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = DeviceWriteResultBus(),
             seams = f.seams,

@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
@@ -89,6 +90,7 @@ class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
     bleDebugLog: BleDebugLog,
+    bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
     restorePermittedBoards: Boolean = false,
@@ -98,6 +100,7 @@ class BluetoothManager(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
         bleDebugLog = bleDebugLog,
+        bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,
         seams = BrowserBluetoothSeams(blueFalcon, bluetoothStateManager),

@@ -12,6 +12,7 @@ import com.snapshotpb.configuration.bluetooth.DeviceReadResult
 import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.toDeviceUuid
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.MarkerBoltMode
@@ -83,6 +84,7 @@ class OtsSessionE2ETest {
             blueFalcon = blueFalcon,
             bluetoothStateManager = BluetoothStateManager(),
             bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,
             coroutineScope = scope,

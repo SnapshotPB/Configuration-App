@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OtsClient
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.ProfilesWire
@@ -72,6 +73,7 @@ class BluetoothConnectionEngine(
     private val blueFalcon: BlueFalcon,
     private val bluetoothStateManager: BluetoothStateManager,
     private val bleDebugLog: BleDebugLog,
+    private val bluetoothLog: BluetoothLog,
     private val deviceReadResultBus: DeviceReadResultBus,
     private val deviceWriteResultBus: DeviceWriteResultBus,
     private val seams: PlatformBluetoothSeams,
@@ -81,6 +83,10 @@ class BluetoothConnectionEngine(
     val deviceState: StateFlow<BluetoothDeviceState> get() = seams.deviceState
 
     private val debugJobs: MutableMap<String, List<Job>> = mutableMapOf()
+    /** The number of the next log session. Guarded by [connectionLock]. */
+    private var nextLogSession = 1
+    /** The log session of each scan key with a link or an attempt. Guarded by [connectionLock]. */
+    private val logSessions: MutableMap<String, Int> = mutableMapOf()
     private val otsClients: MutableMap<String, OtsClient> = mutableMapOf()
     /**
      * Ids already logged on first discovery, so a busy scan doesn't repeat the same line. Bounded:
@@ -249,9 +255,13 @@ class BluetoothConnectionEngine(
      * [deviceId] is the id that the UI has: the board id of a known board, or the scan key of a
      * board that the scan found and whose board id the app does not know yet. The scan key of the link is
      * `sessionKey` after it resolves.
+     *
+     * Each connect attempt on a new link starts one log session. A live re-read keeps the session
+     * of the live link. The session ends at teardown or when the attempt leaves no live link.
      */
     private suspend fun connectAttempt(deviceId: String) {
         var sessionKey: String? = null
+        var attemptSession: Int? = null
         try {
             if (bluetoothStateManager.bluetoothState.value == BluetoothState.Scanning) {
                 // A throw from the platform scan stop must not abort the connect (L18).
@@ -294,6 +304,10 @@ class BluetoothConnectionEngine(
                 return
             }
 
+            val session = nextLogSession++
+            attemptSession = session
+            bluetoothLog.startSession(session)
+
             // Single active board: drop any other connection before opening a new one.
             disconnectOthers(except = knownKey)
 
@@ -308,6 +322,8 @@ class BluetoothConnectionEngine(
             }
             val (key, peripheral) = found
             sessionKey = key
+            endLogSession(key)
+            logSessions[key] = session
 
             // This retry is a safety net for a rare connect failure. A frequent failure (HCI reason
             // 0x3e, GATT_ERROR(133) on the central) had its cause in the BlueFalcon Android engine:
@@ -395,6 +411,11 @@ class BluetoothConnectionEngine(
                     bluetoothStateManager.resetProgress()
                 }
             }
+            if (attemptSession != null && (sessionKey == null || sessionKey !in connectedBoardIds)) {
+                val hadSession = sessionKey != null && logSessions[sessionKey] == attemptSession
+                sessionKey?.let(::endLogSession)
+                if (!hadSession) bluetoothLog.endSession(attemptSession)
+            }
         }
     }
 
@@ -464,14 +485,15 @@ class BluetoothConnectionEngine(
 
     /**
      * Releases everything held for the scan key [deviceId]: stops the link-loss monitor, cancels
-     * debug observers, closes the OTS client, and clears the connected flag. When
-     * [disconnectPeripheral] is true it also asks BlueFalcon to drop the GATT link (explicit
+     * debug observers, ends the log session, closes the OTS client, and clears the connected flag.
+     * When [disconnectPeripheral] is true it also asks BlueFalcon to drop the GATT link (explicit
      * disconnect); detected link-loss passes false because the radio is already gone. Must be called
      * while [connectionLock] is held. A second call does nothing more, so two callers at the same time are safe.
      */
     private suspend fun teardownConnection(deviceId: String, disconnectPeripheral: Boolean) {
         connectionMonitors.remove(deviceId)?.cancel()
         debugJobs.remove(deviceId)?.forEach(Job::cancel)
+        endLogSession(deviceId)
         lastReadProfiles.remove(deviceId)
         lastReadDeviceConfig.remove(deviceId)
         otsClients.remove(deviceId)?.runCatching { close() }
@@ -487,6 +509,11 @@ class BluetoothConnectionEngine(
             }
         }
         markDisconnected(deviceId)
+    }
+
+    /** Ends the log session of [sessionKey], if it has one. Must be called while [connectionLock] is held. */
+    private fun endLogSession(sessionKey: String) {
+        logSessions.remove(sessionKey)?.let(bluetoothLog::endSession)
     }
 
     /** Clears the connected flag of the scan key [sessionKey]. Must be called while [connectionLock] is held. */
@@ -764,6 +791,9 @@ class BluetoothConnectionEngine(
         // stale id can stay in the connected set.
         markDisconnected(deviceId)
         connectedBoardIds[deviceId] = boardId
+        logSessions[deviceId]?.let {
+            bluetoothLog.sessionBoard(it, boardId, read.device.advertisementData?.fwVersion)
+        }
         bluetoothStateManager.deviceConnected(boardId)
         log.d { "Read and decoded Device and Profiles from OTS on $deviceId: $domainDevice" }
         deviceReadResultBus.emit(DeviceReadResult(domainDevice, scanKey = deviceId))

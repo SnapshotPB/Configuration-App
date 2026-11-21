@@ -1,5 +1,9 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
+import com.snapshotpb.configuration.bluetooth.log.BoardLogState
 import com.snapshotpb.configuration.model.AdvertisementData
 import dev.bluefalcon.core.BlueFalconEngine
 import dev.bluefalcon.core.BluetoothCharacteristic
@@ -274,4 +278,47 @@ internal class FakePlatformBluetoothSeams : PlatformBluetoothSeams {
     }
 
     override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
+}
+
+/**
+ * A [BluetoothLog] that records each call. [calls] holds the control calls as text, for example
+ * "startSession(1)", "sessionBoard(1, <boardId>, <fw>)", "boardLogState(1, REQUESTED)",
+ * "app(1, CONNECT_ATTEMPT, 2/3)", "endSession(1)", "clear()". [chunks] holds the board chunks.
+ */
+internal class RecordingBluetoothLog(override val recordsBoardLines: Boolean = true) : BluetoothLog {
+    val calls: MutableList<String> = mutableListOf()
+    val chunks: MutableList<Pair<Int, ByteArray>> = mutableListOf()
+    override val snapshot: StateFlow<BluetoothLogSnapshot> = MutableStateFlow(BluetoothLogSnapshot())
+
+    override fun startSession(session: Int) {
+        calls += "startSession($session)"
+    }
+
+    override fun sessionBoard(session: Int, boardId: String, firmwareVersion: String?) {
+        calls += "sessionBoard($session, $boardId, $firmwareVersion)"
+    }
+
+    override fun boardChunk(session: Int, bytes: ByteArray) {
+        chunks += session to bytes.copyOf()
+    }
+
+    override fun boardLogState(session: Int, state: BoardLogState) {
+        calls += "boardLogState($session, $state)"
+    }
+
+    override fun app(session: Int, event: BluetoothLogEvent, detail: String?) {
+        calls += if (detail == null) {
+            "app($session, $event)"
+        } else {
+            "app($session, $event, $detail)"
+        }
+    }
+
+    override fun endSession(session: Int) {
+        calls += "endSession($session)"
+    }
+
+    override fun clear() {
+        calls += "clear()"
+    }
 }

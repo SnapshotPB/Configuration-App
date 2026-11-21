@@ -2,6 +2,7 @@ package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.emulator.EmulatorEngine
 import com.snapshotpb.configuration.bluetooth.emulator.FakeOtsBridgeBoard
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.decodeDeviceConfig
 import dev.bluefalcon.core.BlueFalcon
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,6 +53,7 @@ class EmulatedBoardConnectionTest {
             blueFalcon = BlueFalcon(EmulatorEngine(board.bridge, backgroundScope)),
             bluetoothStateManager = stateManager,
             bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,
             coroutineScope = backgroundScope,
