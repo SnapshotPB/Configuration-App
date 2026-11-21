@@ -14,7 +14,14 @@ kotlin {
     jvm()
     iosArm64()
     iosSimulatorArm64()
-    wasmJs { browser() }
+    wasmJs {
+        browser()
+        // The Compose plugin (1.12 and later) fails the wasm tests of a module whose test
+        // classpath holds Skiko, unless the target declares an executable binary. The binary
+        // lets webpack bundle the tests with the Skiko runtime (CMP-4906). The module stays a
+        // library: no app uses this binary.
+        binaries.executable()
+    }
     sourceSets {
         commonMain {
             dependencies {
