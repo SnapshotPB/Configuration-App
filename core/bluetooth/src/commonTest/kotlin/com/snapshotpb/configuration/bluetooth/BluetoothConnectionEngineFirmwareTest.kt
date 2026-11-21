@@ -1,7 +1,5 @@
 package com.snapshotpb.configuration.bluetooth
 
-import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
-import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.toDomainDevice
 import com.snapshotpb.configuration.bluetooth.smp.FakeImageBoard
 import com.snapshotpb.configuration.bluetooth.smp.ImageCommand
@@ -66,6 +64,7 @@ class BluetoothConnectionEngineFirmwareTest {
         val smp: FakeSmpBoard?,
         val uploads: List<FirmwareUploadState>,
         val writes: List<DeviceWriteResult>,
+        val log: RecordingBluetoothLog,
     )
 
     /** A board with the OTS service, and with [smp] when it is not null. */
@@ -73,7 +72,7 @@ class BluetoothConnectionEngineFirmwareTest {
         smp: FakeSmpBoard? = FakeSmpBoard(),
         installSmp: Boolean = true,
         extraServices: List<BluetoothService> = emptyList(),
-        bluetoothLog: BluetoothLog = DisabledBluetoothLog,
+        bluetoothLog: RecordingBluetoothLog = RecordingBluetoothLog(),
     ): Fixture {
         val falconEngine = FakeBlueFalconEngine(backgroundScope).apply {
             emitManagerState(BluetoothManagerState.Ready)
@@ -102,7 +101,7 @@ class BluetoothConnectionEngineFirmwareTest {
             seams = seams,
             coroutineScope = backgroundScope,
         )
-        return Fixture(engine, stateManager, falconEngine, board, smp, uploads, writes)
+        return Fixture(engine, stateManager, falconEngine, board, smp, uploads, writes, bluetoothLog)
     }
 
     private fun TestScope.connect(f: Fixture) {
@@ -569,6 +568,112 @@ class BluetoothConnectionEngineFirmwareTest {
         assertEquals(sentLines, log.chunks.size)
         assertTrue(log.chunks.isNotEmpty())
         assertTrue(log.chunks.all { it.first == 1 })
+    }
+
+    @Test
+    fun connect_withSmp_logsUpdateServiceCheckingThenAvailableWithVersion() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+
+        connect(f)
+
+        val updateEvents = f.log.calls.filter { "UPDATE_SERVICE" in it }
+        assertEquals(
+            listOf(
+                "app(1, UPDATE_SERVICE, CHECKING)",
+                "app(1, UPDATE_SERVICE, AVAILABLE 26.29.0)",
+            ),
+            updateEvents,
+        )
+    }
+
+    @Test
+    fun connect_withoutSmp_logsUpdateServiceAbsent() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(smp = null)
+
+        connect(f)
+
+        val updateEvents = f.log.calls.filter { "UPDATE_SERVICE" in it }
+        assertEquals(listOf("app(1, UPDATE_SERVICE, ABSENT)"), updateEvents)
+    }
+
+    @Test
+    fun connect_liveLinkReread_doesNotRepeatSameUpdateServiceDetail() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+        val firstCount = f.log.calls.size
+
+        connect(f)
+
+        val secondCalls = f.log.calls.drop(firstCount)
+        assertTrue(secondCalls.none { "UPDATE_SERVICE" in it })
+    }
+
+    @Test
+    fun updateFirmware_logsEachStepOnceInOrder() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+
+        f.engine.updateFirmware(BOARD_ID, IMAGE, requestId = 11L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        val uploadStates = f.uploads.count { it.requestId == 11L && it.progress is FirmwareUpdateProgress.Uploading }
+        assertTrue(uploadStates > 1)
+        val firmwareEvents = f.log.calls.filter { "FIRMWARE_" in it }
+        assertEquals(
+            listOf(
+                "app(1, FIRMWARE_STEP, preparing)",
+                "app(1, FIRMWARE_STEP, uploading)",
+                "app(1, FIRMWARE_STEP, resetting)",
+                "app(1, FIRMWARE_STEP, awaiting_swap)",
+            ),
+            firmwareEvents,
+        )
+    }
+
+    @Test
+    fun updateFirmware_whenBoardRefusesChunk_logsBoardRefusedWithoutMessage() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+        connect(f)
+        assertNotNull(f.smp).imageBoard = FakeImageBoard(refuseAt = 0L)
+
+        f.engine.updateFirmware(BOARD_ID, IMAGE, requestId = 12L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        val failureEvents = f.log.calls.filter { "FIRMWARE_FAILED" in it }
+        assertEquals(
+            listOf("app(1, FIRMWARE_FAILED, BOARD_REFUSED SmpGroupError(NO_FREE_SLOT))"),
+            failureEvents,
+        )
+    }
+
+    @Test
+    fun updateFirmware_whenNotConnected_logsNotConnectedOnSession0() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+
+        f.engine.updateFirmware(BOARD_ID, IMAGE, requestId = 13L)
+        runCurrent()
+
+        assertEquals(listOf("app(0, FIRMWARE_FAILED, NOT_CONNECTED)"), f.log.calls)
+    }
+
+    @Test
+    fun confirmFirmware_logsVerifyingThenDone() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(FakeSmpBoard().apply { activeConfirmed = false })
+        connect(f)
+
+        f.engine.confirmFirmware(BOARD_ID, requestId = 14L)
+        runCurrent()
+
+        val firmwareEvents = f.log.calls.filter { "FIRMWARE_" in it }
+        assertEquals(
+            listOf(
+                "app(1, FIRMWARE_STEP, verifying)",
+                "app(1, FIRMWARE_STEP, done)",
+            ),
+            firmwareEvents,
+        )
     }
 
     private fun boardDevice() = toDomainDevice(

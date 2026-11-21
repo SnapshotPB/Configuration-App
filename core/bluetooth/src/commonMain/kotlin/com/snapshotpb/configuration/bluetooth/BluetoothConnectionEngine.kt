@@ -140,6 +140,9 @@ class BluetoothConnectionEngine(
     /** The update-service read of each scan key while it runs. Guarded by [connectionLock]. */
     private val updateServiceJobs: MutableMap<String, Job> = mutableMapOf()
 
+    /** The last [BluetoothLogEvent.UPDATE_SERVICE] detail for each scan key. Guarded by [connectionLock]. */
+    private val lastUpdateServiceLogDetail: MutableMap<String, String> = mutableMapOf()
+
     /**
      * Serializes board writes. A write runs on [coroutineScope], not on the caller, so a caller that
      * is cancelled (an Android activity recreation) cannot stop a write halfway (M1).
@@ -1333,6 +1336,11 @@ class BluetoothConnectionEngine(
     private fun publishUpdateService(sessionKey: String, boardId: String, service: BoardUpdateService) {
         updateServiceBoardIds[sessionKey] = boardId
         bluetoothStateManager.recordUpdateService(boardId, service)
+        val version = service.activeImage?.version?.takeIf(IMAGE_VERSION_PATTERN::matches)
+        val detail = if (version != null) "${service.status.name} $version" else service.status.name
+        if (lastUpdateServiceLogDetail.put(sessionKey, detail) != detail) {
+            logEvent(logSessions[sessionKey], BluetoothLogEvent.UPDATE_SERVICE, detail)
+        }
     }
 
     /**
@@ -1343,6 +1351,7 @@ class BluetoothConnectionEngine(
         updateServiceJobs.remove(sessionKey)?.cancel()
         smpSessions.remove(sessionKey)?.close()
         updateServiceBoardIds.remove(sessionKey)?.let(bluetoothStateManager::clearUpdateService)
+        lastUpdateServiceLogDetail.remove(sessionKey)
     }
 
     /**
@@ -1376,8 +1385,9 @@ class BluetoothConnectionEngine(
     }
 
     private suspend fun performFirmwareUpload(deviceId: String, image: FirmwareImage, requestId: Long) {
-        val report = firmwareReporter(deviceId, requestId)
-        val link = firmwareLink(deviceId) ?: return report(failed(FirmwareUpdateFailure.NOT_CONNECTED), null)
+        val baseReport = firmwareReporter(deviceId, requestId)
+        val link = firmwareLink(deviceId) ?: return reportNotConnected(baseReport)
+        val report = firmwareStepReporter(baseReport, link.logSession, FirmwareUpdateProgress.Preparing)
         val session = link.session ?: return report(failed(FirmwareUpdateFailure.NO_UPDATE_SERVICE), null)
         val sha256 = decodeSha256(image.manifest.assets.image.sha256)
             ?: return report(failed(FirmwareUpdateFailure.BAD_IMAGE), null)
@@ -1404,8 +1414,9 @@ class BluetoothConnectionEngine(
     }
 
     private suspend fun performFirmwareConfirm(deviceId: String, requestId: Long) {
-        val report = firmwareReporter(deviceId, requestId)
-        val link = firmwareLink(deviceId) ?: return report(failed(FirmwareUpdateFailure.NOT_CONNECTED), null)
+        val baseReport = firmwareReporter(deviceId, requestId)
+        val link = firmwareLink(deviceId) ?: return reportNotConnected(baseReport)
+        val report = firmwareStepReporter(baseReport, link.logSession, FirmwareUpdateProgress.Verifying)
         val session = link.session ?: return report(failed(FirmwareUpdateFailure.NO_UPDATE_SERVICE), null)
         try {
             val image = session.confirmActiveImage()
@@ -1432,6 +1443,26 @@ class BluetoothConnectionEngine(
             bluetoothStateManager.updateFirmwareUpload(FirmwareUploadState(requestId, deviceId, progress, hash))
         }
 
+    /** Wraps [baseReport] with a [FirmwareStepLog] for [session] and records [initialStep] first. */
+    private fun firmwareStepReporter(
+        baseReport: (FirmwareUpdateProgress, String?) -> Unit,
+        session: Int?,
+        initialStep: FirmwareUpdateProgress,
+    ): (FirmwareUpdateProgress, String?) -> Unit {
+        val stepLog = FirmwareStepLog { event, detail -> logEvent(session, event, detail) }
+        stepLog.report(initialStep)
+        return { progress, hash ->
+            stepLog.report(progress)
+            baseReport(progress, hash)
+        }
+    }
+
+    private fun reportNotConnected(baseReport: (FirmwareUpdateProgress, String?) -> Unit) {
+        val failure = failed(FirmwareUpdateFailure.NOT_CONNECTED)
+        logEvent(0, BluetoothLogEvent.FIRMWARE_FAILED, failure.reason.name)
+        baseReport(failure, null)
+    }
+
     private fun failed(reason: FirmwareUpdateFailure, detail: String? = null) =
         FirmwareUpdateProgress.Failed(reason, detail)
 
@@ -1450,15 +1481,16 @@ class BluetoothConnectionEngine(
             val session = smpSessions[key]?.takeIf {
                 it.service.status == UpdateServiceStatus.AVAILABLE && updateServiceJobs[key]?.isActive != true
             }
-            FirmwareLink(key, peripheral, session)
+            FirmwareLink(key, peripheral, session, logSessions[key])
         }
     }
 
-    /** The link of a firmware step: the scan key, the peripheral and the SMP session. */
+    /** The link of a firmware step: the scan key, the peripheral, the SMP session, and the log session. */
     private inner class FirmwareLink(
         val sessionKey: String,
         val peripheral: BluetoothPeripheral,
         val session: BoardFirmwareSession?,
+        val logSession: Int?,
     ) {
         /** True when the link is still up and [session] is still the session of the link. */
         suspend fun isStillLive(session: BoardFirmwareSession): Boolean = connectionLock.withLock {
@@ -1546,6 +1578,9 @@ class BluetoothConnectionEngine(
         private const val NO_PROFILES_FAILURE_CODE = "no_profiles"
         private const val CANCELLED_FAILURE_CODE = "cancelled"
 
+        /** Permitted image version text for [BluetoothLogEvent.UPDATE_SERVICE] details. */
+        private val IMAGE_VERSION_PATTERN = Regex("^[0-9.]{1,32}$")
+
         private val log = Arbor.tag("BluetoothManager")
 
         /**
@@ -1560,5 +1595,36 @@ class BluetoothConnectionEngine(
                     log.e(error) { "Unhandled failure in the Bluetooth engine" }
                 }
             )
+    }
+}
+
+/** Records [BluetoothLogEvent.FIRMWARE_STEP] only when the step type changes, and the failure. */
+private class FirmwareStepLog(private val log: (BluetoothLogEvent, String?) -> Unit) {
+    private var lastStep: String? = null
+
+    fun report(progress: FirmwareUpdateProgress) {
+        when (progress) {
+            FirmwareUpdateProgress.Preparing -> recordStep("preparing")
+            is FirmwareUpdateProgress.Uploading -> recordStep("uploading")
+            FirmwareUpdateProgress.Resetting -> recordStep("resetting")
+            is FirmwareUpdateProgress.AwaitingSwap -> recordStep("awaiting_swap")
+            FirmwareUpdateProgress.Verifying -> recordStep("verifying")
+            is FirmwareUpdateProgress.Done -> recordStep("done")
+            is FirmwareUpdateProgress.Failed -> {
+                val detail = progress.detail?.takeIf { it.isNotBlank() }
+                val text = if (detail != null) "${progress.reason.name} $detail" else progress.reason.name
+                log(BluetoothLogEvent.FIRMWARE_FAILED, text)
+            }
+            FirmwareUpdateProgress.Idle,
+            FirmwareUpdateProgress.Checking,
+            is FirmwareUpdateProgress.Downloading,
+            -> Unit
+        }
+    }
+
+    private fun recordStep(step: String) {
+        if (step == lastStep) return
+        lastStep = step
+        log(BluetoothLogEvent.FIRMWARE_STEP, step)
     }
 }
