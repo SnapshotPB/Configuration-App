@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -46,7 +47,6 @@ import com.snapshotpb.core.resources.bluetooth_log_requested
 import com.snapshotpb.core.resources.bluetooth_log_source_app
 import com.snapshotpb.core.resources.bluetooth_log_source_board
 import com.snapshotpb.core.resources.bluetooth_log_title
-import kotlinx.coroutines.flow.filter
 import kotlinx.datetime.TimeZone
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -114,7 +114,7 @@ internal fun BluetoothLogContent(
                 }
                 TextButton(
                     onClick = onClear,
-                    enabled = snapshot.entries.isNotEmpty(),
+                    enabled = snapshot.entries.isNotEmpty() || snapshot.droppedChunks > 0,
                     modifier = Modifier.testTag(BLUETOOTH_LOG_CLEAR_TAG),
                 ) {
                     Text(stringResource(Res.string.bluetooth_log_clear_button))
@@ -147,12 +147,11 @@ internal fun BluetoothLogContent(
                 )
             } else {
                 val listState = rememberLazyListState()
-                // True while the user is at the end of the list. A new entry then scrolls the list to the end.
-                var followTail by remember { mutableStateOf(true) }
+                // True while the user is at the end of the list and does not scroll. A new entry then scrolls the list to the end.
+                var followTail by rememberSaveable { mutableStateOf(true) }
                 LaunchedEffect(listState) {
                     snapshotFlow { listState.isScrollInProgress }
-                        .filter { inProgress -> !inProgress }
-                        .collect { followTail = !listState.canScrollForward }
+                        .collect { inProgress -> followTail = !inProgress && !listState.canScrollForward }
                 }
                 val lastSequence = snapshot.entries.lastOrNull()?.sequence
                 LaunchedEffect(lastSequence) {
