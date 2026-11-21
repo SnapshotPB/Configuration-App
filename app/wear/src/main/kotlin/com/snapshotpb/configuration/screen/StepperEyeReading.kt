@@ -3,18 +3,16 @@ package com.snapshotpb.configuration.screen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.snapshotpb.configuration.bluetooth.EyeReadingState
-import com.snapshotpb.configuration.common.util.format
-import com.snapshotpb.configuration.model.EyeSensorState
+import com.snapshotpb.configuration.common.screen.profile.EyeLiveDisplay
+import com.snapshotpb.configuration.common.screen.profile.EyeLiveHint
+import com.snapshotpb.configuration.common.screen.profile.eyeLiveDisplay
+import com.snapshotpb.configuration.common.screen.profile.eyeLiveHintString
+import com.snapshotpb.configuration.common.screen.profile.formatEyeLevelPercent
+import com.snapshotpb.configuration.common.screen.profile.profileWatchesEye
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
-import com.snapshotpb.configuration.model.eyeSeesBall
-import com.snapshotpb.core.resources.Res
-import com.snapshotpb.core.resources.profile_eye_hint_eye_off
-import com.snapshotpb.core.resources.profile_eye_hint_fault
-import com.snapshotpb.core.resources.profile_eye_hint_override_off
-import com.snapshotpb.core.resources.profile_eye_hint_unsupported
 import kotlinx.coroutines.flow.Flow
 import org.jetbrains.compose.resources.StringResource
 
@@ -22,14 +20,14 @@ import org.jetbrains.compose.resources.StringResource
  * Gives `true` when the Wear stepper watches the live eye value for [field] of [profile] under
  * [boltMode].
  *
- * Only [MarkerProfileField.EYE_THRESHOLD] watches the eye, and only when the field table shows it
- * for [profile] and [boltMode].
+ * Only [MarkerProfileField.EYE_THRESHOLD] watches the eye, and only when [profileWatchesEye] is
+ * `true` for [profile] and [boltMode].
  */
 internal fun stepperWatchesEye(
     field: MarkerProfileField,
     profile: MarkerProfile,
     boltMode: MarkerBoltMode,
-): Boolean = field == MarkerProfileField.EYE_THRESHOLD && field.isShownFor(profile, boltMode)
+): Boolean = field == MarkerProfileField.EYE_THRESHOLD && profileWatchesEye(profile, boltMode)
 
 /**
  * Collects [eyeReading] into [onState] while [lifecycle] is at or above [Lifecycle.State.STARTED]
@@ -89,37 +87,16 @@ internal fun stepperEyeLine(
     state: EyeReadingState?,
     eyeMode: MarkerEyeMode,
     thresholdPercent: Int,
-): StepperEyeLine? = when (state) {
-    null,
-    EyeReadingState.Waiting,
-    EyeReadingState.Failed,
-    EyeReadingState.NotPermitted,
-    -> null
-
-    EyeReadingState.Unsupported -> StepperEyeLine.Hint(Res.string.profile_eye_hint_unsupported)
-
-    is EyeReadingState.Reading -> when (state.reading.state) {
-        EyeSensorState.ACTIVE -> {
-            val levelRaw = state.reading.levelRaw
-            val levelPercent = state.reading.levelPercent
-            if (levelRaw == null || levelPercent == null) {
-                null
-            } else {
-                StepperEyeLine.Level(
-                    percentText = levelPercent.format(1),
-                    seesBall = eyeSeesBall(
-                        eyeMode = eyeMode,
-                        levelRaw = levelRaw,
-                        fullScaleRaw = state.reading.fullScaleRaw,
-                        thresholdPercent = thresholdPercent,
-                    ),
-                )
-            }
-        }
-
-        EyeSensorState.EYE_OFF -> StepperEyeLine.Hint(Res.string.profile_eye_hint_eye_off)
-        EyeSensorState.OVERRIDE_OFF -> StepperEyeLine.Hint(Res.string.profile_eye_hint_override_off)
-        EyeSensorState.FAULT -> StepperEyeLine.Hint(Res.string.profile_eye_hint_fault)
-        EyeSensorState.UNKNOWN -> null
+): StepperEyeLine? = when (val display = eyeLiveDisplay(state, eyeMode, thresholdPercent)) {
+    EyeLiveDisplay.None -> null
+    is EyeLiveDisplay.Hint -> if (display.hint == EyeLiveHint.NOT_PERMITTED) {
+        null
+    } else {
+        StepperEyeLine.Hint(eyeLiveHintString(display.hint))
     }
+
+    is EyeLiveDisplay.Level -> StepperEyeLine.Level(
+        percentText = formatEyeLevelPercent(display.levelPercent),
+        seesBall = display.seesBall,
+    )
 }

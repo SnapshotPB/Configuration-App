@@ -11,9 +11,16 @@ import com.snapshotpb.configuration.model.MarkerProfileField
 import com.snapshotpb.configuration.model.effectiveEyeThresholdPercent
 import com.snapshotpb.configuration.model.eyeSeesBall
 import com.snapshotpb.configuration.model.eyeThresholdRaw
+import com.snapshotpb.core.resources.Res
+import com.snapshotpb.core.resources.profile_eye_hint_eye_off
+import com.snapshotpb.core.resources.profile_eye_hint_fault
+import com.snapshotpb.core.resources.profile_eye_hint_not_permitted
+import com.snapshotpb.core.resources.profile_eye_hint_override_off
+import com.snapshotpb.core.resources.profile_eye_hint_unsupported
+import org.jetbrains.compose.resources.StringResource
 
 /** The hint that the editor shows when the board gives no live eye level. */
-internal enum class EyeLiveHint {
+enum class EyeLiveHint {
     EYE_OFF,
     OVERRIDE_OFF,
     FAULT,
@@ -22,7 +29,7 @@ internal enum class EyeLiveHint {
 }
 
 /** The live eye content that the profile editor shows under `EYE_THRESHOLD`. */
-internal sealed interface EyeLiveDisplay {
+sealed interface EyeLiveDisplay {
     /** No value and no hint. */
     data object None : EyeLiveDisplay
 
@@ -54,7 +61,7 @@ internal sealed interface EyeLiveDisplay {
  *
  * The editor passes the draft values, so a local edit changes the result at once.
  */
-internal fun eyeLiveDisplay(
+fun eyeLiveDisplay(
     state: EyeReadingState?,
     eyeMode: MarkerEyeMode,
     thresholdPercent: Int,
@@ -73,8 +80,17 @@ internal fun eyeLiveDisplay(
     )
 }
 
+/** Gives the shared string resource for [hint]. */
+fun eyeLiveHintString(hint: EyeLiveHint): StringResource = when (hint) {
+    EyeLiveHint.EYE_OFF -> Res.string.profile_eye_hint_eye_off
+    EyeLiveHint.OVERRIDE_OFF -> Res.string.profile_eye_hint_override_off
+    EyeLiveHint.FAULT -> Res.string.profile_eye_hint_fault
+    EyeLiveHint.UNSUPPORTED -> Res.string.profile_eye_hint_unsupported
+    EyeLiveHint.NOT_PERMITTED -> Res.string.profile_eye_hint_not_permitted
+}
+
 /** Formats [levelPercent] with one decimal place through `Double.format(1)`. */
-internal fun formatEyeLevelPercent(levelPercent: Double): String = levelPercent.format(1)
+fun formatEyeLevelPercent(levelPercent: Double): String = levelPercent.format(1)
 
 /**
  * Returns `true` when the editor must watch the eye of the board.
@@ -82,7 +98,7 @@ internal fun formatEyeLevelPercent(levelPercent: Double): String = levelPercent.
  * This is `true` when [profile] is not `null` and `MarkerProfileField.EYE_THRESHOLD.isShownFor`
  * returns `true` for [profile] and [boltMode].
  */
-internal fun profileWatchesEye(profile: MarkerProfile?, boltMode: MarkerBoltMode): Boolean =
+fun profileWatchesEye(profile: MarkerProfile?, boltMode: MarkerBoltMode): Boolean =
     profile != null && MarkerProfileField.EYE_THRESHOLD.isShownFor(profile, boltMode)
 
 private fun readingDisplay(

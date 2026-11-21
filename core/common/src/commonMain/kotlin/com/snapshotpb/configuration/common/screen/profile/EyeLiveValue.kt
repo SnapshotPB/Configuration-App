@@ -32,18 +32,12 @@ import com.snapshotpb.configuration.common.composable.Space
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.core.resources.Res
-import com.snapshotpb.core.resources.profile_eye_hint_eye_off
-import com.snapshotpb.core.resources.profile_eye_hint_fault
-import com.snapshotpb.core.resources.profile_eye_hint_not_permitted
-import com.snapshotpb.core.resources.profile_eye_hint_override_off
-import com.snapshotpb.core.resources.profile_eye_hint_unsupported
 import com.snapshotpb.core.resources.profile_eye_level_bar_description
 import com.snapshotpb.core.resources.profile_eye_live_level
 import com.snapshotpb.core.resources.profile_eye_result_ball
 import com.snapshotpb.core.resources.profile_eye_result_empty
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Semantics test tag of the live eye level text. */
@@ -163,14 +157,6 @@ internal fun EyeLiveValue(
             }
         }
     }
-}
-
-private fun eyeLiveHintString(hint: EyeLiveHint): StringResource = when (hint) {
-    EyeLiveHint.EYE_OFF -> Res.string.profile_eye_hint_eye_off
-    EyeLiveHint.OVERRIDE_OFF -> Res.string.profile_eye_hint_override_off
-    EyeLiveHint.FAULT -> Res.string.profile_eye_hint_fault
-    EyeLiveHint.UNSUPPORTED -> Res.string.profile_eye_hint_unsupported
-    EyeLiveHint.NOT_PERMITTED -> Res.string.profile_eye_hint_not_permitted
 }
 
 @Composable
