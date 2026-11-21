@@ -11,6 +11,7 @@ import com.snapshotpb.configuration.bluetooth.DeviceReadResult
 import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResult
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.bluetooth.FirmwareUploadState
 import com.snapshotpb.configuration.bluetooth.SnapshotAdvertisement
 import com.snapshotpb.configuration.bluetooth.StepStatus
@@ -27,6 +28,9 @@ import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.Device
 import com.snapshotpb.configuration.model.DisplayWindow
+import com.snapshotpb.configuration.model.EYE_ADC_FULL_SCALE_RAW
+import com.snapshotpb.configuration.model.EyeReading
+import com.snapshotpb.configuration.model.EyeSensorState
 import com.snapshotpb.configuration.model.FirmwareUpdateFailure
 import com.snapshotpb.configuration.model.FirmwareUpdateProgress
 import com.snapshotpb.configuration.model.FirmwareVersion
@@ -48,7 +52,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -90,6 +97,15 @@ import kotlin.uuid.Uuid
  * until a [BluetoothRequest.ConfirmFirmware]. With the simulated firmware site of
  * [fakeBoardModule], the Demo entry shows the whole update with no hardware and no network.
  *
+ * EYE STATUS: while the switch is on, the board is connected, and at least one watcher collects
+ * [BluetoothStateManager.eyeReading], the board records an [EyeReadingState.Reading] in
+ * [EyeSensorState.ACTIVE] every [FAKE_EYE_TICK_MILLIS] ms. The raw level moves along the triangle
+ * wave of [simulatedEyeLevel] between [FAKE_EYE_LOW_RAW] and [FAKE_EYE_HIGH_RAW], so the Demo
+ * crosses the default threshold in both directions. The eye job starts and stops from
+ * [BluetoothStateManager.connectedDevices] and [BluetoothStateManager.eyeWatcherCount], so it needs
+ * no [BluetoothRequest]. When the board disconnects, the last watcher stops, or the switch turns
+ * off, the board stops the wave and clears the recorded eye state.
+ *
  * THREADING: [handle] gives the slow work to [scope] and returns at once. The request bus has no
  * buffer, so work done in the caller would hold the bus and block the Cancel affordance, and an
  * activity teardown mid-connect would cancel the attempt. [boardLock] then serializes that work, so
@@ -101,6 +117,13 @@ internal class FakeBoard(
     private val bluetoothStateManager: BluetoothStateManager,
     private val deviceReadResultBus: DeviceReadResultBus,
     private val deviceWriteResultBus: DeviceWriteResultBus,
+    /**
+     * Scope of the work of the board. The board is a singleton that lives as long as the process, so
+     * the scope needs no owner to cancel it, and work on it survives an activity teardown. The jobs
+     * that must stop when the switch goes off are the state guard and the eye job, and
+     * [releaseBluetoothState] cancels both.
+     */
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob()),
 ) : DebugBoard {
 
     @Volatile
@@ -116,18 +139,12 @@ internal class FakeBoard(
     private val discovered: MutableStateFlow<BluetoothDeviceState> =
         MutableStateFlow(BluetoothDeviceState())
 
-    /**
-     * Scope of the board's own work. The board is a singleton that lives as long as the process, so
-     * the scope needs no owner to cancel it, and work on it survives an activity teardown. The one
-     * job that must stop when the switch goes off is the state guard, and [releaseBluetoothState]
-     * cancels that one.
-     */
-    private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
-
     /** Serializes the board's work, the way the real engine serializes with its connection lock. */
     private val boardLock = Mutex()
 
     private var stateGuard: Job? = null
+
+    private var eyeJob: Job? = null
 
     private var connectionJob: Job? = null
 
@@ -185,6 +202,36 @@ internal class FakeBoard(
                 }
             }
         }
+        eyeJob = scope.launch { runSimulatedEye() }
+    }
+
+    /**
+     * Records simulated [EyeReadingState.Reading] values while the fake board is connected and has
+     * at least one watcher, and clears the recorded state when either condition stops.
+     */
+    private suspend fun runSimulatedEye() {
+        combine(
+            bluetoothStateManager.connectedDevices.map { FAKE_DEVICE_ID in it },
+            bluetoothStateManager.eyeWatcherCount(FAKE_DEVICE_ID).map { it > 0 },
+        ) { connected, watched -> connected && watched }
+            .distinctUntilChanged()
+            .collectLatest { on ->
+                if (!on) {
+                    bluetoothStateManager.clearEyeReading(FAKE_DEVICE_ID)
+                    return@collectLatest
+                }
+                var tick = 0
+                while (true) {
+                    val reading = EyeReading(
+                        levelRaw = simulatedEyeLevel(tick),
+                        fullScaleRaw = EYE_ADC_FULL_SCALE_RAW,
+                        state = EyeSensorState.ACTIVE,
+                    )
+                    bluetoothStateManager.setEyeReading(FAKE_DEVICE_ID, EyeReadingState.Reading(reading))
+                    delay(FAKE_EYE_TICK_MILLIS)
+                    tick++
+                }
+            }
     }
 
     /**
@@ -209,6 +256,9 @@ internal class FakeBoard(
         offAir = false
         stateGuard?.cancel()
         stateGuard = null
+        eyeJob?.cancel()
+        eyeJob = null
+        bluetoothStateManager.clearEyeReading(FAKE_DEVICE_ID)
         discovered.value = BluetoothDeviceState()
         if (fakeWasBusy) {
             onBoard { disconnect(FAKE_DEVICE_ID) }
@@ -375,6 +425,7 @@ internal class FakeBoard(
     /** Runs under [boardLock] (see [onBoard]), so it cannot interleave with a write. */
     private fun disconnect(deviceId: String) {
         bluetoothStateManager.clearUpdateService(deviceId)
+        bluetoothStateManager.clearEyeReading(deviceId)
         bluetoothStateManager.deviceDisconnected(deviceId)
         bluetoothStateManager.resetProgress()
     }
@@ -563,7 +614,30 @@ internal class FakeBoard(
  * `device_id` (a MAC hash on Android), and the engine maps one to the other after the read. The fake
  * answers the requests itself, so it keeps the two equal and needs no map.
  */
-private const val FAKE_DEVICE_ID = "5350425f-4f54-4000-8000-000000000001"
+internal const val FAKE_DEVICE_ID = "5350425f-4f54-4000-8000-000000000001"
+
+/** Tick interval of the simulated eye wave, at the 10 Hz rate of a real board. */
+private const val FAKE_EYE_TICK_MILLIS = 100L
+
+/** Low peak of the simulated eye ADC wave, in raw counts. */
+private const val FAKE_EYE_LOW_RAW = 600
+
+/** High peak of the simulated eye ADC wave, in raw counts. */
+private const val FAKE_EYE_HIGH_RAW = 3400
+
+/** Full period of the simulated eye wave in ticks (4 s at 10 Hz). */
+private const val FAKE_EYE_PERIOD_TICKS = 40
+
+/**
+ * Computes the simulated raw eye ADC level for [tick] on a triangle wave from [FAKE_EYE_LOW_RAW]
+ * to [FAKE_EYE_HIGH_RAW] with a period of [FAKE_EYE_PERIOD_TICKS].
+ */
+internal fun simulatedEyeLevel(tick: Int): Int {
+    val halfPeriod = FAKE_EYE_PERIOD_TICKS / 2
+    val phase = tick.mod(FAKE_EYE_PERIOD_TICKS)
+    val step = if (phase <= halfPeriod) phase else FAKE_EYE_PERIOD_TICKS - phase
+    return FAKE_EYE_LOW_RAW + (FAKE_EYE_HIGH_RAW - FAKE_EYE_LOW_RAW) * step / halfPeriod
+}
 
 /** The board type of the fake in its advertisement. */
 private const val FAKE_BOARD_TYPE = "FAKE"

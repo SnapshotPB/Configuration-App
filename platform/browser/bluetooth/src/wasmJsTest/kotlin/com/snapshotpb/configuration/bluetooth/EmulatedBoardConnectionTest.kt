@@ -7,8 +7,11 @@ import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
 import com.snapshotpb.configuration.bluetooth.log.BoardLogState
 import com.snapshotpb.configuration.bluetooth.ots.decodeDeviceConfig
+import com.snapshotpb.configuration.model.EyeReading
+import com.snapshotpb.configuration.model.EyeSensorState
 import dev.bluefalcon.core.BlueFalcon
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -56,8 +59,11 @@ class EmulatedBoardConnectionTest {
         val writes: List<DeviceWriteResult>,
     )
 
-    private fun TestScope.newFixture(smpService: Boolean = false): Fixture {
-        val board = FakeOtsBridgeBoard(smpService).apply {
+    private fun TestScope.newFixture(
+        smpService: Boolean = false,
+        eyeService: Boolean = false,
+    ): Fixture {
+        val board = FakeOtsBridgeBoard(smpService = smpService, eyeService = eyeService).apply {
             setContent("device", DEVICE_WITH_ID)
             setContent("device_config", BOOT_TEXT_HI)
             // The engine refuses a write with no profiles, so the board holds one profile.
@@ -166,11 +172,79 @@ class EmulatedBoardConnectionTest {
         assertEquals("HELLO", decodeDeviceConfig(f.board.content("device_config")).bootText)
     }
 
+    @Test
+    fun eyeStatus_subscribesDeliversReadingAndUnsubscribesAfterDelay() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(eyeService = true)
+        scanAndConnect(f)
+
+        val states = mutableListOf<EyeReadingState?>()
+        val watcher = backgroundScope.launch {
+            f.stateManager.eyeReading(BOARD_ID).collect { states += it }
+        }
+        runCurrent()
+
+        assertTrue((FakeOtsBridgeBoard.EYE_STATUS to 1) in f.board.bridge.subscriptions)
+
+        f.board.bridge.notify(FakeOtsBridgeBoard.EYE_STATUS, EYE_STATUS_ACTIVE_1000)
+        runCurrent()
+        assertEquals(
+            EyeReadingState.Reading(EyeReading(levelRaw = 1000, fullScaleRaw = 4095, state = EyeSensorState.ACTIVE)),
+            states.last(),
+        )
+
+        watcher.cancelAndJoin()
+        advanceTimeBy(EYE_UNSUBSCRIBE_DELAY_MILLIS)
+        runCurrent()
+        assertTrue((FakeOtsBridgeBoard.EYE_STATUS to 0) in f.board.bridge.subscriptions)
+    }
+
+    @Test
+    fun connect_withoutEyeService_recordsUnsupportedAndDoesNotSubscribe() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(eyeService = false)
+
+        scanAndConnect(f)
+
+        assertTrue(f.stateManager.connectionProgress.value.isCompleted)
+        assertTrue(BOARD_ID in f.stateManager.connectedDevices.value)
+
+        val states = mutableListOf<EyeReadingState?>()
+        val watcher = backgroundScope.launch {
+            f.stateManager.eyeReading(BOARD_ID).collect { states += it }
+        }
+        runCurrent()
+
+        assertEquals(EyeReadingState.Unsupported, states.last())
+        assertTrue(f.board.bridge.subscriptions.none { (handle, _) -> handle == FakeOtsBridgeBoard.EYE_STATUS })
+        watcher.cancelAndJoin()
+    }
+
+    @Test
+    fun eyeStatus_whenSubscribeFails_recordsFailedAndKeepsConnection() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(eyeService = true)
+        scanAndConnect(f)
+        f.board.bridge.subscribeStatus = ATT_UNLIKELY_ERROR
+
+        val states = mutableListOf<EyeReadingState?>()
+        val watcher = backgroundScope.launch {
+            f.stateManager.eyeReading(BOARD_ID).collect { states += it }
+        }
+        runCurrent()
+
+        assertEquals(EyeReadingState.Failed, states.last())
+        assertTrue(BOARD_ID in f.stateManager.connectedDevices.value)
+        watcher.cancelAndJoin()
+    }
+
     private companion object {
         const val CONNECT_MILLIS = 20_000L
         const val WRITE_MILLIS = 20_000L
+        const val EYE_UNSUBSCRIBE_DELAY_MILLIS = 2_000L
+        const val ATT_UNLIKELY_ERROR = 0x0E
 
         const val BOARD_ID = "00112233-4455-6677-8899-aabbccddeeff"
+
+        /** An `EyeStatus` with `level_raw = 1000`, `full_scale_raw = 4095`, `state = ACTIVE`. */
+        val EYE_STATUS_ACTIVE_1000 = "08e80710ff1f1801".hexToByteArray()
 
         /** A `Device` with the 16-byte `device_id` [BOARD_ID]: field 1, length 16. */
         val DEVICE_WITH_ID = byteArrayOf(0x0A, 0x10) + Uuid.parse(BOARD_ID).toByteArray()

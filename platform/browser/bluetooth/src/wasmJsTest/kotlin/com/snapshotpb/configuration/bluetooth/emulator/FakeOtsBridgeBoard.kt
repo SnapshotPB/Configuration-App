@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth.emulator
 
+import com.snapshotpb.configuration.bluetooth.eye.EyeStatusUuids
 import com.snapshotpb.configuration.bluetooth.ots.OacpOpcode
 import com.snapshotpb.configuration.bluetooth.ots.OacpResult
 import com.snapshotpb.configuration.bluetooth.ots.ObjectPropertyBit
@@ -17,8 +18,14 @@ import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
  * With [smpService], the table also has the SMP service of a board with the update firmware. The
  * board does not answer SMP requests: the web engines have no write without response with a result,
  * so the app sends none.
+ *
+ * With [eyeService], the table also has the eye status service with one read and notify
+ * characteristic at handle [EYE_STATUS].
  */
-internal class FakeOtsBridgeBoard(smpService: Boolean = false) {
+internal class FakeOtsBridgeBoard(
+    smpService: Boolean = false,
+    eyeService: Boolean = false,
+) {
     class BoardObject(val name: String, var content: ByteArray, val writable: Boolean)
 
     val objects: List<BoardObject> = listOf(
@@ -60,6 +67,17 @@ internal class FakeOtsBridgeBoard(smpService: Boolean = false) {
                     BoardCharacteristic(SmpUuids.Characteristic.toString(), SMP, SMP_PROPERTIES, SMP + 1),
                 ),
             ).takeIf { smpService },
+            BoardService(
+                uuid = EyeStatusUuids.Service.toString(),
+                characteristics = listOf(
+                    BoardCharacteristic(
+                        EyeStatusUuids.Status.toString(),
+                        EYE_STATUS,
+                        GattProperty.READ or GattProperty.NOTIFY,
+                        EYE_STATUS + 1,
+                    ),
+                ),
+            ).takeIf { eyeService },
         ),
     )
 
@@ -200,6 +218,7 @@ internal class FakeOtsBridgeBoard(smpService: Boolean = false) {
         const val OBJECT_DATA = 0x13
         const val MANUFACTURER = 0x17
         const val SMP = 0x1A
+        const val EYE_STATUS = 0x1E
 
         const val DEVICE_INFORMATION_SERVICE = "0000180a-0000-1000-8000-00805f9b34fb"
         const val MANUFACTURER_NAME = "00002a29-0000-1000-8000-00805f9b34fb"

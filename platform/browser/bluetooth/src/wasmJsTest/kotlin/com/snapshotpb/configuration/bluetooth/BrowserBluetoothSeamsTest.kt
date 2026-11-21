@@ -2,6 +2,7 @@ package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.emulator.EmulatorEngine
 import com.snapshotpb.configuration.bluetooth.emulator.FakeOtsBridgeBoard
+import com.snapshotpb.configuration.bluetooth.eye.EyeStatusUuids
 import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
@@ -16,13 +17,14 @@ import kotlin.test.assertTrue
 class BrowserBluetoothSeamsTest {
 
     @Test
-    fun scanFilters_includesBoardLogServiceAfterPreviousFilters() {
+    fun scanFilters_includesEyeStatusServiceAfterPreviousFilters() {
         val expected = SnapshotAdvertisement.scanFilters + listOf(
             ServiceFilter(OtsUuids.Service),
             ServiceFilter(OtsUuids.DeviceObjectType),
             ServiceFilter(OtsUuids.ObjectData),
             ServiceFilter(SmpUuids.Service),
             ServiceFilter(BoardLogUuids.Service),
+            ServiceFilter(EyeStatusUuids.Service),
         )
 
         assertEquals(expected, scanFilters)
