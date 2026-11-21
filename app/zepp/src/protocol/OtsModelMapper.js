@@ -211,6 +211,17 @@ export const BoardBluetoothAtBoot = {
   RESTORE: 'RESTORE'
 };
 
+// This object lists the states of the breach eye sensor (proto EyeSensorState).
+// It mirrors EyeSensorState in core:model. UNKNOWN is UNSPECIFIED or a value
+// that this app does not know. The app shows no level and no hint for UNKNOWN.
+export const EyeSensorState = {
+  ACTIVE: 'ACTIVE',
+  EYE_OFF: 'EYE_OFF',
+  OVERRIDE_OFF: 'OVERRIDE_OFF',
+  FAULT: 'FAULT',
+  UNKNOWN: 'UNKNOWN'
+};
+
 // Proto enums now carry a 0 = UNSPECIFIED value, so wire values are shifted by +1
 // relative to the old schema. The numbers are those of AutocockerFireMode in fire_mode.proto.
 export function fireModeToDomain(protoVal) {
@@ -350,6 +361,27 @@ export function boardModelToDomain(protoVal) {
     case 1: return BoardModel.AUTOCOCKER;
     default: return BoardModel.UNKNOWN; // incl. 0 (UNSPECIFIED)
   }
+}
+
+export function eyeSensorStateToDomain(protoVal) {
+  switch (protoVal) {
+    case 1: return EyeSensorState.ACTIVE;
+    case 2: return EyeSensorState.EYE_OFF;
+    case 3: return EyeSensorState.OVERRIDE_OFF;
+    case 4: return EyeSensorState.FAULT;
+    default: return EyeSensorState.UNKNOWN;
+  }
+}
+
+// Maps a decoded EyeStatus protobuf message to a domain EyeReading object.
+// Keep levelRaw for all states, because the display rule decides what to show.
+export function toDomainEyeReading(message) {
+  const m = message || {};
+  return {
+    levelRaw: m.levelRaw != null ? Number(m.levelRaw) : null,
+    fullScaleRaw: Number(m.fullScaleRaw) || 0,
+    state: eyeSensorStateToDomain(m.state)
+  };
 }
 
 // Maps the read-only Device + DeviceConfig + Profiles messages to the app model.

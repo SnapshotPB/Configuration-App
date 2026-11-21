@@ -39,7 +39,15 @@ export const LABELS = {
   noPermission: 'Bluetooth permission',
   permissionInSettings: 'in the watch settings',
   allowBluetooth: 'Allow Bluetooth',
-  tryAgain: 'Try Again'
+  tryAgain: 'Try Again',
+  // Live eye line texts on the EYE_THRESHOLD stepper.
+  eyeLevel: 'Eye ',
+  eyeBall: ' - Ball',
+  eyeEmpty: ' - Empty',
+  eyeOff: 'Select an eye profile on board',
+  eyeOverrideOff: 'Turn the eyes on at the board',
+  eyeFault: 'The board reports an eye fault',
+  eyeUnsupported: 'Update firmware for eye value'
 };
 
 /** The connecting page's terminal states, by the copy each one renders. */
@@ -152,4 +160,10 @@ export async function seedLocalEdit(h, mutate, name = 'My Board') {
   mutate(local);
   h.store.update([local]);
   return local;
+}
+
+/** Sets the globalData.profileField handoff and opens the profile field stepper. */
+export function openProfileField(h, profileId, key) {
+  getApp().globalData.profileField = { profileId, key };
+  return h.open(PAGES.profileField);
 }

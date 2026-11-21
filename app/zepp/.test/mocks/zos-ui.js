@@ -35,6 +35,12 @@ export const text_style = {
   ELLIPSIS: 'ELLIPSIS'
 };
 
+// The real prop values are numbers. The app only passes them back to setProperty.
+export const prop = {
+  TEXT: 'text',
+  COLOR: 'color'
+};
+
 export function createWidget(type, props) {
   const w = {
     id: nextId++,

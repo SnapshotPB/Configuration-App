@@ -1344,6 +1344,363 @@ export const snapshotpb = $root.snapshotpb = (() => {
             return Device;
         })();
 
+        v1.EyeStatus = (function() {
+
+            /**
+             * Properties of an EyeStatus.
+             * @memberof snapshotpb.v1
+             * @interface IEyeStatus
+             * @property {number|null} [levelRaw] EyeStatus levelRaw
+             * @property {number|null} [fullScaleRaw] EyeStatus fullScaleRaw
+             * @property {snapshotpb.v1.EyeSensorState|null} [state] EyeStatus state
+             */
+
+            /**
+             * Constructs a new EyeStatus.
+             * @memberof snapshotpb.v1
+             * @classdesc Represents an EyeStatus.
+             * @implements IEyeStatus
+             * @constructor
+             * @param {snapshotpb.v1.IEyeStatus=} [properties] Properties to set
+             */
+            function EyeStatus(properties) {
+                if (properties)
+                    for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            }
+
+            /**
+             * EyeStatus levelRaw.
+             * @member {number|null|undefined} levelRaw
+             * @memberof snapshotpb.v1.EyeStatus
+             * @instance
+             */
+            EyeStatus.prototype.levelRaw = null;
+
+            /**
+             * EyeStatus fullScaleRaw.
+             * @member {number} fullScaleRaw
+             * @memberof snapshotpb.v1.EyeStatus
+             * @instance
+             */
+            EyeStatus.prototype.fullScaleRaw = 0;
+
+            /**
+             * EyeStatus state.
+             * @member {snapshotpb.v1.EyeSensorState} state
+             * @memberof snapshotpb.v1.EyeStatus
+             * @instance
+             */
+            EyeStatus.prototype.state = 0;
+
+            // OneOf field names bound to virtual getters and setters
+            let $oneOfFields;
+
+            // Virtual OneOf for proto3 optional field
+            Object.defineProperty(EyeStatus.prototype, "_levelRaw", {
+                get: $util.oneOfGetter($oneOfFields = ["levelRaw"]),
+                set: $util.oneOfSetter($oneOfFields)
+            });
+
+            /**
+             * Creates a new EyeStatus instance using the specified properties.
+             * @function create
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {snapshotpb.v1.IEyeStatus=} [properties] Properties to set
+             * @returns {snapshotpb.v1.EyeStatus} EyeStatus instance
+             */
+            EyeStatus.create = function create(properties) {
+                return new EyeStatus(properties);
+            };
+
+            /**
+             * Encodes the specified EyeStatus message. Does not implicitly {@link snapshotpb.v1.EyeStatus.verify|verify} messages.
+             * @function encode
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {snapshotpb.v1.IEyeStatus} message EyeStatus message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            EyeStatus.encode = function encode(message, writer, q) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (q === undefined)
+                    q = 0;
+                if (q > $util.recursionLimit)
+                    throw Error("max depth exceeded");
+                if (message.levelRaw != null && Object.hasOwnProperty.call(message, "levelRaw"))
+                    writer.uint32(/* id 1, wireType 0 =*/8).uint32(message.levelRaw);
+                if (message.fullScaleRaw != null && Object.hasOwnProperty.call(message, "fullScaleRaw"))
+                    writer.uint32(/* id 2, wireType 0 =*/16).uint32(message.fullScaleRaw);
+                if (message.state != null && Object.hasOwnProperty.call(message, "state"))
+                    writer.uint32(/* id 3, wireType 0 =*/24).int32(message.state);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified EyeStatus message, length delimited. Does not implicitly {@link snapshotpb.v1.EyeStatus.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {snapshotpb.v1.IEyeStatus} message EyeStatus message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            EyeStatus.encodeDelimited = function encodeDelimited(message, writer) {
+                return this.encode(message, writer && writer.len ? writer.fork() : writer).ldelim();
+            };
+
+            /**
+             * Decodes an EyeStatus message from the specified reader or buffer.
+             * @function decode
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {snapshotpb.v1.EyeStatus} EyeStatus
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            EyeStatus.decode = function decode(reader, length, error, long) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (long === undefined)
+                    long = 0;
+                if (long > $Reader.recursionLimit)
+                    throw Error("maximum nesting depth exceeded");
+                let end, message;
+                if (length === undefined)
+                    end = reader.len;
+                else {
+                    end = reader.pos + length;
+                    if (end > reader.len)
+                        throw RangeError("index out of range");
+                    length = reader.len;
+                    reader.len = end;
+                }
+                message = new $root.snapshotpb.v1.EyeStatus();
+                while (reader.pos < end) {
+                    let tag = reader.uint32();
+                    if (tag === error)
+                        break;
+                    switch (tag >>> 3) {
+                    case 1: {
+                            message.levelRaw = reader.uint32();
+                            break;
+                        }
+                    case 2: {
+                            message.fullScaleRaw = reader.uint32();
+                            break;
+                        }
+                    case 3: {
+                            message.state = reader.int32();
+                            break;
+                        }
+                    default:
+                        reader.skipType(tag & 7, long);
+                        break;
+                    }
+                }
+                if (length !== undefined) {
+                    if (reader.pos !== end)
+                        throw RangeError("index out of range");
+                    reader.len = length;
+                }
+                return message;
+            };
+
+            /**
+             * Decodes an EyeStatus message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {snapshotpb.v1.EyeStatus} EyeStatus
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            EyeStatus.decodeDelimited = function decodeDelimited(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies an EyeStatus message.
+             * @function verify
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            EyeStatus.verify = function verify(message, long) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (long === undefined)
+                    long = 0;
+                if (long > $util.recursionLimit)
+                    return "maximum nesting depth exceeded";
+                let properties = {};
+                if (message.levelRaw != null && Object.hasOwnProperty.call(message, "levelRaw")) {
+                    properties._levelRaw = 1;
+                    if (!$util.isInteger(message.levelRaw))
+                        return "levelRaw: integer expected";
+                }
+                if (message.fullScaleRaw != null && Object.hasOwnProperty.call(message, "fullScaleRaw"))
+                    if (!$util.isInteger(message.fullScaleRaw))
+                        return "fullScaleRaw: integer expected";
+                if (message.state != null && Object.hasOwnProperty.call(message, "state"))
+                    switch (message.state) {
+                    default:
+                        return "state: enum value expected";
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                        break;
+                    }
+                return null;
+            };
+
+            /**
+             * Creates an EyeStatus message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {snapshotpb.v1.EyeStatus} EyeStatus
+             */
+            EyeStatus.fromObject = function fromObject(object, long) {
+                if (object instanceof $root.snapshotpb.v1.EyeStatus)
+                    return object;
+                if (!$util.isObject(object))
+                    throw TypeError(".snapshotpb.v1.EyeStatus: object expected");
+                if (long === undefined)
+                    long = 0;
+                if (long > $util.recursionLimit)
+                    throw Error("maximum nesting depth exceeded");
+                let message = new $root.snapshotpb.v1.EyeStatus();
+                if (object.levelRaw != null)
+                    message.levelRaw = object.levelRaw >>> 0;
+                if (object.fullScaleRaw != null)
+                    message.fullScaleRaw = object.fullScaleRaw >>> 0;
+                switch (object.state) {
+                default:
+                    if (typeof object.state === "number") {
+                        message.state = object.state;
+                        break;
+                    }
+                    break;
+                case "EYE_SENSOR_STATE_UNSPECIFIED":
+                case 0:
+                    message.state = 0;
+                    break;
+                case "EYE_SENSOR_STATE_ACTIVE":
+                case 1:
+                    message.state = 1;
+                    break;
+                case "EYE_SENSOR_STATE_EYE_OFF":
+                case 2:
+                    message.state = 2;
+                    break;
+                case "EYE_SENSOR_STATE_OVERRIDE_OFF":
+                case 3:
+                    message.state = 3;
+                    break;
+                case "EYE_SENSOR_STATE_FAULT":
+                case 4:
+                    message.state = 4;
+                    break;
+                }
+                return message;
+            };
+
+            /**
+             * Creates a plain object from an EyeStatus message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {snapshotpb.v1.EyeStatus} message EyeStatus
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            EyeStatus.toObject = function toObject(message, options, q) {
+                if (!options)
+                    options = {};
+                if (q === undefined)
+                    q = 0;
+                if (q > $util.recursionLimit)
+                    throw Error("max depth exceeded");
+                let object = {};
+                if (options.defaults) {
+                    object.fullScaleRaw = 0;
+                    object.state = options.enums === String ? "EYE_SENSOR_STATE_UNSPECIFIED" : 0;
+                }
+                if (message.levelRaw != null && Object.hasOwnProperty.call(message, "levelRaw")) {
+                    object.levelRaw = message.levelRaw;
+                    if (options.oneofs)
+                        object._levelRaw = "levelRaw";
+                }
+                if (message.fullScaleRaw != null && Object.hasOwnProperty.call(message, "fullScaleRaw"))
+                    object.fullScaleRaw = message.fullScaleRaw;
+                if (message.state != null && Object.hasOwnProperty.call(message, "state"))
+                    object.state = options.enums === String ? $root.snapshotpb.v1.EyeSensorState[message.state] === undefined ? message.state : $root.snapshotpb.v1.EyeSensorState[message.state] : message.state;
+                return object;
+            };
+
+            /**
+             * Converts this EyeStatus to JSON.
+             * @function toJSON
+             * @memberof snapshotpb.v1.EyeStatus
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            EyeStatus.prototype.toJSON = function toJSON() {
+                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the default type url for EyeStatus
+             * @function getTypeUrl
+             * @memberof snapshotpb.v1.EyeStatus
+             * @static
+             * @param {string} [typeUrlPrefix] your custom typeUrlPrefix(default "type.googleapis.com")
+             * @returns {string} The default type url
+             */
+            EyeStatus.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
+                if (typeUrlPrefix === undefined) {
+                    typeUrlPrefix = "type.googleapis.com";
+                }
+                return typeUrlPrefix + "/snapshotpb.v1.EyeStatus";
+            };
+
+            return EyeStatus;
+        })();
+
+        /**
+         * EyeSensorState enum.
+         * @name snapshotpb.v1.EyeSensorState
+         * @enum {number}
+         * @property {number} EYE_SENSOR_STATE_UNSPECIFIED=0 EYE_SENSOR_STATE_UNSPECIFIED value
+         * @property {number} EYE_SENSOR_STATE_ACTIVE=1 EYE_SENSOR_STATE_ACTIVE value
+         * @property {number} EYE_SENSOR_STATE_EYE_OFF=2 EYE_SENSOR_STATE_EYE_OFF value
+         * @property {number} EYE_SENSOR_STATE_OVERRIDE_OFF=3 EYE_SENSOR_STATE_OVERRIDE_OFF value
+         * @property {number} EYE_SENSOR_STATE_FAULT=4 EYE_SENSOR_STATE_FAULT value
+         */
+        v1.EyeSensorState = (function() {
+            const valuesById = {}, values = Object.create(valuesById);
+            values[valuesById[0] = "EYE_SENSOR_STATE_UNSPECIFIED"] = 0;
+            values[valuesById[1] = "EYE_SENSOR_STATE_ACTIVE"] = 1;
+            values[valuesById[2] = "EYE_SENSOR_STATE_EYE_OFF"] = 2;
+            values[valuesById[3] = "EYE_SENSOR_STATE_OVERRIDE_OFF"] = 3;
+            values[valuesById[4] = "EYE_SENSOR_STATE_FAULT"] = 4;
+            return values;
+        })();
+
         v1.Profile = (function() {
 
             /**
