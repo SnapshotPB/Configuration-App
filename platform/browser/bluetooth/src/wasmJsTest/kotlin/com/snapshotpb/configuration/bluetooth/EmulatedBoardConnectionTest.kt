@@ -2,10 +2,15 @@ package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.emulator.EmulatorEngine
 import com.snapshotpb.configuration.bluetooth.emulator.FakeOtsBridgeBoard
-import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
+import com.snapshotpb.configuration.bluetooth.log.BoardLogState
 import com.snapshotpb.configuration.bluetooth.ots.decodeDeviceConfig
 import dev.bluefalcon.core.BlueFalcon
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -27,10 +32,26 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalCoroutinesApi::class)
 class EmulatedBoardConnectionTest {
 
+    private class BoardLogRecorder : BluetoothLog {
+        val boardLogStates: MutableList<Pair<Int, BoardLogState>> = mutableListOf()
+        override val snapshot: StateFlow<BluetoothLogSnapshot> = MutableStateFlow(BluetoothLogSnapshot())
+        override val recordsBoardLines: Boolean = true
+        override fun startSession(session: Int) = Unit
+        override fun sessionBoard(session: Int, boardId: String, firmwareVersion: String?) = Unit
+        override fun boardChunk(session: Int, bytes: ByteArray) = Unit
+        override fun boardLogState(session: Int, state: BoardLogState) {
+            boardLogStates += session to state
+        }
+        override fun app(session: Int, event: BluetoothLogEvent, detail: String?) = Unit
+        override fun endSession(session: Int) = Unit
+        override fun clear() = Unit
+    }
+
     private class Fixture(
         val manager: BluetoothManager,
         val stateManager: BluetoothStateManager,
         val board: FakeOtsBridgeBoard,
+        val log: BoardLogRecorder,
         val reads: List<DeviceReadResult>,
         val writes: List<DeviceWriteResult>,
     )
@@ -45,6 +66,7 @@ class EmulatedBoardConnectionTest {
         val stateManager = BluetoothStateManager()
         val readBus = DeviceReadResultBus()
         val writeBus = DeviceWriteResultBus()
+        val log = BoardLogRecorder()
         val reads = mutableListOf<DeviceReadResult>()
         val writes = mutableListOf<DeviceWriteResult>()
         backgroundScope.launch { readBus.results.collect { reads += it } }
@@ -52,13 +74,13 @@ class EmulatedBoardConnectionTest {
         val manager = BluetoothManager(
             blueFalcon = BlueFalcon(EmulatorEngine(board.bridge, backgroundScope)),
             bluetoothStateManager = stateManager,
-            bluetoothLog = DisabledBluetoothLog,
+            bluetoothLog = log,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,
             coroutineScope = backgroundScope,
         )
         runCurrent()
-        return Fixture(manager, stateManager, board, reads, writes)
+        return Fixture(manager, stateManager, board, log, reads, writes)
     }
 
     /** Scans, starts the connect, and lets it run to its end. Returns the device ID. */
@@ -95,6 +117,17 @@ class EmulatedBoardConnectionTest {
         scanAndConnect(f)
 
         assertEquals(BoardUpdateService(UpdateServiceStatus.ABSENT), f.stateManager.updateServices.value[BOARD_ID])
+    }
+
+    @Test
+    fun connect_toTheViewerBoard_recordsAbsentBoardLogState() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture()
+
+        scanAndConnect(f)
+
+        assertTrue(f.stateManager.connectionProgress.value.isCompleted)
+        assertTrue(BOARD_ID in f.stateManager.connectedDevices.value)
+        assertEquals(listOf(1 to BoardLogState.ABSENT), f.log.boardLogStates)
     }
 
     @Test
