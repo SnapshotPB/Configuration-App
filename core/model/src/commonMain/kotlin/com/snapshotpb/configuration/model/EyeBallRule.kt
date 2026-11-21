@@ -3,7 +3,14 @@ package com.snapshotpb.configuration.model
 /** The full scale of the 12-bit eye ADC of the current boards (0 to 4095). */
 const val EYE_ADC_FULL_SCALE_RAW: Int = 4095
 
-private fun effectiveEyeThresholdPercent(thresholdPercent: Int): Int = when {
+/**
+ * Gives the effective eye threshold percent for [thresholdPercent].
+ *
+ * This function copies `effective_eye_threshold_percent` in
+ * `snapshot-config/src/wire_presence.rs`. A value of 0 or less gives [EYE_THRESHOLD_DEFAULT]. A
+ * value above [EYE_THRESHOLD_MAX] gives [EYE_THRESHOLD_MAX].
+ */
+fun effectiveEyeThresholdPercent(thresholdPercent: Int): Int = when {
     thresholdPercent <= 0 -> EYE_THRESHOLD_DEFAULT
     thresholdPercent > EYE_THRESHOLD_MAX -> EYE_THRESHOLD_MAX
     else -> thresholdPercent

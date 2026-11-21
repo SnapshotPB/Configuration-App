@@ -2,14 +2,13 @@ package com.snapshotpb.configuration.common.screen.profile
 
 import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.util.format
-import com.snapshotpb.configuration.model.EYE_THRESHOLD_DEFAULT
-import com.snapshotpb.configuration.model.EYE_THRESHOLD_MAX
 import com.snapshotpb.configuration.model.EyeReading
 import com.snapshotpb.configuration.model.EyeSensorState
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerEyeMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.model.MarkerProfileField
+import com.snapshotpb.configuration.model.effectiveEyeThresholdPercent
 import com.snapshotpb.configuration.model.eyeSeesBall
 import com.snapshotpb.configuration.model.eyeThresholdRaw
 
@@ -34,8 +33,8 @@ internal sealed interface EyeLiveDisplay {
      * @property levelFraction The ratio `levelRaw / fullScaleRaw` in the range `0f..1f`.
      * @property thresholdFraction The ratio of [eyeThresholdRaw] to `fullScaleRaw` in the range
      *   `0f..1f`.
-     * @property thresholdPercent The effective threshold in percent. A value of 0 or less gives
-     *   [EYE_THRESHOLD_DEFAULT], and a value above [EYE_THRESHOLD_MAX] gives [EYE_THRESHOLD_MAX].
+     * @property thresholdPercent The effective threshold in percent
+     *   ([effectiveEyeThresholdPercent]).
      * @property seesBall The result of [eyeSeesBall], or `null` when no rule applies.
      */
     data class Level(
@@ -120,10 +119,4 @@ private fun activeReadingDisplay(
         thresholdPercent = effectiveThresholdPercent,
         seesBall = eyeSeesBall(eyeMode, levelRaw, fullScaleRaw, thresholdPercent),
     )
-}
-
-private fun effectiveEyeThresholdPercent(thresholdPercent: Int): Int = when {
-    thresholdPercent <= 0 -> EYE_THRESHOLD_DEFAULT
-    thresholdPercent > EYE_THRESHOLD_MAX -> EYE_THRESHOLD_MAX
-    else -> thresholdPercent
 }

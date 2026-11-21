@@ -85,6 +85,25 @@ class EyeBallRuleFixtureTest {
         }
     }
 
+    @Test
+    fun effectiveEyeThresholdPercentAppliesDefaultAndMaximum() {
+        val expectedByInput = listOf(
+            -1 to 50,
+            0 to 50,
+            1 to 1,
+            50 to 50,
+            100 to 100,
+            101 to 100,
+        )
+        expectedByInput.forEach { (input, expected) ->
+            assertEquals(
+                expected,
+                effectiveEyeThresholdPercent(input),
+                "effectiveEyeThresholdPercent differs for thresholdPercent=$input",
+            )
+        }
+    }
+
     private companion object {
         const val FIXTURE_PATH = "/eye-ball-rule.json"
         const val EXPECTED_CASE_COUNT = 48
