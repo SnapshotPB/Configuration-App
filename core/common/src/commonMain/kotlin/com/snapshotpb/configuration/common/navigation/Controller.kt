@@ -12,6 +12,7 @@ internal val navConfig = SavedStateConfiguration {
         // sync with the sealed hierarchy — an unregistered key crashes saved-state
         // (de)serialization on process death / config change.
         polymorphic(NavKey::class) {
+            subclass(ScreenKeyBluetoothLog::class, ScreenKeyBluetoothLog.serializer())
             subclass(ScreenKeyConnectingDevice::class, ScreenKeyConnectingDevice.serializer())
             subclass(ScreenKeyDeviceBrowser::class, ScreenKeyDeviceBrowser.serializer())
             subclass(ScreenKeyDeviceConfigure::class, ScreenKeyDeviceConfigure.serializer())

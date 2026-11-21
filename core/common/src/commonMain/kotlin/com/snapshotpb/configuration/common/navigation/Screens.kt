@@ -39,3 +39,7 @@ data class ScreenKeyConnectingDevice(
 data class ScreenKeyFirmwareUpdate(
     val deviceId: String,
 ) : ScreenKey()
+
+/** The Bluetooth log: the board lines and the app events of all connections. */
+@Serializable
+object ScreenKeyBluetoothLog : ScreenKey()

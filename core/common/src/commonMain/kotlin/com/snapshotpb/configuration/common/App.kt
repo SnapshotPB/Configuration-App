@@ -25,6 +25,7 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snapshotpb.configuration.common.navigation.BrowserHistoryEffect
 import com.snapshotpb.configuration.common.navigation.NavigationController
+import com.snapshotpb.configuration.common.navigation.ScreenKeyBluetoothLog
 import com.snapshotpb.configuration.common.navigation.ScreenKeyConnectingDevice
 import com.snapshotpb.configuration.common.navigation.ScreenKeyDeviceBrowser
 import com.snapshotpb.configuration.common.navigation.ScreenKeyDeviceConfigure
@@ -41,6 +42,7 @@ import com.snapshotpb.configuration.common.screen.device.ConnectingDeviceScreen
 import com.snapshotpb.configuration.common.screen.device.DeviceBrowserScreen
 import com.snapshotpb.configuration.common.screen.device.composable.DeviceSyncConflictDialog
 import com.snapshotpb.configuration.common.screen.firmware.FirmwareUpdateScreen
+import com.snapshotpb.configuration.common.screen.log.BluetoothLogScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfileAddScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfileScreen
 import com.snapshotpb.configuration.common.screen.profile.ProfilesScreen
@@ -128,6 +130,9 @@ fun App(
                         navigationController = navigationController,
                         deviceId = screenKeyFirmwareUpdate.deviceId,
                     )
+                }
+                entry<ScreenKeyBluetoothLog> {
+                    BluetoothLogScreen()
                 }
                 entry<ScreenKeyConnectingDevice> { screenKeyConnecting ->
                     ConnectingDeviceScreen(
