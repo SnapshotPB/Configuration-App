@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.core.location.LocationManagerCompat
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.model.AdvertisementData
 import com.snapshotpb.configuration.model.Device
@@ -284,9 +285,6 @@ private class AndroidBluetoothSeams(
      */
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {}
 
-    override fun formatDebugBytes(event: BleDebugEvent): String =
-        event.bytes.toString(Charsets.US_ASCII)
-
     companion object {
         private const val MAX_ATT_MTU = 517
         private const val MTU_NEGOTIATION_TIMEOUT_MILLIS = 2_000L
@@ -306,7 +304,7 @@ private class AndroidBluetoothSeams(
 class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
-    bleDebugLog: BleDebugLog,
+    bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
     coroutineScope: CoroutineScope = BluetoothConnectionEngine.defaultScope()
@@ -315,7 +313,7 @@ class BluetoothManager(
     private val engine = BluetoothConnectionEngine(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
-        bleDebugLog = bleDebugLog,
+        bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,
         seams = seams,

@@ -24,7 +24,7 @@ internal val bluetoothModule = DI.Module("bluetoothModule") {
         BluetoothManager(
             blueFalcon = BlueFalcon(engine = emulatorEngine ?: JsEngine()),
             bluetoothStateManager = instance(),
-            bleDebugLog = instance(),
+            bluetoothLog = instance(),
             deviceReadResultBus = instance(),
             deviceWriteResultBus = instance(),
             restorePermittedBoards = emulatorEngine == null

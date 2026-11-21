@@ -7,7 +7,9 @@ import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothPeripheralState
+import dev.bluefalcon.core.BluetoothService
 import dev.bluefalcon.core.ServiceDiscoveryPhase
+import dev.bluefalcon.core.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
@@ -23,8 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Default [PlatformBluetoothSeams] used directly by desktop and as the base for the browser, iOS and
  * Android seams. Owns [deviceState] and provides the shared behavior: a scan for the board service, a
  * name-updating [addDevice], the default manager-state mapping, service discovery that waits for the
- * link to open, OTS characteristic discovery when the engine did not do it, no MTU step, immediate
- * connect-readiness, and hex debug formatting. Subclasses override only the members that genuinely
+ * link to open, OTS characteristic discovery when the engine did not do it, no MTU step, and
+ * immediate connect-readiness. Subclasses override only the members that genuinely
  * differ on their platform.
  */
 open class DefaultBluetoothSeams(
@@ -101,23 +103,26 @@ open class DefaultBluetoothSeams(
     }
 
     /**
-     * Discovers the characteristics of the OTS service when the engine did not supply them with the
-     * services. `MacosJvmEngine` supplies services only, and it adds the characteristics later, one
-     * at a time. So this waits for its `CharacteristicsDiscovered` event, which comes after the last
+     * Finds [serviceUuid] on [peripheral] and ensures that its characteristics are discovered.
+     * `MacosJvmEngine` supplies services only, and it adds the characteristics later, one at a time.
+     * So this waits for its `CharacteristicsDiscovered` event, which comes after the last
      * characteristic, and not for a non-empty list. The Windows and Linux engines supply the
-     * characteristics with the services, so this does nothing for them. An engine that sends no
-     * event stops the wait at the time limit, and `OtsClient` then reports a missing characteristic.
+     * characteristics with the services, so this returns at once for them. An engine that sends no
+     * event stops the wait at the time limit and returns the service with an empty list.
      */
-    override suspend fun onServicesDiscovered(peripheral: BluetoothPeripheral) {
-        val service = peripheral.services.firstOrNull { it.uuid == OtsUuids.Service } ?: return
-        if (service.characteristics.isNotEmpty()) return
-        log.d { "Discovering the OTS characteristics for ${peripheral.uuid}..." }
+    override suspend fun serviceWithCharacteristics(
+        peripheral: BluetoothPeripheral,
+        serviceUuid: Uuid,
+    ): BluetoothService? {
+        val service = peripheral.services.firstOrNull { it.uuid == serviceUuid } ?: return null
+        if (service.characteristics.isNotEmpty()) return service
+        log.d { "Discover characteristics for $serviceUuid on ${peripheral.uuid}" }
         val discovered = coroutineScope {
             val event = async(start = CoroutineStart.UNDISPATCHED) {
                 blueFalcon.serviceDiscoveryUpdates.first { update ->
                     update.phase == ServiceDiscoveryPhase.CharacteristicsDiscovered &&
                         update.peripheral.uuid == peripheral.uuid &&
-                        update.service?.uuid == OtsUuids.Service
+                        update.service?.uuid == serviceUuid
                 }
             }
             runCatching { blueFalcon.discoverCharacteristics(peripheral, service) }
@@ -125,7 +130,16 @@ open class DefaultBluetoothSeams(
             withTimeoutOrNull(CHARACTERISTIC_DISCOVERY_TIMEOUT_MILLIS) { event.await() }
                 .also { event.cancel() } != null
         }
-        if (!discovered) log.d { "No characteristic discovery event for ${peripheral.uuid}; continuing" }
+        if (!discovered) log.d { "No characteristic discovery event for $serviceUuid on ${peripheral.uuid}" }
+        return peripheral.services.firstOrNull { it.uuid == serviceUuid } ?: service
+    }
+
+    /**
+     * Discovers the characteristics of the OTS service through [serviceWithCharacteristics] when
+     * the engine did not supply them with the services.
+     */
+    override suspend fun onServicesDiscovered(peripheral: BluetoothPeripheral) {
+        serviceWithCharacteristics(peripheral, OtsUuids.Service)
     }
 
     /**
@@ -168,8 +182,6 @@ open class DefaultBluetoothSeams(
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {
         delay(SUBSCRIBE_SETTLE_MILLIS)
     }
-
-    override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
 
     companion object {
         // 10 s for the seam alone. The engine stops each connect attempt after 5 s

@@ -1,5 +1,10 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
+import com.snapshotpb.configuration.bluetooth.log.BoardLogState
+import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.model.AdvertisementData
 import dev.bluefalcon.core.BlueFalconEngine
 import dev.bluefalcon.core.BluetoothCharacteristic
@@ -152,12 +157,16 @@ internal class FakeBlueFalconEngine(
     /** Each `notifyCharacteristic` call: the characteristic and the requested state. */
     val notifyCalls: MutableList<Pair<BluetoothCharacteristic, Boolean>> = mutableListOf()
 
+    /** Hook called after each `notifyCharacteristic` record. A test sets it to throw or suspend. */
+    var onNotifyCharacteristic: (suspend (BluetoothCharacteristic, Boolean) -> Unit)? = null
+
     override suspend fun notifyCharacteristic(
         peripheral: BluetoothPeripheral,
         characteristic: BluetoothCharacteristic,
         notify: Boolean
     ) {
         notifyCalls += characteristic to notify
+        onNotifyCharacteristic?.invoke(characteristic, notify)
     }
     override suspend fun indicateCharacteristic(
         peripheral: BluetoothPeripheral,
@@ -255,5 +264,75 @@ internal class FakePlatformBluetoothSeams : PlatformBluetoothSeams {
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {
         subscribedCharacteristics += characteristic
     }
-    override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
+    /** The value of [servicesFollowPermission]. A test sets it to act as Web Bluetooth. */
+    override var servicesFollowPermission: Boolean = false
+
+    /** The service UUIDs given to [serviceWithCharacteristics], in order. */
+    val serviceWithCharacteristicsCalls: MutableList<Uuid> = mutableListOf()
+
+    /** When set, parks each [serviceWithCharacteristics] call until completed. */
+    var serviceWithCharacteristicsGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun serviceWithCharacteristics(
+        peripheral: BluetoothPeripheral,
+        serviceUuid: Uuid,
+    ): BluetoothService? {
+        serviceWithCharacteristicsCalls += serviceUuid
+        serviceWithCharacteristicsGate?.await()
+        return peripheral.services.firstOrNull { it.uuid == serviceUuid }
+    }
+}
+
+/**
+ * A [BluetoothLog] that records each call. [calls] holds the control calls as text, for example
+ * "startSession(1)", "sessionBoard(1, <boardId>, <fw>)", "boardLogState(1, REQUESTED)",
+ * "app(1, CONNECT_ATTEMPT, 2/3)", "endSession(1)", "clear()". [chunks] holds the board chunks.
+ */
+internal class RecordingBluetoothLog(override val recordsBoardLines: Boolean = true) : BluetoothLog {
+    val calls: MutableList<String> = mutableListOf()
+    val chunks: MutableList<Pair<Int, ByteArray>> = mutableListOf()
+    override val snapshot: StateFlow<BluetoothLogSnapshot> = MutableStateFlow(BluetoothLogSnapshot())
+
+    override fun startSession(session: Int) {
+        calls += "startSession($session)"
+    }
+
+    override fun sessionBoard(session: Int, boardId: String, firmwareVersion: String?) {
+        calls += "sessionBoard($session, $boardId, $firmwareVersion)"
+    }
+
+    override fun boardChunk(session: Int, bytes: ByteArray) {
+        chunks += session to bytes.copyOf()
+    }
+
+    override fun boardLogState(session: Int, state: BoardLogState) {
+        calls += "boardLogState($session, $state)"
+    }
+
+    override fun app(session: Int, event: BluetoothLogEvent, detail: String?) {
+        calls += if (detail == null) {
+            "app($session, $event)"
+        } else {
+            "app($session, $event, $detail)"
+        }
+    }
+
+    override fun endSession(session: Int) {
+        calls += "endSession($session)"
+    }
+
+    override fun clear() {
+        calls += "clear()"
+    }
+}
+
+/** The NUS service of the board log, for engine tests. [send] acts as one board notification. */
+internal class FakeBoardLogService(isNotifying: Boolean = false, withTx: Boolean = true) {
+    val tx = FakeOtsCharacteristic(BoardLogUuids.Tx, isNotifying = isNotifying)
+    val service = FakeBluetoothService(
+        uuid = BoardLogUuids.Service,
+        characteristics = if (withTx) listOf(tx) else emptyList(),
+    )
+
+    suspend fun send(text: String) = tx.emitter.emit(text.encodeToByteArray())
 }

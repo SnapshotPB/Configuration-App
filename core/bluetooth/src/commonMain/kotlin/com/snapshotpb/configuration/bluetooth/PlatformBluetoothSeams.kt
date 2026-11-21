@@ -3,13 +3,15 @@ package com.snapshotpb.configuration.bluetooth
 import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
+import dev.bluefalcon.core.BluetoothService
+import dev.bluefalcon.core.Uuid
 import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The platform-specific surface of the Bluetooth stack. [BluetoothConnectionEngine] — the shared,
  * `final` connect/teardown/link-loss-monitor/OTS pipeline — is constructed with one of these and
  * calls into it for the handful of operations that genuinely differ per platform: scanning, device
- * bookkeeping, manager-state reconciliation, connect-readiness, MTU negotiation, debug formatting.
+ * bookkeeping, manager-state reconciliation, connect-readiness, and MTU negotiation.
  *
  * This is the composition seam that replaced the old `AbstractBluetoothManager` open base. Because
  * the engine receives a *fully constructed* seams object instead of inheriting from it, the engine
@@ -62,6 +64,13 @@ interface PlatformBluetoothSeams {
      */
     suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic)
 
-    /** Renders a captured debug event for the log line (hex by default; Android logs ASCII text). */
-    fun formatDebugBytes(event: BleDebugEvent): String
+    /**
+     * The service [serviceUuid] of [peripheral] with its characteristics, or null when the discovered
+     * services do not hold it. Discovers the characteristics when the engine did not supply them
+     * (MacosJvmEngine). Returns the service with an empty list when no characteristic comes in time.
+     */
+    suspend fun serviceWithCharacteristics(peripheral: BluetoothPeripheral, serviceUuid: Uuid): BluetoothService?
+
+    /** True when the engine hides a service that the user did not permit (Web Bluetooth). */
+    val servicesFollowPermission: Boolean get() = false
 }

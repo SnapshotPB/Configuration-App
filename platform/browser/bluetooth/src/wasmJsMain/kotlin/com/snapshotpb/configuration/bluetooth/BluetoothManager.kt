@@ -1,5 +1,7 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.bluetooth.smp.SmpUuids
@@ -23,27 +25,31 @@ private val log = Arbor.tag("BluetoothManager")
  * vendor UUIDs are characteristic and type values in that service. They are in the list too, so
  * the list stays correct if a later firmware moves the vendor `ObjectData` to a service of its own.
  *
- * The SMP service [SmpUuids.Service] (firmware update) is in the list too. The board does not
- * advertise it, and `JsEngine` does not filter the chooser with this list, so the entry hides no
- * board. A board on an older firmware has no SMP service; the engine then lists only the services
- * that the board has. `EmulatorEngine` does the same: it gives only the services that the model of
- * the board has, so the viewer is not changed.
+ * The SMP service [SmpUuids.Service] (firmware update) and the NUS service [BoardLogUuids.Service]
+ * (board log) are in the list too. The board does not advertise them, and `JsEngine` does not
+ * filter the chooser with this list, so these entries hide no board. A board on an older firmware
+ * has no SMP or NUS service; the engine then lists only the services that the board has. A board
+ * permitted before this change has no NUS service in its grant until the user selects it again.
+ * `EmulatorEngine` does the same: it gives only the services that the model of the board has, so
+ * the viewer is not changed.
  *
  * The board filter UUID 0xFFE2 comes first, as on every other target (#128). `JsEngine` 3.7.14
  * does not filter its chooser with it: it puts the list in `optionalServices` only and asks
  * for all devices. So on the web the user picks the board in the chooser, and the name plays no
  * part.
  */
-private val scanFilters: List<ServiceFilter> = SnapshotAdvertisement.scanFilters + listOf(
+internal val scanFilters: List<ServiceFilter> = SnapshotAdvertisement.scanFilters + listOf(
     ServiceFilter(OtsUuids.Service),
     ServiceFilter(OtsUuids.DeviceObjectType),
     ServiceFilter(OtsUuids.ObjectData),
     ServiceFilter(SmpUuids.Service),
+    ServiceFilter(BoardLogUuids.Service),
 )
 
 /**
  * Web Bluetooth seam. Scans pass [scanFilters] (board filter + OTS + vendor service UUIDs), and
  * [onServicesDiscovered] discovers the characteristics of each service.
+ * [servicesFollowPermission] is true when the engine hides a service that the user did not permit.
  *
  * The upstream Web Bluetooth engine turns the scan filter list into the
  * `optionalServices` allowlist; with no filters that list is empty and the post-connect
@@ -51,9 +57,10 @@ private val scanFilters: List<ServiceFilter> = SnapshotAdvertisement.scanFilters
  * Web Bluetooth can't match services a device doesn't advertise — they are reused only as the
  * post-connect GATT allowlist.
  */
-private class BrowserBluetoothSeams(
+internal class BrowserBluetoothSeams(
     blueFalcon: BlueFalcon,
-    bluetoothStateManager: BluetoothStateManager
+    bluetoothStateManager: BluetoothStateManager,
+    override val servicesFollowPermission: Boolean,
 ) : DefaultBluetoothSeams(blueFalcon, bluetoothStateManager) {
     override suspend fun scanForDevices() {
         blueFalcon.scan(filters = scanFilters)
@@ -88,7 +95,7 @@ private class BrowserBluetoothSeams(
 class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
-    bleDebugLog: BleDebugLog,
+    bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
     restorePermittedBoards: Boolean = false,
@@ -97,10 +104,15 @@ class BluetoothManager(
     private val engine = BluetoothConnectionEngine(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
-        bleDebugLog = bleDebugLog,
+        bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,
-        seams = BrowserBluetoothSeams(blueFalcon, bluetoothStateManager),
+        // Only JsEngine sets restorePermittedBoards, and only JsEngine hides a service that the user did not permit.
+        seams = BrowserBluetoothSeams(
+            blueFalcon = blueFalcon,
+            bluetoothStateManager = bluetoothStateManager,
+            servicesFollowPermission = restorePermittedBoards,
+        ),
         coroutineScope = coroutineScope
     )
 

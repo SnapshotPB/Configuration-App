@@ -2,6 +2,7 @@
 
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothPeripheralState
 import dev.bluefalcon.engine.js.JsEngine
@@ -163,7 +164,7 @@ class PermittedBoardsTest {
         BluetoothManager(
             blueFalcon = BlueFalcon(JsEngine()),
             bluetoothStateManager = BluetoothStateManager(),
-            bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = DeviceWriteResultBus(),
             restorePermittedBoards = restorePermittedBoards,

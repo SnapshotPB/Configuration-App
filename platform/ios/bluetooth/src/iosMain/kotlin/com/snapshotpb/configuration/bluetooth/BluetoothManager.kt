@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.model.Device
@@ -10,6 +11,8 @@ import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothPeripheralState
+import dev.bluefalcon.core.BluetoothService
+import dev.bluefalcon.core.Uuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -114,6 +117,27 @@ private class IosBluetoothSeams(
     }
 
     /**
+     * Returns [serviceUuid] on [peripheral] after its characteristics populate, or null when the
+     * peripheral does not expose it. [onServicesDiscovered] requests the characteristics of every
+     * service already, so this only polls until the list is non-empty or retries end.
+     */
+    override suspend fun serviceWithCharacteristics(
+        peripheral: BluetoothPeripheral,
+        serviceUuid: Uuid,
+    ): BluetoothService? {
+        if (peripheral.services.none { it.uuid == serviceUuid }) return null
+        var retries = 0
+        while (
+            peripheral.services.firstOrNull { it.uuid == serviceUuid }?.characteristics?.isEmpty() == true &&
+            retries < CHARACTERISTIC_DISCOVERY_RETRIES
+        ) {
+            delay(CHARACTERISTIC_DISCOVERY_POLL_INTERVAL_MILLIS)
+            retries++
+        }
+        return peripheral.services.firstOrNull { it.uuid == serviceUuid }
+    }
+
+    /**
      * Waits until CoreBluetooth reports the subscription (`CBCharacteristic.isNotifying`, which
      * BlueFalcon's Apple engine passes through), for [SUBSCRIBE_SETTLE_MILLIS] at most. A timeout
      * continues, as the old fixed wait did: the control-point write that follows fails on its own
@@ -170,7 +194,7 @@ private class IosBluetoothSeams(
 class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
-    bleDebugLog: BleDebugLog,
+    bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
     coroutineScope: CoroutineScope = BluetoothConnectionEngine.defaultScope()
@@ -178,7 +202,7 @@ class BluetoothManager(
     private val engine = BluetoothConnectionEngine(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
-        bleDebugLog = bleDebugLog,
+        bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,
         seams = IosBluetoothSeams(blueFalcon, bluetoothStateManager),

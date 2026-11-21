@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.OlcpOpcode
 import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import com.snapshotpb.configuration.bluetooth.ots.ProfilesWire
@@ -94,7 +95,7 @@ class BluetoothConnectionEngineOtsTest {
         val engine = BluetoothConnectionEngine(
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
-            bleDebugLog = BleDebugLog(),
+            bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,
             seams = seams,

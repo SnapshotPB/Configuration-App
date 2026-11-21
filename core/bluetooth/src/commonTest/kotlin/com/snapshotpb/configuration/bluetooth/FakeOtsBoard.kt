@@ -18,7 +18,10 @@ import kotlinx.coroutines.flow.SharedFlow
  * A characteristic whose value the fake board sets. A read stores the new value, and the fake engine
  * returns it from `readCharacteristic`, as the BlueFalcon 3.7 engines do (ADR 0014).
  */
-internal class FakeOtsCharacteristic(override val uuid: Uuid) : BluetoothCharacteristic {
+internal class FakeOtsCharacteristic(
+    override val uuid: Uuid,
+    override val isNotifying: Boolean = false,
+) : BluetoothCharacteristic {
     var current: ByteArray? = null
     val emitter = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
 
@@ -26,9 +29,6 @@ internal class FakeOtsCharacteristic(override val uuid: Uuid) : BluetoothCharact
     override val value: ByteArray? get() = current
     override val notifications: SharedFlow<ByteArray> get() = emitter
     override val descriptors: List<BluetoothCharacteristicDescriptor> = emptyList()
-
-    /** False, so the engine's debug observer leaves these characteristics alone. */
-    override val isNotifying: Boolean = false
     override val service: BluetoothService? = null
 }
 
@@ -43,6 +43,8 @@ internal class FakeOtsBoard(
     peripheralName: String? = "Snapshot PB",
     /** More services of the board, for example the SMP service of [FakeSmpBoard]. */
     extraServices: List<BluetoothService> = emptyList(),
+    /** Initial [BluetoothCharacteristic.isNotifying] value of the OTS ObjectData characteristic. */
+    objectDataNotifying: Boolean = false,
 ) {
     class BoardObject(val name: String, var content: ByteArray, val writable: Boolean)
 
@@ -59,7 +61,7 @@ internal class FakeOtsBoard(
     private val objectSize = FakeOtsCharacteristic(OtsUuids.ObjectSize)
     private val objectId = FakeOtsCharacteristic(OtsUuids.ObjectId)
     private val objectProperties = FakeOtsCharacteristic(OtsUuids.ObjectProperties)
-    private val objectData = FakeOtsCharacteristic(OtsUuids.ObjectData)
+    private val objectData = FakeOtsCharacteristic(OtsUuids.ObjectData, isNotifying = objectDataNotifying)
 
     private val service = FakeBluetoothService(
         uuid = OtsUuids.Service,
