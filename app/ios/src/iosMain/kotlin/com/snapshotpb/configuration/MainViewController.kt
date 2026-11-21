@@ -229,7 +229,8 @@ private suspend fun openAppSettings() {
  *
  * The SwiftUI host ignores the safe area, so the Compose view fills the full screen. The
  * [safeDrawingPadding] keeps the content clear of the notch, the Dynamic Island, the home
- * indicator and the keyboard, as `MainActivity` does on Android.
+ * indicator and the keyboard, as `MainActivity` does on Android. The Swift host can show a
+ * side-bar back button through `SideBarBack.kt`.
  */
 fun MainViewController(): UIViewController {
     startOnce()
@@ -237,7 +238,7 @@ fun MainViewController(): UIViewController {
         withDI(di) {
             AppTheme {
                 Box(Modifier.safeDrawingPadding()) {
-                    App()
+                    App(externalBackControl = sideBarBackControl)
                 }
             }
         }
