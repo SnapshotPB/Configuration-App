@@ -79,6 +79,34 @@ class BluetoothLogImplTest {
     }
 
     @Test
+    fun boardLogState_changesAddEntriesAndIgnoreRepeatsAndFirstChunk() = runTest {
+        val log = BluetoothLogImpl(backgroundScope, TestClock(testScheduler))
+        log.startSession(1)
+        runCurrent()
+
+        log.boardLogState(1, BoardLogState.ABSENT)
+        log.boardLogState(1, BoardLogState.ABSENT)
+        log.boardLogState(1, BoardLogState.NOT_VISIBLE)
+        runCurrent()
+
+        advanceTimeBy(250)
+        log.boardChunk(1, "board line\r\n".encodeToByteArray())
+        log.boardLogState(1, BoardLogState.REQUESTED)
+        runCurrent()
+
+        assertEquals(BoardLogState.RECEIVING, log.snapshot.value.boardLogState)
+        assertEquals(
+            listOf(
+                BluetoothLogSource.APP to "session 1 started",
+                BluetoothLogSource.APP to "session 1: board log absent",
+                BluetoothLogSource.APP to "session 1: board log not_visible",
+                BluetoothLogSource.BOARD to "board line",
+            ),
+            log.snapshot.value.entries.map { it.source to it.text },
+        )
+    }
+
+    @Test
     fun sequenceNumbers_goUpByOneAndContinueAfterClear() = runTest {
         val log = BluetoothLogImpl(backgroundScope, TestClock(testScheduler))
         log.startSession(1)

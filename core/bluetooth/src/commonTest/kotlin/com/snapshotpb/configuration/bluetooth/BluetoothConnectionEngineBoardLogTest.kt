@@ -99,6 +99,9 @@ class BluetoothConnectionEngineBoardLogTest {
         runCurrent()
     }
 
+    private fun RecordingBluetoothLog.sessionCalls(): List<String> =
+        calls.filterNot { it.startsWith("app(") }
+
     @Test
     fun connect_startsSessionBeforeServiceDiscovery() = runTest(UnconfinedTestDispatcher()) {
         val f = newFixture()
@@ -107,7 +110,7 @@ class BluetoothConnectionEngineBoardLogTest {
         f.engine.connect(DEVICE_ID)
         runCurrent()
 
-        assertEquals(listOf("startSession(1)"), f.log.calls)
+        assertEquals(listOf("startSession(1)"), f.log.sessionCalls())
     }
 
     @Test
@@ -118,7 +121,7 @@ class BluetoothConnectionEngineBoardLogTest {
 
         assertEquals(
             listOf("startSession(1)", "boardLogState(1, ABSENT)", "sessionBoard(1, $BOARD_ID, null)"),
-            f.log.calls,
+            f.log.sessionCalls(),
         )
 
         f.engine.disconnect(DEVICE_ID)
@@ -131,7 +134,7 @@ class BluetoothConnectionEngineBoardLogTest {
                 "sessionBoard(1, $BOARD_ID, null)",
                 "endSession(1)",
             ),
-            f.log.calls,
+            f.log.sessionCalls(),
         )
     }
 
@@ -142,8 +145,8 @@ class BluetoothConnectionEngineBoardLogTest {
 
         connectComplete(f)
 
-        assertEquals("startSession(1)", f.log.calls.first())
-        assertEquals("endSession(1)", f.log.calls.last())
+        assertEquals("startSession(1)", f.log.sessionCalls().first())
+        assertEquals("endSession(1)", f.log.sessionCalls().last())
         assertTrue(f.log.calls.none { it.startsWith("sessionBoard") })
     }
 
@@ -154,7 +157,7 @@ class BluetoothConnectionEngineBoardLogTest {
 
         connectComplete(f)
 
-        assertEquals(listOf("startSession(1)", "endSession(1)"), f.log.calls)
+        assertEquals(listOf("startSession(1)", "endSession(1)"), f.log.sessionCalls())
     }
 
     @Test
@@ -167,7 +170,7 @@ class BluetoothConnectionEngineBoardLogTest {
             advanceTimeBy(SCAN_TIMEOUT_MILLIS)
             runCurrent()
 
-            assertEquals(listOf("startSession(1)", "endSession(1)"), f.log.calls)
+            assertEquals(listOf("startSession(1)", "endSession(1)"), f.log.sessionCalls())
         }
 
     @Test
@@ -178,7 +181,7 @@ class BluetoothConnectionEngineBoardLogTest {
         f.engine.connect(DEVICE_ID)
         runCurrent()
 
-        assertTrue(f.log.calls.isEmpty())
+        assertTrue(f.log.sessionCalls().isEmpty())
     }
 
     @Test
@@ -200,7 +203,7 @@ class BluetoothConnectionEngineBoardLogTest {
                 "boardLogState(2, ABSENT)",
                 "sessionBoard(2, $BOARD_ID, null)",
             ),
-            f.log.calls,
+            f.log.sessionCalls(),
         )
     }
 
@@ -211,13 +214,13 @@ class BluetoothConnectionEngineBoardLogTest {
 
         f.engine.connect(DEVICE_ID)
         runCurrent()
-        assertEquals(listOf("startSession(1)"), f.log.calls)
+        assertEquals(listOf("startSession(1)"), f.log.sessionCalls())
 
         f.engine.disconnect(DEVICE_ID)
         runCurrent()
 
-        assertTrue("endSession(1)" in f.log.calls)
-        assertEquals("endSession(1)", f.log.calls.last())
+        assertTrue("endSession(1)" in f.log.sessionCalls())
+        assertEquals("endSession(1)", f.log.sessionCalls().last())
     }
 
     @Test
@@ -247,7 +250,7 @@ class BluetoothConnectionEngineBoardLogTest {
                 "sessionBoard(1, $BOARD_ID, null)",
                 "endSession(1)",
             ),
-            f.log.calls,
+            f.log.sessionCalls(),
         )
     }
 
@@ -279,7 +282,7 @@ class BluetoothConnectionEngineBoardLogTest {
                     "boardLogState(2, ABSENT)",
                     "sessionBoard(2, $SECOND_BOARD_ID, null)",
                 ),
-                f.log.calls,
+                f.log.sessionCalls(),
             )
         }
 
