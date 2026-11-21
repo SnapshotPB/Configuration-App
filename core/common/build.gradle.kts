@@ -86,6 +86,11 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
             }
         }
+        jvmTest {
+            dependencies {
+                implementation(libs.compose.ui.test)
+            }
+        }
     }
 }
 
@@ -95,4 +100,13 @@ tasks.named<Test>("jvmTest") {
     inputs.dir(layout.projectDirectory.dir("../resources/src/commonMain/composeResources"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("composeResources")
+    // Fixes the test JVM locale to English so layout checks measure English text.
+    systemProperty("user.language", "en")
+    systemProperty("user.country", "US")
+    // Passes the output folder for layout images to the test JVM. Use an absolute path, because a
+    // relative path resolves under core/common.
+    providers.gradleProperty("snapshotpb.layoutRenderDir").orNull?.let {
+        systemProperty("snapshotpb.layoutRenderDir", it)
+        outputs.upToDateWhen { false }
+    }
 }

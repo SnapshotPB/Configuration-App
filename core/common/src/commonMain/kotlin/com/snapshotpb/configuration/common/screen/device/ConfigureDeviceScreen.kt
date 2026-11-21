@@ -142,6 +142,27 @@ fun ConfigureDeviceScreen(
         )
     }
 
+    ConfigureDeviceContent(
+        device = device,
+        draft = draft,
+        onEdit = viewModel::editDraft,
+        onSave = onSave,
+        firmwareSection = firmwareSection,
+    )
+}
+
+/**
+ * The configuration screen for [device] and [draft], with no view model, so a test can show it.
+ * [firmwareSection] is the Firmware section.
+ */
+@Composable
+internal fun ConfigureDeviceContent(
+    device: Device?,
+    draft: ConfigureDeviceDraft,
+    onEdit: ((ConfigureDeviceDraft) -> ConfigureDeviceDraft) -> Unit,
+    onSave: () -> Unit,
+    firmwareSection: @Composable () -> Unit,
+) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTwoPane = fitsTwoPanes(maxWidth, maxHeight)
 
@@ -190,7 +211,7 @@ fun ConfigureDeviceScreen(
                     ConfigureDeviceForm(
                         draft = draft,
                         device = device,
-                        onEdit = viewModel::editDraft,
+                        onEdit = onEdit,
                         onSave = onSave,
                         firmwareSection = firmwareSection,
                     )
@@ -208,7 +229,7 @@ fun ConfigureDeviceScreen(
                 ConfigureDeviceForm(
                     draft = draft,
                     device = device,
-                    onEdit = viewModel::editDraft,
+                    onEdit = onEdit,
                     onSave = onSave,
                     firmwareSection = firmwareSection,
                 )

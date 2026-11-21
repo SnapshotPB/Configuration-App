@@ -138,7 +138,7 @@ fun ConnectingDeviceScreen(
 }
 
 @Composable
-private fun ConnectingProgress(
+internal fun ConnectingProgress(
     deviceName: String,
     fwVersion: String,
     bluetoothState: BluetoothState,
