@@ -1,7 +1,13 @@
 package com.snapshotpb.configuration.bluetooth
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 enum class StepStatus {
@@ -103,8 +109,14 @@ class BluetoothStateManager {
         _connectedDevices.update { it + deviceId }
     }
 
+    /**
+     * Marks [deviceId] as disconnected and removes its recorded eye state.
+     *
+     * The eye watcher count does not change, so a screen can keep its watch over a reconnect.
+     */
     fun deviceDisconnected(deviceId: String) {
         _connectedDevices.update { it - deviceId }
+        _eyeReadings.update { it - deviceId }
     }
 
     private val _updateServices: MutableStateFlow<Map<String, BoardUpdateService>> = MutableStateFlow(emptyMap())
@@ -135,5 +147,80 @@ class BluetoothStateManager {
 
     fun updateFirmwareUpload(state: FirmwareUploadState) {
         _firmwareUpload.value = state
+    }
+
+    private val _eyeReadings: MutableStateFlow<Map<String, EyeReadingState>> = MutableStateFlow(emptyMap())
+    private val _eyeWatchers: MutableStateFlow<Map<String, Int>> = MutableStateFlow(emptyMap())
+
+    /**
+     * The number of eye watchers of each board id.
+     *
+     * The key is the board id, the same key as [connectedDevices] and [updateServices]. A board
+     * with no watcher has no entry.
+     */
+    val eyeWatchers: StateFlow<Map<String, Int>> get() = _eyeWatchers
+
+    /**
+     * The eye watcher count of [deviceId]: 0 when it has no watcher.
+     *
+     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices]. This
+     * flow emits the current count first.
+     */
+    fun eyeWatcherCount(deviceId: String): Flow<Int> =
+        eyeWatchers.map { it[deviceId] ?: 0 }.distinctUntilChanged()
+
+    /**
+     * The live eye state of [deviceId]. A collector of this flow is a watcher.
+     *
+     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices]. The
+     * flow emits `null` while the board is not connected, and [EyeReadingState.Waiting] when the
+     * board is connected with no recorded state.
+     *
+     * This API has no watch request on [BluetoothRequestManager]. That request bus has no buffer
+     * and can lose a request, and a cancelled scope cannot send an unwatch request.
+     */
+    fun eyeReading(deviceId: String): Flow<EyeReadingState?> = flow {
+        addEyeWatcher(deviceId)
+        try {
+            emitAll(
+                combine(connectedDevices, _eyeReadings) { connected, readings ->
+                    if (deviceId !in connected) null else readings[deviceId] ?: EyeReadingState.Waiting
+                }.distinctUntilChanged(),
+            )
+        } finally {
+            removeEyeWatcher(deviceId)
+        }
+    }
+
+    /**
+     * Records the eye state of [deviceId]. The engine and the simulated boards call it.
+     *
+     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices].
+     */
+    fun setEyeReading(deviceId: String, state: EyeReadingState) {
+        _eyeReadings.update { readings -> readings + (deviceId to state) }
+    }
+
+    /**
+     * Removes the eye state of [deviceId], for example at the teardown of its link.
+     *
+     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices].
+     */
+    fun clearEyeReading(deviceId: String) {
+        _eyeReadings.update { readings -> readings - deviceId }
+    }
+
+    private fun addEyeWatcher(deviceId: String) {
+        _eyeWatchers.update { watchers ->
+            val count = (watchers[deviceId] ?: 0) + 1
+            watchers + (deviceId to count)
+        }
+    }
+
+    private fun removeEyeWatcher(deviceId: String) {
+        _eyeWatchers.update { watchers ->
+            val count = (watchers[deviceId] ?: 0) - 1
+            if (count <= 0) watchers - deviceId else watchers + (deviceId to count)
+        }
     }
 }
