@@ -12,10 +12,13 @@ import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
 import com.snapshotpb.configuration.bluetooth.emulator.EmulatorEngine
 import com.snapshotpb.configuration.common.App
 import com.snapshotpb.configuration.common.media.installWebPhotoLoader
+import com.snapshotpb.configuration.common.share.ShareRequest
+import com.snapshotpb.configuration.common.share.ShareRequestManager
 import com.snapshotpb.configuration.di.platformModule
 import com.snapshotpb.configuration.media.MediaState
 import com.snapshotpb.configuration.media.MediaStateManager
 import com.snapshotpb.configuration.screen.screenModule
+import com.snapshotpb.configuration.share.WebShareHandler
 import com.toxicbakery.logging.Arbor
 import kotlinx.browser.document
 import kotlinx.coroutines.CancellationException
@@ -56,6 +59,7 @@ fun main() {
     // app is a hard block (`UnsupportedBrowserScreen`) and nothing should resolve the BlueFalcon-backed manager.
     if (bluetoothSupported) {
         startBluetoothBridge()
+        startShareBridge()
     }
 
     // The image loader must know the stored device photos before the first badge loads.
@@ -124,6 +128,29 @@ private suspend fun onBluetoothRequest(bluetoothManager: BluetoothManager, reque
         is BluetoothRequest.ConfirmFirmware ->
             bluetoothManager.confirmFirmware(request.deviceId, request.requestId)
     }
+}
+
+private fun startShareBridge() {
+    val shareRequestManager: ShareRequestManager = di.direct.instance()
+    val handler = WebShareHandler()
+    appScope.launch {
+        shareRequestManager.bus.collect { request ->
+            val summary = request.describe()
+            log.d { "ShareRequestManager bus request: $summary" }
+            runCatching { handler.handle(request) }
+                .onSuccess { outcome ->
+                    log.d { "Share request $summary outcome: $outcome" }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    log.e(error) { "Share request $summary failed" }
+                }
+        }
+    }
+}
+
+private fun ShareRequest.describe(): String = when (this) {
+    is ShareRequest.Text -> "$fileName (${text.length} characters)"
 }
 
 /** Feature-detects the Web Bluetooth API. Present only on Chromium browsers. */
