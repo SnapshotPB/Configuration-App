@@ -17,10 +17,12 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -44,8 +46,16 @@ internal const val RENDER_DENSITY = 2f
  */
 internal const val LAYOUT_RENDER_DIR_PROPERTY = "snapshotpb.layoutRenderDir"
 
-/** One place to scroll to after the first check, and the name of its image. */
-internal class ScrollTarget(val name: String, val matcher: SemanticsMatcher)
+/**
+ * One place to scroll to after the first check, and the name of its image.
+ *
+ * @property toEnd True when the harness must scroll the list to its end after the target scroll.
+ */
+internal class ScrollTarget(
+    val name: String,
+    val matcher: SemanticsMatcher,
+    val toEnd: Boolean = false,
+)
 
 /**
  * The layout measurements of one [screen] at one [size], merged across all scroll positions.
@@ -69,6 +79,7 @@ internal data class LayoutReport(
 private const val BOUNDS_TOLERANCE_PX = 1f
 private const val INITIAL_FRAME_MS = 100L
 private const val SCROLL_SETTLE_MS = 500L
+private const val SCROLL_TO_END_PX = 100_000f
 private val METRICS_LOCK = Any()
 
 /**
@@ -191,6 +202,9 @@ private fun SemanticsNodeInteractionsProvider.scrollToTarget(
     val directMatches = onAllNodes(target.matcher, useUnmergedTree = true)
     if (directMatches.fetchSemanticsNodes().isNotEmpty()) {
         directMatches[0].performScrollTo()
+        if (target.toEnd) {
+            scrollContainerToEnd()
+        }
         return
     }
     // A LazyColumn composes only visible items, so scroll each lazy container to find the target.
@@ -199,12 +213,36 @@ private fun SemanticsNodeInteractionsProvider.scrollToTarget(
     for (index in 0 until containerCount) {
         try {
             containers[index].performScrollToNode(target.matcher)
+            if (target.toEnd) {
+                containers[index].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+                    scrollBy(0f, SCROLL_TO_END_PX)
+                }
+            }
             return
         } catch (_: AssertionError) {
             // This container does not hold the target node; try the next one.
         }
     }
     fail("$screen (${size.label}): scroll target \"${target.name}\" not found in any scroll container")
+}
+
+private fun SemanticsNodeInteractionsProvider.scrollContainerToEnd() {
+    val lazyContainers = onAllNodes(hasScrollToIndexAction(), useUnmergedTree = true)
+    if (lazyContainers.fetchSemanticsNodes().isNotEmpty()) {
+        lazyContainers[0].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+            scrollBy(0f, SCROLL_TO_END_PX)
+        }
+        return
+    }
+    val scrollContainers = onAllNodes(
+        SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy),
+        useUnmergedTree = true,
+    )
+    if (scrollContainers.fetchSemanticsNodes().isNotEmpty()) {
+        scrollContainers[0].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+            scrollBy(0f, SCROLL_TO_END_PX)
+        }
+    }
 }
 
 private fun inspectSemanticsTree(

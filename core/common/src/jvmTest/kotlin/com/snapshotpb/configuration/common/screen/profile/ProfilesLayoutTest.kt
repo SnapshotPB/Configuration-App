@@ -3,6 +3,7 @@ package com.snapshotpb.configuration.common.screen.profile
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import com.snapshotpb.configuration.bluetooth.ConnectionProgress
 import com.snapshotpb.configuration.bluetooth.StepStatus
@@ -14,10 +15,12 @@ import com.snapshotpb.configuration.common.layout.layoutDevice
 import com.snapshotpb.configuration.common.layout.unclippedBoundsInRoot
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.device_pending_changes_banner_title
+import com.snapshotpb.core.resources.profile_badge_description
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Layout checks for [ProfilesContent] at every [DuoSize]. */
@@ -62,8 +65,9 @@ class ProfilesLayoutTest {
     @Test
     fun profilesPendingFitsEveryDuoSize() {
         val lastProfileMatcher = hasText(pendingDevice.knownProfiles.last().name)
+        val headerMatcher = hasContentDescription(runBlocking { getString(Res.string.profile_badge_description) })
         val bannerMatcher = hasText(runBlocking { getString(Res.string.device_pending_changes_banner_title) })
-        val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher))
+        val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher, toEnd = true))
 
         for (size in DuoSize.entries) {
             val report = checkScreenLayout(
@@ -74,13 +78,14 @@ class ProfilesLayoutTest {
                     if (!fitsTwoPanes(inspectedSize.width, inspectedSize.height) &&
                         inspectedSize != DuoSize.OUTER_LANDSCAPE_SYMMETRIC
                     ) {
-                        val (lastProfileBottom, bannerTop) = lastProfileAndBannerY(
-                            lastProfileMatcher,
-                            bannerMatcher,
+                        val position = lastProfilePosition(
+                            lastProfileMatcher = lastProfileMatcher,
+                            headerMatcher = headerMatcher,
+                            bannerMatcher = bannerMatcher,
                         )
                         assertTrue(
-                            lastProfileBottom < bannerTop,
-                            "${inspectedSize.label}: last profile bottom $lastProfileBottom px is not above banner top $bannerTop px",
+                            position.visible,
+                            "${inspectedSize.label}: last profile [${position.profileTop}, ${position.profileBottom}] is outside header bottom ${position.headerBottom} and banner top ${position.bannerTop}",
                         )
                     }
                 },
@@ -99,21 +104,23 @@ class ProfilesLayoutTest {
     @Test
     fun pendingCard_coversListInShortOneColumnWindow_knownDefect() {
         val lastProfileMatcher = hasText(pendingDevice.knownProfiles.last().name)
+        val headerMatcher = hasContentDescription(runBlocking { getString(Res.string.profile_badge_description) })
         val bannerMatcher = hasText(runBlocking { getString(Res.string.device_pending_changes_banner_title) })
-        val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher))
+        val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher, toEnd = true))
 
         checkScreenLayout(
             screen = "profiles-pending",
             size = DuoSize.OUTER_LANDSCAPE_SYMMETRIC,
             scrollTargets = scrollTargets,
             inspect = { inspectedSize ->
-                val (lastProfileBottom, bannerTop) = lastProfileAndBannerY(
-                    lastProfileMatcher,
-                    bannerMatcher,
+                val position = lastProfilePosition(
+                    lastProfileMatcher = lastProfileMatcher,
+                    headerMatcher = headerMatcher,
+                    bannerMatcher = bannerMatcher,
                 )
-                assertTrue(
-                    lastProfileBottom >= bannerTop,
-                    "${inspectedSize.label}: expected last profile bottom $lastProfileBottom px at or below banner top $bannerTop px",
+                assertFalse(
+                    position.visible,
+                    "${inspectedSize.label}: expected last profile [${position.profileTop}, ${position.profileBottom}] to be covered by header bottom ${position.headerBottom} or banner top ${position.bannerTop}",
                 )
             },
         ) {
@@ -134,11 +141,25 @@ class ProfilesLayoutTest {
         )
     }
 
-    private fun SemanticsNodeInteractionsProvider.lastProfileAndBannerY(
+    private data class LastProfilePosition(
+        val profileTop: Float,
+        val profileBottom: Float,
+        val headerBottom: Float,
+        val bannerTop: Float,
+    ) {
+        val visible: Boolean
+            get() = profileTop >= headerBottom && profileBottom <= bannerTop
+    }
+
+    private fun SemanticsNodeInteractionsProvider.lastProfilePosition(
         lastProfileMatcher: SemanticsMatcher,
+        headerMatcher: SemanticsMatcher,
         bannerMatcher: SemanticsMatcher,
-    ): Pair<Float, Float> {
-        val lastProfileBottom = onNode(lastProfileMatcher, useUnmergedTree = true)
+    ): LastProfilePosition {
+        val profileBounds = onNode(lastProfileMatcher, useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .unclippedBoundsInRoot()
+        val headerBottom = onNode(headerMatcher, useUnmergedTree = true)
             .fetchSemanticsNode()
             .unclippedBoundsInRoot()
             .bottom
@@ -146,6 +167,11 @@ class ProfilesLayoutTest {
             .fetchSemanticsNode()
             .unclippedBoundsInRoot()
             .top
-        return lastProfileBottom to bannerTop
+        return LastProfilePosition(
+            profileTop = profileBounds.top,
+            profileBottom = profileBounds.bottom,
+            headerBottom = headerBottom,
+            bannerTop = bannerTop,
+        )
     }
 }
