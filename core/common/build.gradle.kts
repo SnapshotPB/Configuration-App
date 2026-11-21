@@ -86,6 +86,11 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
             }
         }
+        jvmTest {
+            dependencies {
+                implementation(libs.compose.ui.test)
+            }
+        }
     }
 }
 
@@ -95,4 +100,8 @@ tasks.named<Test>("jvmTest") {
     inputs.dir(layout.projectDirectory.dir("../resources/src/commonMain/composeResources"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("composeResources")
+    // Passes the output folder for layout images to the test JVM when the property is set.
+    providers.gradleProperty("snapshotpb.layoutRenderDir").orNull?.let {
+        systemProperty("snapshotpb.layoutRenderDir", it)
+    }
 }

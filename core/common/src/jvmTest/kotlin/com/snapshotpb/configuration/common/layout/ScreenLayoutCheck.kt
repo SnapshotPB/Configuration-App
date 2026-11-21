@@ -1,0 +1,270 @@
+package com.snapshotpb.configuration.common.layout
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.runSkikoComposeUiTest
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
+import com.snapshotpb.configuration.common.composable.fitsTwoPanes
+import com.snapshotpb.configuration.common.theme.AppTypography
+import com.snapshotpb.configuration.common.theme.Theme
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
+import kotlin.math.roundToInt
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/** The pixel scale of the test window, in pixels per dp. */
+internal const val RENDER_DENSITY = 2f
+
+/**
+ * The JVM system property that names the output folder for images and metrics. When the property
+ * is not set, the harness writes no file, so CI writes no file.
+ */
+internal const val LAYOUT_RENDER_DIR_PROPERTY = "snapshotpb.layoutRenderDir"
+
+/** One place to scroll to after the first check, and the name of its image. */
+internal class ScrollTarget(val name: String, val matcher: SemanticsMatcher)
+
+/**
+ * The layout measurements of one [screen] at one [size], merged across all scroll positions.
+ *
+ * @property screen The short name of the screen and state.
+ * @property size The display size of the test window.
+ * @property twoPanes True when [fitsTwoPanes] selects two panes at [size].
+ * @property scrollColumnWidthsDp The distinct sorted widths in dp of nodes with vertical scroll.
+ * @property textFieldWidthsDp The distinct sorted widths in dp of nodes with `SetText`.
+ * @property overflowTexts The distinct sorted texts whose layout overflows their width.
+ */
+internal data class LayoutReport(
+    val screen: String,
+    val size: DuoSize,
+    val twoPanes: Boolean,
+    val scrollColumnWidthsDp: List<Int>,
+    val textFieldWidthsDp: List<Int>,
+    val overflowTexts: List<String>,
+)
+
+private const val BOUNDS_TOLERANCE_PX = 1f
+private const val INITIAL_FRAME_MS = 100L
+private const val SCROLL_SETTLE_MS = 500L
+private val METRICS_LOCK = Any()
+
+/**
+ * Renders [content] at [size] in a headless Skiko window and checks the semantics tree.
+ *
+ * The harness checks that no node scrolls sideways and that no node goes past the left edge or the
+ * right edge of the window. It also records the widths of scroll columns and text fields, and each
+ * overflow text, in the returned [LayoutReport]. The harness writes PNG images and `metrics.tsv`
+ * only when [LAYOUT_RENDER_DIR_PROPERTY] is set, so CI writes no file.
+ */
+@OptIn(ExperimentalTestApi::class)
+internal fun checkScreenLayout(
+    screen: String,
+    size: DuoSize,
+    scrollTargets: List<ScrollTarget> = emptyList(),
+    content: @Composable () -> Unit,
+): LayoutReport {
+    val windowWidthPx = size.width.value * RENDER_DENSITY
+    val windowHeightPx = size.height.value * RENDER_DENSITY
+    val renderDir = System.getProperty(LAYOUT_RENDER_DIR_PROPERTY)
+        ?.takeIf { it.isNotBlank() }
+        ?.let(::File)
+
+    val scrollColumnWidths = mutableListOf<Int>()
+    val textFieldWidths = mutableListOf<Int>()
+    val overflowTexts = mutableListOf<String>()
+
+    runSkikoComposeUiTest(
+        size = Size(windowWidthPx, windowHeightPx),
+        density = Density(RENDER_DENSITY),
+    ) {
+        // With autoAdvance off, an infinite animation does not stop waitForIdle().
+        mainClock.autoAdvance = false
+
+        setContent {
+            MaterialTheme(colorScheme = Theme.lightScheme, typography = AppTypography) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    content()
+                }
+            }
+        }
+        mainClock.advanceTimeBy(INITIAL_FRAME_MS)
+        waitForIdle()
+
+        inspectSemanticsTree(
+            root = onRoot(useUnmergedTree = true).fetchSemanticsNode(),
+            screen = screen,
+            size = size,
+            position = null,
+            windowWidthPx = windowWidthPx,
+            scrollColumnWidths = scrollColumnWidths,
+            textFieldWidths = textFieldWidths,
+            overflowTexts = overflowTexts,
+        )
+        if (renderDir != null) {
+            writePng(renderDir, "$screen-${size.label}.png", onRoot().captureToImage().toAwtImage())
+        }
+
+        for (target in scrollTargets) {
+            onNode(target.matcher, useUnmergedTree = true).performScrollTo()
+            mainClock.advanceTimeBy(SCROLL_SETTLE_MS)
+            waitForIdle()
+
+            inspectSemanticsTree(
+                root = onRoot(useUnmergedTree = true).fetchSemanticsNode(),
+                screen = screen,
+                size = size,
+                position = target.name,
+                windowWidthPx = windowWidthPx,
+                scrollColumnWidths = scrollColumnWidths,
+                textFieldWidths = textFieldWidths,
+                overflowTexts = overflowTexts,
+            )
+            if (renderDir != null) {
+                writePng(
+                    renderDir,
+                    "$screen-${size.label}-${target.name}.png",
+                    onRoot().captureToImage().toAwtImage(),
+                )
+            }
+        }
+    }
+
+    val report = LayoutReport(
+        screen = screen,
+        size = size,
+        twoPanes = fitsTwoPanes(size.width, size.height),
+        scrollColumnWidthsDp = scrollColumnWidths.distinct().sorted(),
+        textFieldWidthsDp = textFieldWidths.distinct().sorted(),
+        overflowTexts = overflowTexts.distinct().sorted(),
+    )
+    if (renderDir != null) {
+        appendMetrics(renderDir, report)
+    }
+    return report
+}
+
+private fun inspectSemanticsTree(
+    root: SemanticsNode,
+    screen: String,
+    size: DuoSize,
+    position: String?,
+    windowWidthPx: Float,
+    scrollColumnWidths: MutableList<Int>,
+    textFieldWidths: MutableList<Int>,
+    overflowTexts: MutableList<String>,
+) {
+    val context = if (position == null) "$screen (${size.label})" else "$screen (${size.label}, $position)"
+    for (node in collectNodes(root)) {
+        val nodeLabel = describeNode(node)
+
+        assertNull(
+            node.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange),
+            "$context: node must not scroll sideways ($nodeLabel)",
+        )
+
+        val left = node.positionInRoot.x
+        val right = left + node.size.width
+        assertTrue(
+            left >= -BOUNDS_TOLERANCE_PX,
+            "$context: node goes past the left edge (x=$left px, $nodeLabel)",
+        )
+        assertTrue(
+            right <= windowWidthPx + BOUNDS_TOLERANCE_PX,
+            "$context: node goes past the right edge (right=$right px > $windowWidthPx px, $nodeLabel)",
+        )
+
+        if (node.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange) != null) {
+            scrollColumnWidths += (node.size.width / RENDER_DENSITY).roundToInt()
+        }
+        if (node.config.getOrNull(SemanticsActions.SetText) != null) {
+            textFieldWidths += (node.size.width / RENDER_DENSITY).roundToInt()
+        }
+        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.let { getTextLayout ->
+            val results = mutableListOf<TextLayoutResult>()
+            getTextLayout(results)
+            for (result in results) {
+                if (result.didOverflowWidth) {
+                    overflowTexts += result.layoutInput.text.text
+                }
+            }
+        }
+    }
+}
+
+private fun collectNodes(root: SemanticsNode): List<SemanticsNode> {
+    val nodes = mutableListOf<SemanticsNode>()
+    val queue = ArrayDeque<SemanticsNode>()
+    queue.add(root)
+    while (queue.isNotEmpty()) {
+        val node = queue.removeFirst()
+        nodes += node
+        queue.addAll(node.children)
+    }
+    return nodes
+}
+
+private fun describeNode(node: SemanticsNode): String {
+    val parts = buildList {
+        node.config.getOrNull(SemanticsProperties.TestTag)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { add("tag=$it") }
+        node.config.getOrNull(SemanticsProperties.Text)
+            ?.joinToString(" ") { it.text }
+            ?.takeIf { it.isNotBlank() }
+            ?.let { add("text=\"$it\"") }
+        node.config.getOrNull(SemanticsProperties.EditableText)
+            ?.text
+            ?.takeIf { it.isNotBlank() }
+            ?.let { add("editableText=\"$it\"") }
+        node.config.getOrNull(SemanticsProperties.ContentDescription)
+            ?.joinToString(" ")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { add("contentDescription=\"$it\"") }
+    }
+    return if (parts.isEmpty()) "node#${node.id}" else parts.joinToString(", ")
+}
+
+private fun writePng(renderDir: File, fileName: String, image: BufferedImage) {
+    renderDir.mkdirs()
+    ImageIO.write(image, "png", File(renderDir, fileName))
+}
+
+private fun appendMetrics(renderDir: File, report: LayoutReport) {
+    renderDir.mkdirs()
+    val overflow = report.overflowTexts.joinToString("|") { text ->
+        text.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
+    }
+    val line = listOf(
+        report.screen,
+        report.size.label,
+        report.size.width.value.roundToInt().toString(),
+        report.size.height.value.roundToInt().toString(),
+        report.twoPanes.toString(),
+        report.scrollColumnWidthsDp.joinToString(","),
+        report.textFieldWidthsDp.joinToString(","),
+        overflow,
+    ).joinToString("\t") + "\n"
+    synchronized(METRICS_LOCK) {
+        File(renderDir, "metrics.tsv").appendText(line)
+    }
+}
