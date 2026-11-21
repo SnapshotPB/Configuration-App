@@ -110,7 +110,9 @@ val localizationCheck = tasks.register<LocalizationCheckTask>("localizationCheck
         "values-es-rMX:bluetooth_log_source_app",
         "values-es-rUS:bluetooth_log_source_app",
         "values-fr:bluetooth_log_source_app",
-        "values-fr-rCA:bluetooth_log_source_app"
+        "values-fr-rCA:bluetooth_log_source_app",
+        // `Ball` is the same word in German.
+        "values-de:profile_eye_result_ball"
     )
     reportFile = layout.buildDirectory.file("reports/localization/strings.txt")
 }
