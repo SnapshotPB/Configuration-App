@@ -4,7 +4,6 @@ import android.app.Application
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.snapshotpb.configuration.bluetooth.BleDebugLog
 import com.snapshotpb.configuration.bluetooth.BlueFalconLogger
 import com.snapshotpb.configuration.bluetooth.BluetoothManager
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
@@ -83,7 +82,6 @@ class OtsSessionE2ETest {
         val manager = BluetoothManager(
             blueFalcon = blueFalcon,
             bluetoothStateManager = BluetoothStateManager(),
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,

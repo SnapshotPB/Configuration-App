@@ -52,7 +52,6 @@ class EmulatedBoardConnectionTest {
         val manager = BluetoothManager(
             blueFalcon = BlueFalcon(EmulatorEngine(board.bridge, backgroundScope)),
             bluetoothStateManager = stateManager,
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = writeBus,

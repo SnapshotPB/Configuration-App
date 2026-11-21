@@ -25,8 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Default [PlatformBluetoothSeams] used directly by desktop and as the base for the browser, iOS and
  * Android seams. Owns [deviceState] and provides the shared behavior: a scan for the board service, a
  * name-updating [addDevice], the default manager-state mapping, service discovery that waits for the
- * link to open, OTS characteristic discovery when the engine did not do it, no MTU step, immediate
- * connect-readiness, and hex debug formatting. Subclasses override only the members that genuinely
+ * link to open, OTS characteristic discovery when the engine did not do it, no MTU step, and
+ * immediate connect-readiness. Subclasses override only the members that genuinely
  * differ on their platform.
  */
 open class DefaultBluetoothSeams(
@@ -182,8 +182,6 @@ open class DefaultBluetoothSeams(
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {
         delay(SUBSCRIBE_SETTLE_MILLIS)
     }
-
-    override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
 
     companion object {
         // 10 s for the seam alone. The engine stops each connect attempt after 5 s

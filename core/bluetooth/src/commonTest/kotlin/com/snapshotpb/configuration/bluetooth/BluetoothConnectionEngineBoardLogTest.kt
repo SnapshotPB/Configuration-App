@@ -1,6 +1,7 @@
 package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
+import com.snapshotpb.configuration.bluetooth.ots.OtsUuids
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheralState
@@ -45,7 +46,12 @@ class BluetoothConnectionEngineBoardLogTest {
         peripheralUuid: String,
         boardDevice: snapshotpb.v1.Device,
         extraServices: List<BluetoothService> = emptyList(),
-    ): FakeOtsBoard = FakeOtsBoard(peripheralUuid = peripheralUuid, extraServices = extraServices).apply {
+        objectDataNotifying: Boolean = false,
+    ): FakeOtsBoard = FakeOtsBoard(
+        peripheralUuid = peripheralUuid,
+        extraServices = extraServices,
+        objectDataNotifying = objectDataNotifying,
+    ).apply {
         setContent("device", ProtoBuf.encodeToByteArray(snapshotpb.v1.Device.serializer(), boardDevice))
         setContent("device_config", ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), BOARD_CONFIG))
         setContent("profiles", ProtoBuf.encodeToByteArray(Profiles.serializer(), BOARD_PROFILES))
@@ -54,6 +60,7 @@ class BluetoothConnectionEngineBoardLogTest {
     private fun TestScope.newFixture(
         extraServices: List<BluetoothService> = emptyList(),
         log: RecordingBluetoothLog = RecordingBluetoothLog(),
+        objectDataNotifying: Boolean = false,
     ): Fixture {
         val falconEngine = FakeBlueFalconEngine(backgroundScope).apply {
             emitManagerState(BluetoothManagerState.Ready)
@@ -63,6 +70,7 @@ class BluetoothConnectionEngineBoardLogTest {
             peripheralUuid = "board-1",
             boardDevice = BOARD_DEVICE,
             extraServices = extraServices,
+            objectDataNotifying = objectDataNotifying,
         ).apply {
             install(falconEngine)
         }
@@ -76,7 +84,6 @@ class BluetoothConnectionEngineBoardLogTest {
         val engine = BluetoothConnectionEngine(
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = log,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = DeviceWriteResultBus(),
@@ -487,7 +494,7 @@ class BluetoothConnectionEngineBoardLogTest {
     }
 
     @Test
-    fun subscribeBoardLog_whenTxIsNotifying_debugObserverSkipsSecondSubscribe() =
+    fun subscribeBoardLog_whenTxIsNotifying_subscribesOnceOnly() =
         runTest(UnconfinedTestDispatcher()) {
             val nus = FakeBoardLogService(isNotifying = true)
             val f = newFixture(extraServices = listOf(nus.service))
@@ -495,6 +502,21 @@ class BluetoothConnectionEngineBoardLogTest {
             connectComplete(f)
 
             assertEquals(1, f.falconEngine.notifyCalls.count { it.first.uuid == BoardLogUuids.Tx })
+        }
+
+    @Test
+    fun connect_whenObjectDataIsNotifying_subscribesObjectDataOnlyThroughOtsClient() =
+        runTest(UnconfinedTestDispatcher()) {
+            val plain = newFixture(objectDataNotifying = false)
+            connectComplete(plain)
+            val plainCount = plain.falconEngine.notifyCalls.count { it.first.uuid == OtsUuids.ObjectData }
+
+            val notifying = newFixture(objectDataNotifying = true)
+            connectComplete(notifying)
+            val notifyingCount = notifying.falconEngine.notifyCalls.count { it.first.uuid == OtsUuids.ObjectData }
+
+            assertEquals(plainCount, notifyingCount)
+            assertTrue(notifyingCount > 0)
         }
 
     @Test

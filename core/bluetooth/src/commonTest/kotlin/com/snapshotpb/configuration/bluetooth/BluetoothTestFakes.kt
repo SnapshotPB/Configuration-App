@@ -281,8 +281,6 @@ internal class FakePlatformBluetoothSeams : PlatformBluetoothSeams {
         serviceWithCharacteristicsGate?.await()
         return peripheral.services.firstOrNull { it.uuid == serviceUuid }
     }
-
-    override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
 }
 
 /**

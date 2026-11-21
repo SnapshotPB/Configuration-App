@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.StateFlow
 class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
-    bleDebugLog: BleDebugLog,
     bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
@@ -26,7 +25,6 @@ class BluetoothManager(
     private val engine = BluetoothConnectionEngine(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
-        bleDebugLog = bleDebugLog,
         bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,

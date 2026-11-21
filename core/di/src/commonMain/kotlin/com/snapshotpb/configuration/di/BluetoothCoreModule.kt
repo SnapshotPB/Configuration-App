@@ -1,6 +1,5 @@
 package com.snapshotpb.configuration.di
 
-import com.snapshotpb.configuration.bluetooth.BleDebugLog
 import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
 import com.snapshotpb.configuration.bluetooth.DeviceReadResultBus
@@ -17,7 +16,6 @@ import org.kodein.di.bindSingletonOf
 val bluetoothCoreModule = DI.Module("bluetoothCoreModule") {
     bindSingletonOf(::BluetoothStateManager)
     bindSingletonOf(::BluetoothRequestManager)
-    bindSingletonOf(::BleDebugLog)
     bindSingleton<BluetoothLog> { BluetoothLogImpl(CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
     bindSingletonOf(::DeviceReadResultBus)
     bindSingletonOf(::DeviceWriteResultBus)

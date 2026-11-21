@@ -20,7 +20,6 @@ internal val bluetoothModule = DI.Module("bluetoothModule") {
                 ),
             ),
             bluetoothStateManager = instance(),
-            bleDebugLog = instance(),
             bluetoothLog = instance(),
             deviceReadResultBus = instance(),
             deviceWriteResultBus = instance()

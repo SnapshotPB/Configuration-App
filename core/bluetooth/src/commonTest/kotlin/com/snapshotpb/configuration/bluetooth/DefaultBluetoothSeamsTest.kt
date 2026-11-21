@@ -73,19 +73,6 @@ class DefaultBluetoothSeamsTest {
     }
 
     @Test
-    fun formatDebugBytes_rendersHex() = runTest {
-        val (seams, _) = newSeams()
-        val event = BleDebugEvent(
-            timestampMillis = 0L,
-            deviceId = "dev",
-            characteristicUuid = "char",
-            bytes = byteArrayOf(0x0A, 0xFF.toByte())
-        )
-
-        assertEquals("0a ff", seams.formatDebugBytes(event))
-    }
-
-    @Test
     fun awaitServicesDiscovered_trueWhenServicesPresentOnAnOpenLink() = runTest {
         val falconEngine = FakeBlueFalconEngine(backgroundScope)
             .apply { connectionStateResult = BluetoothPeripheralState.Connected }

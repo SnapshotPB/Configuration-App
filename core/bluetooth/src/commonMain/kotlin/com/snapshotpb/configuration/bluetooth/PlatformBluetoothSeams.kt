@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
  * The platform-specific surface of the Bluetooth stack. [BluetoothConnectionEngine] — the shared,
  * `final` connect/teardown/link-loss-monitor/OTS pipeline — is constructed with one of these and
  * calls into it for the handful of operations that genuinely differ per platform: scanning, device
- * bookkeeping, manager-state reconciliation, connect-readiness, MTU negotiation, debug formatting.
+ * bookkeeping, manager-state reconciliation, connect-readiness, and MTU negotiation.
  *
  * This is the composition seam that replaced the old `AbstractBluetoothManager` open base. Because
  * the engine receives a *fully constructed* seams object instead of inheriting from it, the engine
@@ -73,7 +73,4 @@ interface PlatformBluetoothSeams {
 
     /** True when the engine hides a service that the user did not permit (Web Bluetooth). */
     val servicesFollowPermission: Boolean get() = false
-
-    /** Renders a captured debug event for the log line (hex by default; Android logs ASCII text). */
-    fun formatDebugBytes(event: BleDebugEvent): String
 }

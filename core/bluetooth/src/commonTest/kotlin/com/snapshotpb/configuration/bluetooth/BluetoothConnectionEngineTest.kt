@@ -46,7 +46,6 @@ class BluetoothConnectionEngineTest {
         val engine = BluetoothConnectionEngine(
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = DeviceWriteResultBus(),

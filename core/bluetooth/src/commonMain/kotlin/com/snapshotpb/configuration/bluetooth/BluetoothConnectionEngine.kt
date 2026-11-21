@@ -37,7 +37,6 @@ import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothPeripheralState
 import dev.bluefalcon.core.ConnectionPriority
-import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +73,6 @@ import snapshotpb.v1.DeviceConfig
 class BluetoothConnectionEngine(
     private val blueFalcon: BlueFalcon,
     private val bluetoothStateManager: BluetoothStateManager,
-    private val bleDebugLog: BleDebugLog,
     private val bluetoothLog: BluetoothLog,
     private val deviceReadResultBus: DeviceReadResultBus,
     private val deviceWriteResultBus: DeviceWriteResultBus,
@@ -84,7 +82,6 @@ class BluetoothConnectionEngine(
     /** Discovered-device state, owned by [seams]; exposed for the platform manager / UI to observe. */
     val deviceState: StateFlow<BluetoothDeviceState> get() = seams.deviceState
 
-    private val debugJobs: MutableMap<String, List<Job>> = mutableMapOf()
     /** The number of the next log session. Guarded by [connectionLock]. */
     private var nextLogSession = 1
     /** The log session of each scan key with a link or an attempt. Guarded by [connectionLock]. */
@@ -378,15 +375,8 @@ class BluetoothConnectionEngine(
                 )
                 seams.onServicesDiscovered(peripheral)
                 subscribeBoardLog(session, key, peripheral)
-                // Only observe a live, OTS-ready link: a failed OTS init or initial read tears the
-                // link down (finding #6, H1), and the services-not-discovered branch already
-                // disconnected the peripheral, so observing either would leak collectors on a dead
-                // link.
                 otsReady = withHighConnectionPriority(peripheral) {
                     initializeOtsClient(key, peripheral, expectedBoardId(deviceId, key))
-                }
-                if (otsReady) {
-                    observeForDebug(peripheral)
                 }
             } else {
                 log.d { "Services not discovered for $deviceId after $CONNECT_ATTEMPTS attempts" }
@@ -489,15 +479,14 @@ class BluetoothConnectionEngine(
     }
 
     /**
-     * Releases everything held for the scan key [deviceId]: stops the link-loss monitor, cancels
-     * debug observers, ends the log session, closes the OTS client, and clears the connected flag.
-     * When [disconnectPeripheral] is true it also asks BlueFalcon to drop the GATT link (explicit
-     * disconnect); detected link-loss passes false because the radio is already gone. Must be called
-     * while [connectionLock] is held. A second call does nothing more, so two callers at the same time are safe.
+     * Releases everything held for the scan key [deviceId]: stops the link-loss monitor, ends the
+     * log session, closes the OTS client, and clears the connected flag. When [disconnectPeripheral]
+     * is true it also asks BlueFalcon to drop the GATT link (explicit disconnect); detected link-loss
+     * passes false because the radio is already gone. Must be called while [connectionLock] is held.
+     * A second call does nothing more, so two callers at the same time are safe.
      */
     private suspend fun teardownConnection(deviceId: String, disconnectPeripheral: Boolean) {
         connectionMonitors.remove(deviceId)?.cancel()
-        debugJobs.remove(deviceId)?.forEach(Job::cancel)
         endLogSession(deviceId)
         lastReadProfiles.remove(deviceId)
         lastReadDeviceConfig.remove(deviceId)
@@ -713,7 +702,7 @@ class BluetoothConnectionEngine(
             // the GATT link is fully open but unusable: mark step 3 failed and tear the link down so
             // it can't survive untracked — an orphaned link breaks single-active-board
             // (disconnectOthers only iterates connectedBoardIds) and its later drop would never be
-            // detected, and its debug collectors would leak (finding #6). Safe to call
+            // detected (finding #6). Safe to call
             // teardownConnection here: connectAttempt holds connectionLock across this call.
             bluetoothStateManager.updateProgress(
                 ConnectionProgress(
@@ -1075,6 +1064,9 @@ class BluetoothConnectionEngine(
      * has not seen since [knownProfiles] and [knownDeviceConfig]. With no [knownDeviceConfig] (its
      * read-back failed), only the Profiles are compared.
      *
+     * The board sends no notification when the user edits it in its menu: its only notifications
+     * are the OTS control-point responses, the object data and the log lines.
+     *
      * The comparison uses the fields that the app edits and the sync rules compare, not the wire
      * copies. A change to a board-owned field only (`board_auto_off`), or between two enum numbers
      * that this app does not know, is not an edit that the user can see or resolve. The write then
@@ -1170,48 +1162,6 @@ class BluetoothConnectionEngine(
         log.d { "OTS $deviceId: ${ids.size} object(s)" }
         ids.forEach { (name, id) ->
             log.d { "OTS $deviceId: id=0x${id.toString(16).padStart(12, '0')} name=\"$name\"" }
-        }
-    }
-
-    /**
-     * Subscribes to every notifying characteristic on a freshly connected peripheral and
-     * records the inbound traffic in [bleDebugLog] for protocol debugging.
-     *
-     * This traffic tells the app nothing about the board state. The firmware sends no notification
-     * when the user edits the board in its menu: its only notifications are the OTS control-point
-     * responses, the object data and the log lines. The write path therefore compares the board with
-     * the last read before each write (see [showsABoardEdit]).
-     */
-    private fun observeForDebug(peripheral: BluetoothPeripheral) {
-        val deviceId = peripheral.uuid.toDeviceUuid().toString()
-        debugJobs.remove(deviceId)?.forEach(Job::cancel)
-        bleDebugLog.clear(deviceId)
-
-        // Skip NUS TX because subscribeBoardLog already subscribes to it.
-        val notifiable = peripheral.characteristics.filter { it.isNotifying && it.uuid != BoardLogUuids.Tx }
-        if (notifiable.isEmpty()) {
-            log.d { "No notifying characteristics to observe on $deviceId" }
-            return
-        }
-
-        log.d { "Observing ${notifiable.size} characteristic(s) on $deviceId for debugging" }
-        debugJobs[deviceId] = notifiable.map { characteristic ->
-            coroutineScope.launch {
-                runCatching { blueFalcon.notifyCharacteristic(peripheral, characteristic, true) }
-                    .onFailure { error ->
-                        log.d { "Failed to enable notifications for ${characteristic.uuid}: ${error.message}" }
-                    }
-                characteristic.notifications.collect { bytes ->
-                    val event = BleDebugEvent(
-                        timestampMillis = Clock.System.now().toEpochMilliseconds(),
-                        deviceId = deviceId,
-                        characteristicUuid = characteristic.uuid.toString(),
-                        bytes = bytes,
-                    )
-                    bleDebugLog.record(event)
-                    log.d { "BLE <- $deviceId / ${characteristic.uuid}: ${seams.formatDebugBytes(event)}" }
-                }
-            }
         }
     }
 

@@ -1,6 +1,5 @@
 package com.snapshotpb.configuration.bluetooth.tools
 
-import com.snapshotpb.configuration.bluetooth.BleDebugLog
 import com.snapshotpb.configuration.bluetooth.BluetoothManager
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
 import com.snapshotpb.configuration.bluetooth.DeviceReadResult
@@ -113,7 +112,6 @@ private suspend fun run(): Boolean = coroutineScope {
     val manager = BluetoothManager(
         blueFalcon = blueFalcon,
         bluetoothStateManager = BluetoothStateManager(),
-        bleDebugLog = BleDebugLog(),
         bluetoothLog = DisabledBluetoothLog,
         deviceReadResultBus = readBus,
         deviceWriteResultBus = writeBus,

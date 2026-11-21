@@ -98,7 +98,6 @@ class WebBluetoothDiscoveryTest {
         val engine = BluetoothConnectionEngine(
             blueFalcon = f.blueFalcon,
             bluetoothStateManager = f.stateManager,
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = readBus,
             deviceWriteResultBus = DeviceWriteResultBus(),

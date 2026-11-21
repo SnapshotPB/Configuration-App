@@ -285,9 +285,6 @@ private class AndroidBluetoothSeams(
      */
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {}
 
-    override fun formatDebugBytes(event: BleDebugEvent): String =
-        event.bytes.toString(Charsets.US_ASCII)
-
     companion object {
         private const val MAX_ATT_MTU = 517
         private const val MTU_NEGOTIATION_TIMEOUT_MILLIS = 2_000L
@@ -307,7 +304,6 @@ private class AndroidBluetoothSeams(
 class BluetoothManager(
     blueFalcon: BlueFalcon,
     bluetoothStateManager: BluetoothStateManager,
-    bleDebugLog: BleDebugLog,
     bluetoothLog: BluetoothLog,
     deviceReadResultBus: DeviceReadResultBus,
     deviceWriteResultBus: DeviceWriteResultBus,
@@ -317,7 +313,6 @@ class BluetoothManager(
     private val engine = BluetoothConnectionEngine(
         blueFalcon = blueFalcon,
         bluetoothStateManager = bluetoothStateManager,
-        bleDebugLog = bleDebugLog,
         bluetoothLog = bluetoothLog,
         deviceReadResultBus = deviceReadResultBus,
         deviceWriteResultBus = deviceWriteResultBus,

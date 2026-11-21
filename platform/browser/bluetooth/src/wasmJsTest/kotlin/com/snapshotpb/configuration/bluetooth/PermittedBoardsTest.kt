@@ -164,7 +164,6 @@ class PermittedBoardsTest {
         BluetoothManager(
             blueFalcon = BlueFalcon(JsEngine()),
             bluetoothStateManager = BluetoothStateManager(),
-            bleDebugLog = BleDebugLog(),
             bluetoothLog = DisabledBluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = DeviceWriteResultBus(),
