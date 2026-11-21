@@ -5,8 +5,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -182,15 +184,14 @@ private fun inspectSemanticsTree(
             "$context: node must not scroll sideways ($nodeLabel)",
         )
 
-        val left = node.positionInRoot.x
-        val right = left + node.size.width
+        val unclippedBounds = node.unclippedBoundsInRoot()
         assertTrue(
-            left >= -BOUNDS_TOLERANCE_PX,
-            "$context: node goes past the left edge (x=$left px, $nodeLabel)",
+            unclippedBounds.left >= -BOUNDS_TOLERANCE_PX,
+            "$context: node goes past the left edge (x=${unclippedBounds.left} px, $nodeLabel)",
         )
         assertTrue(
-            right <= windowWidthPx + BOUNDS_TOLERANCE_PX,
-            "$context: node goes past the right edge (right=$right px > $windowWidthPx px, $nodeLabel)",
+            unclippedBounds.right <= windowWidthPx + BOUNDS_TOLERANCE_PX,
+            "$context: node goes past the right edge (right=${unclippedBounds.right} px > $windowWidthPx px, $nodeLabel)",
         )
 
         if (node.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange) != null) {
@@ -202,17 +203,32 @@ private fun inspectSemanticsTree(
         val text = node.config.getOrNull(SemanticsProperties.Text)
             ?.joinToString(" ") { it.text }
             ?.takeIf { it.isNotBlank() }
-        if (text != null && isTextClipped(node, insideVerticalScroll)) {
+        if (text != null && isTextClipped(node, unclippedBounds, insideVerticalScroll)) {
             clippedTexts += text
         }
     }
 }
 
-private fun isTextClipped(node: SemanticsNode, insideVerticalScroll: Boolean): Boolean {
+/**
+ * The bounds of this node in root coordinates, with transforms applied and with no clip.
+ */
+internal fun SemanticsNode.unclippedBoundsInRoot(): Rect {
+    // positionInRoot maps the local origin through transforms. For a node rotated 180 degrees,
+    // that point is the bottom-right corner, so positionInRoot.x + size.width adds the width twice.
+    val coordinates = layoutInfo.coordinates
+    if (!coordinates.isAttached) return Rect.Zero
+    return coordinates.findRootCoordinates().localBoundingBoxOf(coordinates, clipBounds = false)
+}
+
+private fun isTextClipped(
+    node: SemanticsNode,
+    unclippedBounds: Rect,
+    insideVerticalScroll: Boolean,
+): Boolean {
     if (!insideVerticalScroll) {
         val clippedBounds = node.boundsInRoot
-        val clippedInWidth = node.size.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
-        val clippedInHeight = node.size.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
+        val clippedInWidth = unclippedBounds.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
+        val clippedInHeight = unclippedBounds.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
         if (clippedInWidth || clippedInHeight) return true
     }
     val getTextLayout = node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action
