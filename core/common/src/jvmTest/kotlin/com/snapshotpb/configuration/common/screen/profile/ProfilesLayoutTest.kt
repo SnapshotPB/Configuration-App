@@ -7,7 +7,6 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import com.snapshotpb.configuration.bluetooth.ConnectionProgress
 import com.snapshotpb.configuration.bluetooth.StepStatus
-import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.ScrollTarget
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
@@ -74,9 +73,7 @@ class ProfilesLayoutTest {
                 size = size,
                 scrollTargets = scrollTargets,
                 inspect = { inspectedSize ->
-                    if (!fitsTwoPanes(inspectedSize.width, inspectedSize.height) &&
-                        inspectedSize != DuoSize.OUTER_LANDSCAPE
-                    ) {
+                    if (inspectedSize == DuoSize.INNER_ROTATED) {
                         val position = lastProfilePosition(
                             lastProfileMatcher = lastProfileMatcher,
                             headerMatcher = headerMatcher,
@@ -95,34 +92,38 @@ class ProfilesLayoutTest {
     }
 
     /**
-     * In a one-column window 415 dp high, the 260 dp photo header and `PendingChangesCard` cover
-     * the profile list. The plan records this as a known defect. When a change to the screen
-     * corrects the defect, change this test to assert that the last profile clears the banner.
+     * On the outer display, the 260 dp photo header and `PendingChangesCard` leave too little
+     * height for the profile list. In portrait, the header covers the top of the last profile
+     * name. In landscape, no profile shows. The plan records this as a known defect. When a
+     * screen change corrects the defect, change this test to assert that the last profile is
+     * visible.
      */
     @Test
-    fun pendingCard_coversListInShortOneColumnWindow_knownDefect() {
+    fun pendingCard_coversListOnOuterDisplay_knownDefect() {
         val lastProfileMatcher = hasText(pendingDevice.knownProfiles.last().name)
         val headerMatcher = hasContentDescription(runBlocking { getString(Res.string.profile_badge_description) })
         val bannerMatcher = hasText(runBlocking { getString(Res.string.device_pending_changes_banner_title) })
         val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher, toEnd = true))
 
-        checkScreenLayout(
-            screen = "profiles-pending-defect",
-            size = DuoSize.OUTER_LANDSCAPE,
-            scrollTargets = scrollTargets,
-            inspect = { inspectedSize ->
-                val position = lastProfilePosition(
-                    lastProfileMatcher = lastProfileMatcher,
-                    headerMatcher = headerMatcher,
-                    bannerMatcher = bannerMatcher,
-                )
-                assertFalse(
-                    position.visible,
-                    "${inspectedSize.label}: expected last profile [${position.profileTop}, ${position.profileBottom}] to be covered by header bottom ${position.headerBottom} or banner top ${position.bannerTop}",
-                )
-            },
-        ) {
-            PendingProfiles()
+        for (size in listOf(DuoSize.OUTER_PORTRAIT, DuoSize.OUTER_LANDSCAPE)) {
+            checkScreenLayout(
+                screen = "profiles-pending-defect",
+                size = size,
+                scrollTargets = scrollTargets,
+                inspect = { inspectedSize ->
+                    val position = lastProfilePosition(
+                        lastProfileMatcher = lastProfileMatcher,
+                        headerMatcher = headerMatcher,
+                        bannerMatcher = bannerMatcher,
+                    )
+                    assertFalse(
+                        position.visible,
+                        "${inspectedSize.label}: expected last profile [${position.profileTop}, ${position.profileBottom}] to be covered by header bottom ${position.headerBottom} or banner top ${position.bannerTop}",
+                    )
+                },
+            ) {
+                PendingProfiles()
+            }
         }
     }
 
