@@ -16,7 +16,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.test.runSkikoComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import com.snapshotpb.configuration.common.composable.fitsTwoPanes
@@ -49,7 +49,7 @@ internal class ScrollTarget(val name: String, val matcher: SemanticsMatcher)
  * @property twoPanes True when [fitsTwoPanes] selects two panes at [size].
  * @property scrollColumnWidthsDp The distinct sorted widths in dp of nodes with vertical scroll.
  * @property textFieldWidthsDp The distinct sorted widths in dp of nodes with `SetText`.
- * @property overflowTexts The distinct sorted texts whose layout overflows their width.
+ * @property clippedTexts The distinct sorted texts clipped by bounds or by a height under one line.
  */
 internal data class LayoutReport(
     val screen: String,
@@ -57,7 +57,7 @@ internal data class LayoutReport(
     val twoPanes: Boolean,
     val scrollColumnWidthsDp: List<Int>,
     val textFieldWidthsDp: List<Int>,
-    val overflowTexts: List<String>,
+    val clippedTexts: List<String>,
 )
 
 private const val BOUNDS_TOLERANCE_PX = 1f
@@ -70,7 +70,7 @@ private val METRICS_LOCK = Any()
  *
  * The harness checks that no node scrolls sideways and that no node goes past the left edge or the
  * right edge of the window. It also records the widths of scroll columns and text fields, and each
- * overflow text, in the returned [LayoutReport]. The harness writes PNG images and `metrics.tsv`
+ * clipped text, in the returned [LayoutReport]. The harness writes PNG images and `metrics.tsv`
  * only when [LAYOUT_RENDER_DIR_PROPERTY] is set, so CI writes no file.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -88,7 +88,7 @@ internal fun checkScreenLayout(
 
     val scrollColumnWidths = mutableListOf<Int>()
     val textFieldWidths = mutableListOf<Int>()
-    val overflowTexts = mutableListOf<String>()
+    val clippedTexts = mutableListOf<String>()
 
     runSkikoComposeUiTest(
         size = Size(windowWidthPx, windowHeightPx),
@@ -118,7 +118,7 @@ internal fun checkScreenLayout(
             windowWidthPx = windowWidthPx,
             scrollColumnWidths = scrollColumnWidths,
             textFieldWidths = textFieldWidths,
-            overflowTexts = overflowTexts,
+            clippedTexts = clippedTexts,
         )
         if (renderDir != null) {
             writePng(renderDir, "$screen-${size.label}.png", onRoot().captureToImage().toAwtImage())
@@ -137,7 +137,7 @@ internal fun checkScreenLayout(
                 windowWidthPx = windowWidthPx,
                 scrollColumnWidths = scrollColumnWidths,
                 textFieldWidths = textFieldWidths,
-                overflowTexts = overflowTexts,
+                clippedTexts = clippedTexts,
             )
             if (renderDir != null) {
                 writePng(
@@ -155,7 +155,7 @@ internal fun checkScreenLayout(
         twoPanes = fitsTwoPanes(size.width, size.height),
         scrollColumnWidthsDp = scrollColumnWidths.distinct().sorted(),
         textFieldWidthsDp = textFieldWidths.distinct().sorted(),
-        overflowTexts = overflowTexts.distinct().sorted(),
+        clippedTexts = clippedTexts.distinct().sorted(),
     )
     if (renderDir != null) {
         appendMetrics(renderDir, report)
@@ -171,10 +171,10 @@ private fun inspectSemanticsTree(
     windowWidthPx: Float,
     scrollColumnWidths: MutableList<Int>,
     textFieldWidths: MutableList<Int>,
-    overflowTexts: MutableList<String>,
+    clippedTexts: MutableList<String>,
 ) {
     val context = if (position == null) "$screen (${size.label})" else "$screen (${size.label}, $position)"
-    for (node in collectNodes(root)) {
+    for ((node, insideVerticalScroll) in collectNodes(root)) {
         val nodeLabel = describeNode(node)
 
         assertNull(
@@ -199,26 +199,45 @@ private fun inspectSemanticsTree(
         if (node.config.getOrNull(SemanticsActions.SetText) != null) {
             textFieldWidths += (node.size.width / RENDER_DENSITY).roundToInt()
         }
-        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.let { getTextLayout ->
-            val results = mutableListOf<TextLayoutResult>()
-            getTextLayout(results)
-            for (result in results) {
-                if (result.didOverflowWidth) {
-                    overflowTexts += result.layoutInput.text.text
-                }
-            }
+        val text = node.config.getOrNull(SemanticsProperties.Text)
+            ?.joinToString(" ") { it.text }
+            ?.takeIf { it.isNotBlank() }
+        if (text != null && isTextClipped(node, insideVerticalScroll)) {
+            clippedTexts += text
         }
     }
 }
 
-private fun collectNodes(root: SemanticsNode): List<SemanticsNode> {
-    val nodes = mutableListOf<SemanticsNode>()
-    val queue = ArrayDeque<SemanticsNode>()
-    queue.add(root)
+private fun isTextClipped(node: SemanticsNode, insideVerticalScroll: Boolean): Boolean {
+    if (!insideVerticalScroll) {
+        val clippedBounds = node.boundsInRoot
+        val clippedInWidth = node.size.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
+        val clippedInHeight = node.size.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
+        if (clippedInWidth || clippedInHeight) return true
+    }
+    val getTextLayout = node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action
+        ?: return false
+    val results = mutableListOf<TextLayoutResult>()
+    getTextLayout(results)
+    return results.any { result ->
+        result.lineCount > 0 &&
+            node.size.height < (result.getLineBottom(0) - result.getLineTop(0)) - BOUNDS_TOLERANCE_PX
+    }
+}
+
+private fun collectNodes(root: SemanticsNode): List<Pair<SemanticsNode, Boolean>> {
+    val nodes = mutableListOf<Pair<SemanticsNode, Boolean>>()
+    val queue = ArrayDeque<Pair<SemanticsNode, Boolean>>()
+    queue.add(root to false)
     while (queue.isNotEmpty()) {
-        val node = queue.removeFirst()
-        nodes += node
-        queue.addAll(node.children)
+        val entry = queue.removeFirst()
+        val (node, insideVerticalScroll) = entry
+        nodes += entry
+        val childInsideVerticalScroll = insideVerticalScroll ||
+            node.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange) != null
+        for (child in node.children) {
+            queue.add(child to childInsideVerticalScroll)
+        }
     }
     return nodes
 }
@@ -251,7 +270,7 @@ private fun writePng(renderDir: File, fileName: String, image: BufferedImage) {
 
 private fun appendMetrics(renderDir: File, report: LayoutReport) {
     renderDir.mkdirs()
-    val overflow = report.overflowTexts.joinToString("|") { text ->
+    val clipped = report.clippedTexts.joinToString("|") { text ->
         text.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
     }
     val line = listOf(
@@ -262,7 +281,7 @@ private fun appendMetrics(renderDir: File, report: LayoutReport) {
         report.twoPanes.toString(),
         report.scrollColumnWidthsDp.joinToString(","),
         report.textFieldWidthsDp.joinToString(","),
-        overflow,
+        clipped,
     ).joinToString("\t") + "\n"
     synchronized(METRICS_LOCK) {
         File(renderDir, "metrics.tsv").appendText(line)
