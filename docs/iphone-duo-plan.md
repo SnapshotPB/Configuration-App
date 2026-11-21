@@ -294,6 +294,10 @@ buttons when the test printed `===FOLD_NOW===`.
 - The screen and its back stack stayed. The unsaved boot text and the unsaved profile name stayed.
 - A firmware update in the download step continued through a fold and an unfold, and ended with
   `done`.
+- Step 0: the same test also passed with the `master` build (commit 104ddea, CMP 1.12.2), with
+  14 changes and no crash. So the crash of Librechat-Mobile #602 does not occur in this app on
+  the simulator, the same result as the Theodo showroom. Keep CMP 1.13 (decision 1): it has the
+  fix, and a real device can behave differently.
 - The test skips when `RUN_FOLD_TESTS` is not 1. To run it by hand: start the test with
   `TEST_RUNNER_RUN_FOLD_TESTS=1` on a folded iPhone Duo simulator, and click Open or Closed in
   the Device Hub each time that the log shows `===FOLD_NOW===`. CI does not run the XCUITests, so
@@ -309,7 +313,6 @@ mode. This is an open item for the owner.
 
 ### Not done yet
 
-- Step 0 with the `master` build (CMP 1.12.2), to see if the crash occurs on this app.
 - Step 5.2 (Bluetooth at a fold) needs a real iPhone Duo (decision 3).
 - Step 5.4 (the screen stays on during an update after a fold) and step 5.5 (sheets, dialogs, the
   keyboard and the photo picker at a fold).
