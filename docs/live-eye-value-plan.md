@@ -208,9 +208,26 @@ This commit is first on the feature branch. Each other app chunk builds on it.
 
 1. First, do a test on a watch: add the eye service to the list of `mstBuildProfile` and
    connect to a board with the old firmware. Record the result in this plan.
+
+   **Status (2026-11-21): the watch test is still open.** It needs the owner, a watch and a
+   board with the old firmware. Chunk A5 did not wait for it. The app has a path for each
+   possible result (item 2). Record here which result the watch gives, then remove the paths
+   that the watch does not use.
 2. If the build fails for a board with no eye service, build the profile again with the OTS
    service only, and mark the board as `Unsupported`. A board with the old firmware must
    still connect.
+
+   Chunk A5 did this for three possible results. `BleManager._buildGattProfile` first asks
+   for the OTS service and the eye service.
+   - (a) The build calls `fail`: the app builds the profile again on the same link, with the
+     OTS service only.
+   - (b) The build succeeds, but the OTS subscribes of `OtsClient.prepare()` fail: the app
+     builds the profile again on the same link, with the OTS service only.
+   - (c) The build succeeds, and only the eye CCC write fails: the app shows `Unsupported`.
+     A CCC write that times out shows `Failed` (no hint).
+
+   After (a) or (b), the board is `Unsupported`. The app keeps the board address in memory
+   and uses the OTS-only profile for the next connects to it, until the app starts again.
 3. The one `mstOnCharaNotification` callback of `OtsClient.js` sends each value to its
    module by the characteristic UUID.
 4. The BLE layer turns the eye notifications on when the `EYE_THRESHOLD` stepper opens and

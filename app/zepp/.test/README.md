@@ -187,8 +187,8 @@ it impossible. Both are needed: every harness — including one given an explici
 `devices` list — must take a fresh `nextAddress()`.
 
 **Teardown must stop the radio, not just unhook it.** `OtsClient` registers its
-`mstOnCharaValueArrived` / `mstOnCharaNotification` callbacks once at module load
-and they are never cleared, so a radio left running after `teardown()` would keep
+`mstOnCharaValueArrived` callback, and `src/bluetooth/notificationRouter.js` registers
+the one `mstOnCharaNotification` callback, once at module load. They are never cleared, so a radio left running after `teardown()` would keep
 delivering into the NEXT test in the same file — a stale `2AC0` read or `2AC5`
 indication can satisfy an in-flight `_readChar`/`_awaitControlResponse` and make a
 test pass for the wrong reason. `installRadio()` therefore calls `detach()` on the
@@ -351,7 +351,8 @@ anything a flow leaves in flight is contained to its file; `e2e/connect-cancel.t
 has its own file for exactly that reason.
 
 The `@zos/ble` mock never clears its registered `mstOnCharaValueArrived` /
-`mstOnCharaNotification` callbacks: `OtsClient` registers them once at module load,
+`mstOnCharaNotification` callbacks: `OtsClient` and the notification router register
+them once at module load,
 and clearing them would silently break every later flow in the same file. Only the
 radio behind them is swapped.
 
