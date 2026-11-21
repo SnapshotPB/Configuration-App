@@ -187,7 +187,6 @@ jobs:
       # release at 27.1 or later. A move to a new major version (Xcode 28) must be a change to
       # this workflow. This step fails when the runner image has no Xcode 27.1 or later.
       - name: Select Xcode 27
-        id: xcode
         if: matrix.target == 'macos'
         run: |
           set -euo pipefail
@@ -198,8 +197,6 @@ jobs:
           sudo xcode-select -s "$XCODE_APP"
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
-          XCODE_VERSION="$(xcodebuild -version | awk 'NR == 1 { print $2 }')"
-          echo "version=$XCODE_VERSION" >> "$GITHUB_OUTPUT"
 
       # The JetBrains JDK, not Temurin: gradle/gradle-daemon-jvm.properties makes the Gradle
       # daemon run on a JetBrains JDK 21. With a different JDK here, Gradle downloads that
@@ -224,21 +221,15 @@ jobs:
       # recompiles the native platform libraries on every run. Only the ios and macos targets use
       # native, so the cache is scoped to them, and `runner.os` gives each of them its own
       # entry; the key tracks the Kotlin/AGP versions pinned in the version catalog.
-      #
-      # The macos key also holds the Xcode version, because Kotlin/Native caches store static
-      # libraries that the Xcode tools made. In CI run 44922097212, Xcode 27.2 with a cache from
-      # Xcode 26 gave many linker warnings ("could not open"). The ios key does not change.
-      #
-      # actions/cache saves a new key on master and on any other branch. GitHub gives an entry from
-      # another branch only to that same branch and its child branches.
+      # A run on master writes the entry when the key is new. A PR run restores it.
       - name: Cache Kotlin/Native (~/.konan)
         if: matrix.target == 'ios' || matrix.target == 'macos'
         uses: actions/cache@v6
         with:
           path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ steps.xcode.outputs.version && format('xcode{0}-', steps.xcode.outputs.version) || '' }}${{ hashFiles('gradle/libs.versions.toml') }}
+          key: ${{ runner.os }}-konan-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: |
-            ${{ runner.os }}-konan-${{ steps.xcode.outputs.version && format('xcode{0}-', steps.xcode.outputs.version) || '' }}
+            ${{ runner.os }}-konan-
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
