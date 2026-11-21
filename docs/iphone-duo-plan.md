@@ -255,3 +255,61 @@ The owner made these decisions on 2026-11-18.
   https://github.com/garfiec/Librechat-Mobile/issues/602
 - Theodo showroom for CMP on foldables:
   https://github.com/theodo-group/compose-multiplatforme-duo-fold-showroom
+
+## 9. Results on the dev Mac (2026-11-21)
+
+These results come from the iPhone Duo simulator on the dev MacBook, with the Debug build of
+commit f238df4 (CMP 1.13.0-rc01) and the simulated board (`--fake-board`).
+
+### Tools
+
+| Item | Value |
+|---|---|
+| Xcode | 27.2 (27B52), iOS 27.2 SDK. The app links with this SDK, so it does not run in the compatibility mode |
+| Simulator runtime | `iOS 27.2 (24B91016s)`, `com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4`. `xcodebuild -downloadPlatform iOS` installed it together with the normal iOS 27.2 runtime |
+| Device type | `com.apple.CoreSimulator.SimDeviceType.iPhone-Duo` |
+| Fold control | Only the Closed, Partially Open and Open buttons of the Xcode Device Hub. XCTest, XCUIAutomation and `simctl` have no fold API. `simctl io screenConfig power off` turns a screen off but does not fold the device, and it made SpringBoard crash |
+
+### Window sizes (step 4.1)
+
+| State | Window, points | Status bar | `fitsTwoPanes` |
+|---|---|---|---|
+| Folded, outer display | 466 x 678 | A column at the right edge, about 84 pt wide | One column |
+| Open, inner display | 951 x 669 | A column at the right edge | Two panes |
+| Open, inner display, turned with the Device Hub | 669 x 951 | A strip at the top | One column |
+
+The device opens in the 951 x 669 state. `XCUIDevice.orientation` does not turn the inner
+display. Thus decision 2 is about the 669 x 951 state only, which the user gets when they turn
+the open device.
+
+### Fold and unfold (steps 1.6, 5 and 6)
+
+`testSimulator_foldKeepsStateAndLayout` (`SnapshotPBUITests.swift`) passed with 14 changes on 7
+screens: the device list, Configure Device, the update confirm page, the update while it runs,
+the Bluetooth log, the Profiles screen and one profile. A host script clicked the Device Hub
+buttons when the test printed `===FOLD_NOW===`.
+
+- The crash of section 2 did not occur. The app process stayed the same, and no crash report
+  came, also 5 s after each change.
+- The screen and its back stack stayed. The unsaved boot text and the unsaved profile name stayed.
+- A firmware update in the download step continued through a fold and an unfold, and ended with
+  `done`.
+- The test skips when `RUN_FOLD_TESTS` is not 1. To run it by hand: start the test with
+  `TEST_RUNNER_RUN_FOLD_TESTS=1` on a folded iPhone Duo simulator, and click Open or Closed in
+  the Device Hub each time that the log shows `===FOLD_NOW===`. CI does not run the XCUITests, so
+  the `macos` target needs no iPhone Duo runtime (step 6.3).
+
+### Insets (step 3)
+
+`safeDrawingPadding()` keeps the content clear of the status bar column on each display. No
+button is under the status bar or the camera. The inset areas show the window background, not
+the app background: white in light mode and black in dark mode. On iPhone Duo these areas are
+larger than on other iPhone models, so the white column at the right is easy to see in light
+mode. This is an open item for the owner.
+
+### Not done yet
+
+- Step 0 with the `master` build (CMP 1.12.2), to see if the crash occurs on this app.
+- Step 5.2 (Bluetooth at a fold) needs a real iPhone Duo (decision 3).
+- Step 5.4 (the screen stays on during an update after a fold) and step 5.5 (sheets, dialogs, the
+  keyboard and the photo picker at a fold).

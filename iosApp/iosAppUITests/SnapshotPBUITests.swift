@@ -393,6 +393,168 @@ final class SnapshotPBUITests: XCTestCase {
         #endif
     }
 
+    /// iPhone Duo: a fold and an unfold keep the screen, the unsaved edits and a firmware update
+    /// (steps 5 and 6 of `docs/iphone-duo-plan.md`).
+    ///
+    /// Xcode 27.2 has no API that folds the simulator: XCTest and `simctl` cannot do it, and only the
+    /// Closed, Partially Open and Open buttons of the Device Hub can. So at each screen the test prints
+    /// `===FOLD_NOW=== <step> <screen> <open|closed>` and waits until the window changes its size. A
+    /// person, or a host script that clicks the Device Hub buttons, does the fold. Then the test prints
+    /// `===FOLD_DONE===` with the new window size in points.
+    ///
+    /// Run it on the iPhone Duo simulator, folded, with `TEST_RUNNER_RUN_FOLD_TESTS=1`.
+    func testSimulator_foldKeepsStateAndLayout() throws {
+        #if !targetEnvironment(simulator)
+        throw XCTSkip("Simulator test. It uses the simulated board.")
+        #else
+        guard envFlag(ProcessInfo.processInfo.environment, "RUN_FOLD_TESTS") == "1" else {
+            throw XCTSkip("Set RUN_FOLD_TESTS=1 and fold the iPhone Duo simulator when the test asks.")
+        }
+        let app = launchApp(fakeBoard: true)
+        let fold = FoldDriver(test: self, app: app)
+
+        // 1. The device list.
+        let devices = app.staticTexts["Devices"]
+        XCTAssertTrue(devices.waitForExistence(timeout: 20), "Devices not shown. \(dumpTree(app))")
+        fold.cycle("devices") { XCTAssertTrue(devices.exists, "Devices went away.") }
+
+        // 2. Configure Device, with an unsaved boot text.
+        startScanning(app)
+        discoverAndTapBoard(app, boardName: nil)
+        XCTAssertTrue(awaitConnectingScreenSucceeds(app, timeoutSec: 30),
+                      "The simulated board did not connect. \(connectingProgressDump(app))")
+        element(app, "btFinishConfiguration").tap()
+        let configure = app.staticTexts["Configure Device"]
+        XCTAssertTrue(configure.waitForExistence(timeout: 15), "Configure Device not shown. \(dumpTree(app))")
+        let bootText = textInput(app, index: 1)
+        bootText.tap()
+        bootText.typeText("F")
+        let typed = bootText.value as? String
+        dismissKeyboard(app)
+        fold.cycle("configure") {
+            XCTAssertTrue(configure.exists, "Configure Device went away.")
+            XCTAssertEqual(self.textInput(app, index: 1).value as? String, typed, "The unsaved boot text changed.")
+        }
+
+        // 3. The firmware update: the confirm page, then a fold while the update runs.
+        tapScrolling(app, element(app, "firmwareUpdateButton"))
+        let confirm = element(app, "firmwareUpdate:confirm")
+        XCTAssertTrue(confirm.waitForExistence(timeout: 15), "The update screen did not open. \(dumpTree(app))")
+        fold.cycle("firmware-confirm") { XCTAssertTrue(confirm.exists, "The update screen went away.") }
+        // On the outer display (466 x 678 points) the Start button is below the visible area.
+        tapScrolling(app, element(app, "firmwareStart"))
+        let running = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "firmwareUpdate:running-")).firstMatch
+        XCTAssertTrue(running.waitForExistence(timeout: 20), "The update did not start. \(dumpTree(app))")
+        print("===FIRMWARE STEP=== before the fold: \(running.identifier)")
+        fold.cycle("firmware-running") {
+            let phase = self.firmwarePhase(app)
+            XCTAssertTrue(phase.hasPrefix("firmwareUpdate:running-") || phase == "firmwareUpdate:done",
+                          "The update stopped at the fold: \(phase).")
+        }
+        let done = element(app, "firmwareUpdate:done")
+        XCTAssertTrue(done.waitForExistence(timeout: 120), "The update did not end with done: \(firmwarePhase(app)).")
+        element(app, "firmwareClose").tap()
+        XCTAssertTrue(configure.waitForExistence(timeout: 10), "Configure Device not shown after the update.")
+
+        // 4. The Bluetooth log, opened from the device list.
+        edgeSwipeBack(app)
+        let profiles = app.staticTexts["Board Connection"]
+        if !devices.waitForExistence(timeout: 5) {
+            XCTAssertTrue(profiles.exists, "Neither Devices nor the Profiles screen after the back. \(dumpTree(app))")
+            edgeSwipeBack(app)
+            XCTAssertTrue(devices.waitForExistence(timeout: 10), "Devices not shown after the back. \(dumpTree(app))")
+        }
+        element(app, "deviceScreenOverflowMenu").tap()
+        app.staticTexts["Bluetooth Log"].firstMatch.tap()
+        let clear = app.buttons["Clear"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 10), "The Bluetooth log did not open. \(dumpTree(app))")
+        fold.cycle("bluetooth-log") { XCTAssertTrue(clear.exists, "The Bluetooth log went away.") }
+        edgeSwipeBack(app)
+        XCTAssertTrue(devices.waitForExistence(timeout: 10), "Devices not shown after the log. \(dumpTree(app))")
+
+        // 5. The Profiles screen, then one profile with an unsaved name.
+        boardCell(app).tap()
+        XCTAssertTrue(profiles.waitForExistence(timeout: 15), "The Profiles screen is not shown. \(dumpTree(app))")
+        fold.cycle("profiles") { XCTAssertTrue(profiles.exists, "The Profiles screen went away.") }
+        let profileRow = app.staticTexts.matching(NSPredicate(format: "label == %@", "Semi")).firstMatch
+        XCTAssertTrue(profileRow.waitForExistence(timeout: 10), "No profile row. \(dumpTree(app))")
+        profileRow.tap()
+        let name = textInput(app, index: 0)
+        name.tap()
+        name.typeText("F")
+        let typedName = name.value as? String
+        dismissKeyboard(app)
+        fold.cycle("profile") {
+            XCTAssertEqual(self.textInput(app, index: 0).value as? String, typedName, "The unsaved profile name changed.")
+        }
+        print("===FOLD TEST=== complete")
+        #endif
+    }
+
+    /// The tag of the update screen, which holds its phase (`firmwareUpdate:<phase>`).
+    private func firmwarePhase(_ app: XCUIApplication) -> String {
+        let screen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "firmwareUpdate:")).firstMatch
+        return screen.exists ? screen.identifier : "(no update screen)"
+    }
+
+    /// Asks for a fold and an unfold, and checks the app after each one. See
+    /// ``testSimulator_foldKeepsStateAndLayout``.
+    private final class FoldDriver {
+        private let test: XCTestCase
+        private let app: XCUIApplication
+        private var step = 0
+
+        init(test: XCTestCase, app: XCUIApplication) {
+            self.test = test
+            self.app = app
+        }
+
+        /// Unfolds and folds again. After each change, and after a rotation of the open device,
+        /// [check] must pass.
+        func cycle(_ screen: String, check: () -> Void) {
+            change(screen, to: "open", check: check)
+            for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+                XCUIDevice.shared.orientation = orientation
+                sleep(2)
+                XCTAssertEqual(app.state, .runningForeground, "The app stopped at a rotation on \(screen).")
+                check()
+                print("===FOLD SIZE=== \(screen) open orientation \(orientation.rawValue) \(size())")
+                attach("\(screen)-open-orientation-\(orientation.rawValue)")
+            }
+            change(screen, to: "closed", check: check)
+        }
+
+        private func change(_ screen: String, to state: String, check: () -> Void) {
+            step += 1
+            let before = app.windows.firstMatch.frame.size
+            print("===FOLD_NOW=== \(step) \(screen) \(state) \(size())")
+            let deadline = Date().addingTimeInterval(180)
+            while app.windows.firstMatch.frame.size == before && Date() < deadline { usleep(500_000) }
+            XCTAssertNotEqual(app.windows.firstMatch.frame.size, before,
+                              "The window kept its size: no \(state) on \(screen) in 180 s.")
+            // Compose Multiplatform 1.12 stopped about 3 s after a fold, so wait longer than that.
+            sleep(5)
+            XCTAssertEqual(app.state, .runningForeground, "The app stopped after \(state) on \(screen).")
+            check()
+            attach("\(step)-\(screen)-\(state)")
+            print("===FOLD_DONE=== \(step) \(screen) \(state) \(size())")
+        }
+
+        private func size() -> String {
+            let frame = app.windows.firstMatch.frame
+            return "\(Int(frame.width))x\(Int(frame.height))"
+        }
+
+        private func attach(_ name: String) {
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name
+            shot.lifetime = .keepAlways
+            test.add(shot)
+        }
+    }
+
     /// Swipes from the left edge of the window to the right, as a user does to go back.
     private func edgeSwipeBack(_ app: XCUIApplication) {
         let window = app.windows.firstMatch
