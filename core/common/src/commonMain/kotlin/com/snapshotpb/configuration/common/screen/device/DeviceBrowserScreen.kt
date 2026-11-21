@@ -101,6 +101,24 @@ const val DEVICE_SCREEN_TERMS_OF_SERVICE_TAG = "deviceScreenTermsOfService"
 private const val PRIVACY_POLICY_URL = "https://snapshotpb.com/privacy"
 private const val TERMS_OF_SERVICE_URL = "https://snapshotpb.com/terms-and-conditions"
 
+/**
+ * The actions of the device list. Each action is required, so the compiler finds an action that
+ * the screen does not connect.
+ */
+internal class DeviceBrowserActions(
+    val onDeviceSelected: (Device) -> Unit,
+    val onDeviceConnect: (Device) -> Unit,
+    val onDeviceDeleted: (Device) -> Unit,
+    val onStartScanning: () -> Unit,
+    val onStopScanning: () -> Unit,
+    val onPairBoard: () -> Unit,
+    val onRequestPermission: () -> Unit,
+    val onRequestEnableBluetooth: () -> Unit,
+    val onRequestEnableLocation: () -> Unit,
+    val onAddDemoDevice: () -> Unit,
+    val onOpenBluetoothLog: () -> Unit,
+)
+
 @Composable
 fun DeviceBrowserScreen(
     navigationController: NavigationController,
@@ -116,45 +134,17 @@ fun DeviceBrowserScreen(
     // On the web a scan is one choice in the browser device list. The click handler opens the list
     // directly, because the browser opens it only during the user activation of the click.
     val pairsWithDeviceChooser = deviceScreenViewModel.pairsWithDeviceChooser
-    val onPairBoard: () -> Unit = {
-        log.d { "Pair a board requested." }
-        deviceScreenViewModel.pairBoard()
-    }
-
-    val onRequestPermission: () -> Unit = {
-        log.d { "Bluetooth permissions requested." }
-        scope.launch { deviceScreenViewModel.requestPermission() }
-    }
-    val onRequestEnableBluetooth: () -> Unit = {
-        log.d { "Enable Bluetooth requested." }
-        scope.launch { deviceScreenViewModel.requestEnableBluetooth() }
-    }
-    val onRequestEnableLocation: () -> Unit = {
-        log.d { "Enable location services requested." }
-        scope.launch { deviceScreenViewModel.requestEnableLocation() }
-    }
-    val onDeviceSelected: (Device) -> Unit = { device ->
-        log.d { "Device selected: $device" }
-        shouldScan = false
-        // Connection is now an explicit action on the Profiles screen, so just open it.
-        navigationController.goTo(ScreenKeyProfiles(device.id.toString()))
-    }
-    val onDeviceConnect: (Device) -> Unit = { device ->
-        log.d { "Device connect requested: $device" }
-        shouldScan = false
-        navigationController.goTo(ScreenKeyConnectingDevice(device.id.toString()))
-    }
+    val defaultDeviceName = stringResource(Res.string.device_default_name)
     // Deleting is destructive and has no undo, so it goes through a confirmation rather than
     // firing on a single tap of an icon button sitting next to the "open device" target.
     var devicePendingDelete: Device? by remember { mutableStateOf(null) }
-    val onDeviceDeleted: (Device) -> Unit = { device -> devicePendingDelete = device }
 
     devicePendingDelete?.let { pending ->
         ConfirmDeleteDialog(
             title = stringResource(Res.string.delete_device_dialog_title),
             message = stringResource(
                 Res.string.delete_device_dialog_message,
-                pending.name.ifEmpty { stringResource(Res.string.device_default_name) },
+                pending.name.ifEmpty { defaultDeviceName },
             ),
             onConfirm = {
                 log.d { "Device deleted: $pending" }
@@ -192,6 +182,74 @@ fun DeviceBrowserScreen(
         }
     }
 
+    val actions = DeviceBrowserActions(
+        onDeviceSelected = { device ->
+            log.d { "Device selected: $device" }
+            shouldScan = false
+            // Connection is now an explicit action on the Profiles screen, so just open it.
+            navigationController.goTo(ScreenKeyProfiles(device.id.toString()))
+        },
+        onDeviceConnect = { device ->
+            log.d { "Device connect requested: $device" }
+            shouldScan = false
+            navigationController.goTo(ScreenKeyConnectingDevice(device.id.toString()))
+        },
+        onDeviceDeleted = { device -> devicePendingDelete = device },
+        onStartScanning = {
+            log.d { "Scanning requested." }
+            shouldScan = true
+        },
+        onStopScanning = {
+            log.d { "Stop scanning requested." }
+            shouldScan = false
+        },
+        onPairBoard = {
+            log.d { "Pair a board requested." }
+            deviceScreenViewModel.pairBoard()
+        },
+        onRequestPermission = {
+            log.d { "Bluetooth permissions requested." }
+            scope.launch { deviceScreenViewModel.requestPermission() }
+        },
+        onRequestEnableBluetooth = {
+            log.d { "Enable Bluetooth requested." }
+            scope.launch { deviceScreenViewModel.requestEnableBluetooth() }
+        },
+        onRequestEnableLocation = {
+            log.d { "Enable location services requested." }
+            scope.launch { deviceScreenViewModel.requestEnableLocation() }
+        },
+        onAddDemoDevice = {
+            log.d { "Add demo device requested." }
+            deviceScreenViewModel.addDemoDevice(defaultDeviceName)
+        },
+        onOpenBluetoothLog = {
+            log.d { "Bluetooth log requested." }
+            navigationController.goTo(ScreenKeyBluetoothLog)
+        },
+    )
+
+    DeviceBrowserContent(
+        knownDevices = knownDevices,
+        bluetoothState = bluetoothState,
+        scannedDevices = scannedDevices,
+        pairsWithDeviceChooser = pairsWithDeviceChooser,
+        systemSupportsBluetoothEnable = deviceScreenViewModel.systemConfig
+            .supportsBluetoothEnableLinking,
+        actions = actions,
+    )
+}
+
+/** The device list for the given state, with no view model, so a test can show each state. */
+@Composable
+internal fun DeviceBrowserContent(
+    knownDevices: List<Device>,
+    bluetoothState: BluetoothState,
+    scannedDevices: List<Device>,
+    pairsWithDeviceChooser: Boolean,
+    systemSupportsBluetoothEnable: Boolean,
+    actions: DeviceBrowserActions,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize(),
@@ -221,17 +279,10 @@ fun DeviceBrowserScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val defaultDeviceName = stringResource(Res.string.device_default_name)
             DeviceScreenOverflowMenu(
                 showAddDemoDevice = knownDevices.isEmpty(),
-                onAddDemoDevice = {
-                    log.d { "Add demo device requested." }
-                    deviceScreenViewModel.addDemoDevice(defaultDeviceName)
-                },
-                onOpenBluetoothLog = {
-                    log.d { "Bluetooth log requested." }
-                    navigationController.goTo(ScreenKeyBluetoothLog)
-                },
+                onAddDemoDevice = actions.onAddDemoDevice,
+                onOpenBluetoothLog = actions.onOpenBluetoothLog,
             )
         }
 
@@ -266,8 +317,8 @@ fun DeviceBrowserScreen(
                                 KnownDeviceCard(
                                     first = index == 0,
                                     device = device,
-                                    onDeviceSelected = onDeviceSelected,
-                                    onDeviceDeleted = onDeviceDeleted,
+                                    onDeviceSelected = actions.onDeviceSelected,
+                                    onDeviceDeleted = actions.onDeviceDeleted,
                                 )
                             }
                         }
@@ -286,18 +337,15 @@ fun DeviceBrowserScreen(
 
                         when (val state = bluetoothState) {
                             BluetoothState.NeedsPermission -> item {
-                                NeedsPermission(onRequestPermission)
+                                NeedsPermission(actions.onRequestPermission)
                             }
 
                             BluetoothState.Ready -> if (pairsWithDeviceChooser) {
-                                discoveredDevices(scannedDevices, onDeviceConnect)
-                                item { PairBoard(onClick = onPairBoard) }
+                                discoveredDevices(scannedDevices, actions.onDeviceConnect)
+                                item { PairBoard(onClick = actions.onPairBoard) }
                             } else {
                                 item {
-                                    ScanForDevices(onClick = {
-                                        log.d { "Scanning requested." }
-                                        shouldScan = true
-                                    })
+                                    ScanForDevices(onClick = actions.onStartScanning)
                                 }
                             }
 
@@ -315,15 +363,12 @@ fun DeviceBrowserScreen(
                                         if (index > 0) Space(8.dp)
                                         DiscoveredDeviceCard(
                                             device = device,
-                                            onClick = { onDeviceConnect(device) }
+                                            onClick = { actions.onDeviceConnect(device) }
                                         )
                                     }
                                 }
                                 item { Space(8.dp) }
-                                item { ScanningForDevices(onClick = {
-                                    log.d { "Stop scanning requested." }
-                                    shouldScan = false
-                                }) }
+                                item { ScanningForDevices(onClick = actions.onStopScanning) }
                             }
 
                             is BluetoothState.Connecting -> item {
@@ -345,18 +390,17 @@ fun DeviceBrowserScreen(
 
                             BluetoothState.Disabled -> item {
                                 BluetoothDisabled(
-                                    systemSupportsBluetoothEnable = deviceScreenViewModel.systemConfig
-                                        .supportsBluetoothEnableLinking,
-                                    onClick = onRequestEnableBluetooth
+                                    systemSupportsBluetoothEnable = systemSupportsBluetoothEnable,
+                                    onClick = actions.onRequestEnableBluetooth
                                 )
                             }
 
                             BluetoothState.PermissionDenied -> item {
-                                BluetoothPermissionDenied(onClick = onRequestPermission)
+                                BluetoothPermissionDenied(onClick = actions.onRequestPermission)
                             }
 
                             BluetoothState.LocationDisabled -> item {
-                                LocationDisabled(onClick = onRequestEnableLocation)
+                                LocationDisabled(onClick = actions.onRequestEnableLocation)
                             }
                         }
                     }
@@ -369,63 +413,56 @@ fun DeviceBrowserScreen(
 
                     when (val state = bluetoothState) {
                         BluetoothState.NeedsPermission -> needsPermission(
-                            onDeviceSelected = onDeviceSelected,
-                            onDeviceDeleted = onDeviceDeleted,
-                            onRequestPermission = onRequestPermission,
+                            onDeviceSelected = actions.onDeviceSelected,
+                            onDeviceDeleted = actions.onDeviceDeleted,
+                            onRequestPermission = actions.onRequestPermission,
                             devices = knownDevices,
                         )
 
                         BluetoothState.Ready -> ready(
-                            onDeviceSelected = onDeviceSelected,
-                            onStartScanning = {
-                                log.d { "Scanning requested." }
-                                shouldScan = true
-                            },
-                            onDeviceDeleted = onDeviceDeleted,
+                            onDeviceSelected = actions.onDeviceSelected,
+                            onStartScanning = actions.onStartScanning,
+                            onDeviceDeleted = actions.onDeviceDeleted,
                             devices = knownDevices,
                             pairsWithDeviceChooser = pairsWithDeviceChooser,
                             scannedDevices = scannedDevices,
-                            onDeviceConnect = onDeviceConnect,
-                            onPairBoard = onPairBoard,
+                            onDeviceConnect = actions.onDeviceConnect,
+                            onPairBoard = actions.onPairBoard,
                         )
 
                         BluetoothState.Scanning -> scanning(
-                            onDeviceSelected = onDeviceSelected,
-                            onDeviceConnect = onDeviceConnect,
-                            onDeviceDeleted = onDeviceDeleted,
-                            onStopScanning = {
-                                log.d { "Stop scanning requested." }
-                                shouldScan = false
-                            },
+                            onDeviceSelected = actions.onDeviceSelected,
+                            onDeviceConnect = actions.onDeviceConnect,
+                            onDeviceDeleted = actions.onDeviceDeleted,
+                            onStopScanning = actions.onStopScanning,
                             knownDevices = knownDevices,
                             scannedDevices = scannedDevices,
                         )
 
                         is BluetoothState.Connecting -> connecting(
                             deviceId = state.deviceId,
-                            onDeviceSelected = onDeviceSelected,
-                            onDeviceDeleted = onDeviceDeleted,
+                            onDeviceSelected = actions.onDeviceSelected,
+                            onDeviceDeleted = actions.onDeviceDeleted,
                             knownDevices = knownDevices,
                             scannedDevices = scannedDevices,
                         )
 
                         BluetoothState.Disabled -> item {
                             BluetoothDisabled(
-                                systemSupportsBluetoothEnable = deviceScreenViewModel.systemConfig
-                                    .supportsBluetoothEnableLinking,
-                                onClick = onRequestEnableBluetooth
+                                systemSupportsBluetoothEnable = systemSupportsBluetoothEnable,
+                                onClick = actions.onRequestEnableBluetooth
                             )
                         }
 
                         BluetoothState.PermissionDenied -> permissionDenied(
-                            onDeviceSelected = onDeviceSelected,
-                            onDeviceDeleted = onDeviceDeleted,
-                            onOpenSettings = onRequestPermission,
+                            onDeviceSelected = actions.onDeviceSelected,
+                            onDeviceDeleted = actions.onDeviceDeleted,
+                            onOpenSettings = actions.onRequestPermission,
                             devices = knownDevices,
                         )
 
                         BluetoothState.LocationDisabled -> item {
-                            LocationDisabled(onClick = onRequestEnableLocation)
+                            LocationDisabled(onClick = actions.onRequestEnableLocation)
                         }
                     }
                 }

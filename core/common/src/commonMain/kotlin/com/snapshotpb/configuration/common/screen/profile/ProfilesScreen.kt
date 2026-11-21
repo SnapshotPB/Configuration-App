@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.snapshotpb.configuration.bluetooth.ConnectionProgress
 import com.snapshotpb.configuration.common.composable.ConfirmDeleteDialog
 import com.snapshotpb.configuration.common.composable.DeviceBadge
 import com.snapshotpb.configuration.common.composable.Space
@@ -86,7 +87,23 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.viewmodel.rememberViewModel
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * The actions of the profile list. Each action is required, so the compiler finds an action that
+ * the screen does not connect.
+ */
+internal class ProfilesActions(
+    val onShowImagePicker: () -> Unit,
+    val onShowGalleryPicker: () -> Unit,
+    val onConnect: () -> Unit,
+    val onDisconnect: () -> Unit,
+    val onOpenConfiguration: () -> Unit,
+    val onOpenProfile: (MarkerProfile) -> Unit,
+    val onDeleteProfile: (MarkerProfile) -> Unit,
+    val onAddProfile: () -> Unit,
+    val onDiscardChanges: () -> Unit,
+    val onSaveToBoard: () -> Unit,
+)
+
 @Composable
 fun ProfilesScreen(
     navigationController: NavigationController,
@@ -97,8 +114,6 @@ fun ProfilesScreen(
     var mediaSelectionState by remember {
         mutableStateOf<MediaSelectionState>(MediaSelectionState.NoSelection)
     }
-    val onShowImagePicker = { mediaSelectionState = MediaSelectionState.Camera }
-    val onShowGalleryPicker = { mediaSelectionState = MediaSelectionState.Gallery }
     var selectedPhoto by remember { mutableStateOf<Photo?>(null) }
     // Deleting a profile discards local configuration with no undo; confirm first.
     var profilePendingDelete: MarkerProfile? by remember { mutableStateOf(null) }
@@ -117,9 +132,6 @@ fun ProfilesScreen(
     // A write with no result yet disables Save, so a double tap sends one write.
     val writesInFlight by profilesScreenViewModel.writesInFlight.collectAsState()
     val saveInFlight = writesInFlight.any { it.toString() == deviceId }
-    // A board in lockout does not accept a change, so Save stays disabled until the user turns
-    // off the lockout switch on the board.
-    val lockedOut = device?.lockoutEnabled == true
 
     // The name typed on the picker screen. It is kept here and committed when the picker screen
     // closes (Save, a finished pick or a dismiss). A commit on each keystroke wrote devices.json
@@ -188,209 +200,153 @@ fun ProfilesScreen(
             val isConnected by profilesScreenViewModel.isConnected.collectAsState(false)
             val connectionUiState by profilesScreenViewModel.connectionUiState.collectAsState()
             val connectionProgress by profilesScreenViewModel.connectionProgress.collectAsState()
-            val onConnect: () -> Unit = { profilesScreenViewModel.requestConnect() }
-            val onDisconnect: () -> Unit = { profilesScreenViewModel.requestDisconnect() }
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val isTwoPane = fitsTwoPanes(maxWidth, maxHeight)
-                if (isTwoPane) {
-                    Row(
+            val actions = ProfilesActions(
+                onShowImagePicker = { mediaSelectionState = MediaSelectionState.Camera },
+                onShowGalleryPicker = { mediaSelectionState = MediaSelectionState.Gallery },
+                onConnect = { profilesScreenViewModel.requestConnect() },
+                onDisconnect = { profilesScreenViewModel.requestDisconnect() },
+                onOpenConfiguration = {
+                    navigationController.goTo(ScreenKeyDeviceConfigure(deviceId))
+                },
+                onOpenProfile = { profile ->
+                    navigationController.goTo(
+                        ScreenKeyProfile(
+                            deviceId = deviceId,
+                            profileId = profile.id.toString()
+                        )
+                    )
+                },
+                onDeleteProfile = { profilePendingDelete = it },
+                onAddProfile = { navigationController.goTo(ScreenKeyProfileAdd(deviceId)) },
+                onDiscardChanges = { profilesScreenViewModel.discardPendingChanges(deviceId) },
+                onSaveToBoard = {
+                    scope.launch {
+                        profilesScreenViewModel.saveChangesToBoard(deviceId)
+                    }
+                },
+            )
+            ProfilesContent(
+                device = device,
+                connectionUiState = connectionUiState,
+                connectionProgress = connectionProgress,
+                isConnected = isConnected,
+                saveInFlight = saveInFlight,
+                saveFailed = saveFailed,
+                actions = actions,
+            )
+        }
+    }
+}
+
+/** The profile list of [device] for the given connection state, with no view model. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun ProfilesContent(
+    device: Device?,
+    connectionUiState: ConnectionUiState,
+    connectionProgress: ConnectionProgress,
+    isConnected: Boolean,
+    saveInFlight: Boolean,
+    saveFailed: Boolean,
+    actions: ProfilesActions,
+) {
+    // A board in lockout does not accept a change, so Save stays disabled until the user turns
+    // off the lockout switch on the board.
+    val lockedOut = device?.lockoutEnabled == true
+    val canDeleteProfile = device?.canDeleteProfile() == true
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isTwoPane = fitsTwoPanes(maxWidth, maxHeight)
+        if (isTwoPane) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // Left Pane: Device Overview & Actions (45% Width)
+                Column(
+                    modifier = Modifier
+                        .weight(0.45f)
+                        .fillMaxHeight()
+                        .padding(end = 16.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Card(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
+                            .fillMaxWidth()
+                            .height(260.dp),
+                        shape = MaterialTheme.shapes.medium
                     ) {
-                        // Left Pane: Device Overview & Actions (45% Width)
-                        Column(
-                            modifier = Modifier
-                                .weight(0.45f)
-                                .fillMaxHeight()
-                                .padding(end = 16.dp)
-                                .verticalScroll(rememberScrollState())
-                        ) {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(260.dp),
-                                shape = MaterialTheme.shapes.medium
-                            ) {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    DeviceBadge(
-                                        photoPath = device?.photoPath.orEmpty(),
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-
-                                    PhotoCaptureButtons(
-                                        buttonSize = 40.dp,
-                                        iconSize = 24.dp,
-                                        spacing = 8.dp,
-                                        onCamera = onShowImagePicker,
-                                        onGallery = onShowGalleryPicker,
-                                        modifier = Modifier.align(Alignment.TopEnd),
-                                    )
-                                }
-                            }
-
-                            Space(16.dp)
-
-                            Text(
-                                text = device?.name.orEmpty().ifEmpty {
-                                    stringResource(Res.string.profile_screen_title)
-                                },
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Space(16.dp)
-
-                            ConnectionCard(
-                                state = connectionUiState,
-                                progress = connectionProgress,
-                                onConnect = onConnect,
-                                onDisconnect = onDisconnect,
-                            )
-
-                            DeviceConfigurationCard(
-                                onClick = {
-                                    navigationController.goTo(ScreenKeyDeviceConfigure(deviceId))
-                                }
-                            )
-
-                            if (device?.hasDiverged() == true) {
-                                Space(16.dp)
-                                PendingChangesCard(
-                                    isConnected = isConnected,
-                                    saveInFlight = saveInFlight,
-                                    lockedOut = lockedOut,
-                                    saveFailed = saveFailed,
-                                    onDiscard = { profilesScreenViewModel.discardPendingChanges(deviceId) },
-                                    onSave = {
-                                        scope.launch {
-                                            profilesScreenViewModel.saveChangesToBoard(deviceId)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-
-                        // Right Pane: Profile Cards (55% Width)
-                        Box(
-                            modifier = Modifier
-                                .weight(0.55f)
-                                .fillMaxHeight()
-                        ) {
-                            LazyColumn(
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            DeviceBadge(
+                                photoPath = device?.photoPath.orEmpty(),
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(bottom = 80.dp)
-                            ) {
-                                item {
-                                    Text(
-                                        text = stringResource(Res.string.profile_screen_title),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                    )
-                                }
+                            )
 
-                                itemsIndexed(
-                                    device?.knownProfiles ?: emptyList(),
-                                    key = { _: Int, profile: MarkerProfile -> profile.id.toString() }
-                                ) { index, profile: MarkerProfile ->
-                                    if (index > 0) Space(8.dp)
-
-                                    MarkerProfileCard(
-                                        index = index,
-                                        activeProfile = profile.id == device?.activeProfileId,
-                                        profile = profile,
-                                        boltMode = device?.boltMode ?: MarkerBoltMode.CLOSED,
-                                        isDiverged = device?.isProfileDiverged(profile.id) ?: false,
-                                        deletable = canDeleteProfile,
-                                        onProfileSelected = {
-                                            navigationController.goTo(
-                                                ScreenKeyProfile(
-                                                    deviceId = deviceId,
-                                                    profileId = profile.id.toString()
-                                                )
-                                            )
-                                        },
-                                        onProfileDeleted = { profilePendingDelete = it }
-                                    )
-                                }
-                            }
-
-                            AddProfileFab(
-                                device = device,
-                                onClick = { navigationController.goTo(ScreenKeyProfileAdd(deviceId)) },
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(16.dp),
+                            PhotoCaptureButtons(
+                                buttonSize = 40.dp,
+                                iconSize = 24.dp,
+                                spacing = 8.dp,
+                                onCamera = actions.onShowImagePicker,
+                                onGallery = actions.onShowGalleryPicker,
+                                modifier = Modifier.align(Alignment.TopEnd),
                             )
                         }
                     }
-                } else {
-                    // Mobile Layout (existing code)
+
+                    Space(16.dp)
+
+                    Text(
+                        text = device?.name.orEmpty().ifEmpty {
+                            stringResource(Res.string.profile_screen_title)
+                        },
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Space(16.dp)
+
+                    ConnectionCard(
+                        state = connectionUiState,
+                        progress = connectionProgress,
+                        onConnect = actions.onConnect,
+                        onDisconnect = actions.onDisconnect,
+                    )
+
+                    DeviceConfigurationCard(
+                        onClick = actions.onOpenConfiguration
+                    )
+
+                    if (device?.hasDiverged() == true) {
+                        Space(16.dp)
+                        PendingChangesCard(
+                            isConnected = isConnected,
+                            saveInFlight = saveInFlight,
+                            lockedOut = lockedOut,
+                            saveFailed = saveFailed,
+                            onDiscard = actions.onDiscardChanges,
+                            onSave = actions.onSaveToBoard,
+                        )
+                    }
+                }
+
+                // Right Pane: Profile Cards (55% Width)
+                Box(
+                    modifier = Modifier
+                        .weight(0.55f)
+                        .fillMaxHeight()
+                ) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            bottom = if (device?.hasDiverged() == true) 260.dp else 100.dp
-                        )
+                        contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
-                        stickyHeader {
-                            Surface {
-                                Box(
-                                    modifier = Modifier.height(260.dp)
-                                ) {
-                                    DeviceBadge(
-                                        photoPath = device?.photoPath.orEmpty(),
-                                        modifier = Modifier.fillMaxSize(),
-                                    )
-
-                                    PhotoCaptureButtons(
-                                        buttonSize = 48.dp,
-                                        iconSize = 32.dp,
-                                        spacing = 16.dp,
-                                        onCamera = onShowImagePicker,
-                                        onGallery = onShowGalleryPicker,
-                                        modifier = Modifier.align(Alignment.TopEnd),
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .align(Alignment.BottomStart)
-                                            .background(Color.Black.copy(alpha = 0.3f))
-                                    ) {
-                                        Text(
-                                            text = device?.name.orEmpty().ifEmpty {
-                                                stringResource(Res.string.profile_screen_title)
-                                            },
-                                            style = MaterialTheme.typography.displayMedium,
-                                            color = Color.White,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
                         item {
-                            Space(16.dp)
-                        }
-
-                        item {
-                            ConnectionCard(
-                                state = connectionUiState,
-                                progress = connectionProgress,
-                                onConnect = onConnect,
-                                onDisconnect = onDisconnect,
-                            )
-                        }
-
-                        item {
-                            DeviceConfigurationCard(
-                                onClick = {
-                                    navigationController.goTo(ScreenKeyDeviceConfigure(deviceId))
-                                }
+                            Text(
+                                text = stringResource(Res.string.profile_screen_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(bottom = 16.dp)
                             )
                         }
 
@@ -398,7 +354,7 @@ fun ProfilesScreen(
                             device?.knownProfiles ?: emptyList(),
                             key = { _: Int, profile: MarkerProfile -> profile.id.toString() }
                         ) { index, profile: MarkerProfile ->
-                            Space()
+                            if (index > 0) Space(8.dp)
 
                             MarkerProfileCard(
                                 index = index,
@@ -407,51 +363,131 @@ fun ProfilesScreen(
                                 boltMode = device?.boltMode ?: MarkerBoltMode.CLOSED,
                                 isDiverged = device?.isProfileDiverged(profile.id) ?: false,
                                 deletable = canDeleteProfile,
-                                onProfileSelected = {
-                                    navigationController.goTo(
-                                        ScreenKeyProfile(
-                                            deviceId = deviceId,
-                                            profileId = profile.id.toString()
-                                        )
-                                    )
-                                },
-                                onProfileDeleted = { profilePendingDelete = it }
+                                onProfileSelected = actions.onOpenProfile,
+                                onProfileDeleted = actions.onDeleteProfile,
                             )
-                        }
-
-                        item {
-                            Space(16.dp)
                         }
                     }
 
-                    Column(
+                    AddProfileFab(
+                        device = device,
+                        onClick = actions.onAddProfile,
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
+                            .align(Alignment.BottomEnd)
                             .padding(16.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        AddProfileFab(
-                            device = device,
-                            onClick = { navigationController.goTo(ScreenKeyProfileAdd(deviceId)) },
-                        )
-
-                        if (device?.hasDiverged() == true) {
-                            Space(16.dp)
-                            PendingChangesCard(
-                                isConnected = isConnected,
-                                saveInFlight = saveInFlight,
-                                lockedOut = lockedOut,
-                                saveFailed = saveFailed,
-                                onDiscard = { profilesScreenViewModel.discardPendingChanges(deviceId) },
-                                onSave = {
-                                    scope.launch {
-                                        profilesScreenViewModel.saveChangesToBoard(deviceId)
-                                    }
-                                }
+                    )
+                }
+            }
+        } else {
+            // Mobile Layout (existing code)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    bottom = if (device?.hasDiverged() == true) 260.dp else 100.dp
+                )
+            ) {
+                stickyHeader {
+                    Surface {
+                        Box(
+                            modifier = Modifier.height(260.dp)
+                        ) {
+                            DeviceBadge(
+                                photoPath = device?.photoPath.orEmpty(),
+                                modifier = Modifier.fillMaxSize(),
                             )
+
+                            PhotoCaptureButtons(
+                                buttonSize = 48.dp,
+                                iconSize = 32.dp,
+                                spacing = 16.dp,
+                                onCamera = actions.onShowImagePicker,
+                                onGallery = actions.onShowGalleryPicker,
+                                modifier = Modifier.align(Alignment.TopEnd),
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomStart)
+                                    .background(Color.Black.copy(alpha = 0.3f))
+                            ) {
+                                Text(
+                                    text = device?.name.orEmpty().ifEmpty {
+                                        stringResource(Res.string.profile_screen_title)
+                                    },
+                                    style = MaterialTheme.typography.displayMedium,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
                         }
                     }
+                }
+
+                item {
+                    Space(16.dp)
+                }
+
+                item {
+                    ConnectionCard(
+                        state = connectionUiState,
+                        progress = connectionProgress,
+                        onConnect = actions.onConnect,
+                        onDisconnect = actions.onDisconnect,
+                    )
+                }
+
+                item {
+                    DeviceConfigurationCard(
+                        onClick = actions.onOpenConfiguration
+                    )
+                }
+
+                itemsIndexed(
+                    device?.knownProfiles ?: emptyList(),
+                    key = { _: Int, profile: MarkerProfile -> profile.id.toString() }
+                ) { index, profile: MarkerProfile ->
+                    Space()
+
+                    MarkerProfileCard(
+                        index = index,
+                        activeProfile = profile.id == device?.activeProfileId,
+                        profile = profile,
+                        boltMode = device?.boltMode ?: MarkerBoltMode.CLOSED,
+                        isDiverged = device?.isProfileDiverged(profile.id) ?: false,
+                        deletable = canDeleteProfile,
+                        onProfileSelected = actions.onOpenProfile,
+                        onProfileDeleted = actions.onDeleteProfile,
+                    )
+                }
+
+                item {
+                    Space(16.dp)
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                AddProfileFab(
+                    device = device,
+                    onClick = actions.onAddProfile,
+                )
+
+                if (device?.hasDiverged() == true) {
+                    Space(16.dp)
+                    PendingChangesCard(
+                        isConnected = isConnected,
+                        saveInFlight = saveInFlight,
+                        lockedOut = lockedOut,
+                        saveFailed = saveFailed,
+                        onDiscard = actions.onDiscardChanges,
+                        onSave = actions.onSaveToBoard,
+                    )
                 }
             }
         }

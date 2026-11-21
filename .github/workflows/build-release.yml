@@ -811,7 +811,9 @@ jobs:
     name: Publish to App Store Connect
     needs: preflight
     if: needs.preflight.outputs.has_ios == 'true'
-    runs-on: macos-latest
+    # macos-latest has only Xcode 26. iPhone Duo needs the iOS 27.1 SDK or later
+    # (docs/iphone-duo-plan.md, step 2).
+    runs-on: xcode-27
     environment: release
     steps:
       - name: Checkout
@@ -824,6 +826,19 @@ jobs:
           ref: ${{ needs.preflight.outputs.ref }}
           # The build runs third-party Gradle plugins. Do not keep the token in .git/config.
           persist-credentials: false
+
+      # Select the newest Xcode 27 release (27.1 or later) before the rest of the job runs.
+      # See the Select Xcode 27 step in validation.yml for the rules.
+      - name: Select Xcode 27
+        run: |
+          set -euo pipefail
+          if ! XCODE_APP="$(python3 scripts/select_xcode.py --minimum 27.1)"; then
+            echo "::error::This runner has no Xcode 27.1 or later. iPhone Duo needs the iOS 27.1 SDK or later (docs/iphone-duo-plan.md, step 2)."
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
       # The upload step sends the build only when the committed export options set
       # `destination = upload`. With `export`, xcodebuild writes an .ipa file, sends nothing

@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -97,7 +99,9 @@ import com.snapshotpb.core.resources.profile_settings_title
 import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.viewmodel.rememberViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** The semantics test tag of `ProfileTimingDiagram` on the profile editor screen. */
+internal const val PROFILE_TIMING_DIAGRAM_TAG = "profileTimingDiagram"
+
 @Composable
 fun ProfileScreen(
     navigationController: NavigationController,
@@ -138,6 +142,43 @@ fun ProfileScreen(
         boltMode = found.boltMode
     }
 
+    ProfileContent(
+        profile = profile,
+        profileLoad = profileLoad,
+        boardProfile = boardProfile,
+        boltMode = boltMode,
+        photoPath = photoPath,
+        onProfileChange = { viewModel.editDraft(it) },
+        onCancel = { navigationController.goBack() },
+        onSave = { shown ->
+            // A tap on Save does not take the focus, so a number field can still hold a typed
+            // draft that it did not commit (an out-of-range value). Clear the focus first: the
+            // field then commits its draft in its focus callback, before clearFocus returns.
+            // Then read the draft again, because shown is the copy from before that commit.
+            focusManager.clearFocus()
+            viewModel.updateProfile(viewModel.draft ?: shown)
+            navigationController.goBack()
+        },
+        onBack = { navigationController.goBack() },
+    )
+}
+
+/**
+ * The profile editor for [profile], with no view model. [onSave] receives the profile that the
+ * screen shows.
+ */
+@Composable
+internal fun ProfileContent(
+    profile: MarkerProfile?,
+    profileLoad: ProfileLoad,
+    boardProfile: MarkerProfile?,
+    boltMode: MarkerBoltMode,
+    photoPath: String,
+    onProfileChange: (MarkerProfile) -> Unit,
+    onCancel: () -> Unit,
+    onSave: (MarkerProfile) -> Unit,
+    onBack: () -> Unit,
+) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isTwoPane = fitsTwoPanes(maxWidth, maxHeight)
 
@@ -155,7 +196,7 @@ fun ProfileScreen(
                     Text(text = message, style = MaterialTheme.typography.bodyLarge)
                     if (profileLoad is ProfileLoad.Missing) {
                         Space(16.dp)
-                        Button(onClick = { navigationController.goBack() }) {
+                        Button(onClick = onBack) {
                             Text(stringResource(Res.string.connecting_screen_back_button))
                         }
                     }
@@ -169,19 +210,6 @@ fun ProfileScreen(
             // These two branches used to be ~300 lines each of field-for-field copies. Every field
             // therefore had to be edited twice, and the copies had already drifted apart in ways
             // nobody noticed. Extracting the sections leaves the branches as pure layout.
-            val onProfileChange: (MarkerProfile) -> Unit = { viewModel.editDraft(it) }
-            val onCancel = { navigationController.goBack() }
-            val onSave = {
-                // A tap on Save does not take the focus, so a number field can still hold a typed
-                // draft that it did not commit (an out-of-range value). Clear the focus first: the
-                // field then commits its draft in its focus callback, before clearFocus returns.
-                // Then read the draft again, because currentProfile is the copy from before that
-                // commit.
-                focusManager.clearFocus()
-                viewModel.updateProfile(viewModel.draft ?: currentProfile)
-                navigationController.goBack()
-            }
-
             if (isTwoPane) {
                 Row(
                     modifier = Modifier
@@ -269,7 +297,7 @@ fun ProfileScreen(
 
                         Space(16.dp)
 
-                        ProfileActions(onCancel = onCancel, onSave = onSave)
+                        ProfileActions(onCancel = onCancel, onSave = { onSave(currentProfile) })
 
                         Space(32.dp)
                     }
@@ -334,7 +362,7 @@ fun ProfileScreen(
 
                     Space(16.dp)
 
-                    ProfileActions(onCancel = onCancel, onSave = onSave)
+                    ProfileActions(onCancel = onCancel, onSave = { onSave(currentProfile) })
 
                     Space(32.dp)
                 }
@@ -363,7 +391,11 @@ private fun TimingOverviewSection(currentProfile: MarkerProfile, boltMode: Marke
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Space(8.dp)
-            ProfileTimingDiagram(profile = currentProfile, boltMode = boltMode)
+            ProfileTimingDiagram(
+                profile = currentProfile,
+                boltMode = boltMode,
+                modifier = Modifier.testTag(PROFILE_TIMING_DIAGRAM_TAG),
+            )
         }
     }
 }

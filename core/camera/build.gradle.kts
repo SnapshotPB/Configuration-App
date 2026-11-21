@@ -11,7 +11,11 @@ kotlin {
     configureOptIns(serialization = false)
     android {
         namespace = "com.snapshotpb.configuration.camera"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        compileSdk {
+            version = release(libs.versions.android.compileSdk.get().toInt()) {
+                minorApiLevel = libs.versions.android.compileSdkMinor.get().toInt()
+            }
+        }
     }
     jvm()
     iosArm64()
