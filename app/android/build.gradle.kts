@@ -74,7 +74,6 @@ android {
     }
 
     lint {
-        htmlReport = true
         // The full lint runs on the debug variant through the `lint` task. The lint vital pass
         // on each release-type variant analyzed the same sources again, so it is off.
         checkReleaseBuilds = false

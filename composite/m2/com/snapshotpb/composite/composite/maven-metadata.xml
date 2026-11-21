@@ -3,11 +3,11 @@
   <groupId>com.snapshotpb.composite</groupId>
   <artifactId>composite</artifactId>
   <versioning>
-    <latest>1.0-b26d6972daed</latest>
-    <release>1.0-b26d6972daed</release>
+    <latest>1.0-dd165f8718dd</latest>
+    <release>1.0-dd165f8718dd</release>
     <versions>
-      <version>1.0-b26d6972daed</version>
+      <version>1.0-dd165f8718dd</version>
     </versions>
-    <lastUpdated>20261120235136</lastUpdated>
+    <lastUpdated>20261120235922</lastUpdated>
   </versioning>
 </metadata>

@@ -3,7 +3,7 @@
   "component": {
     "group": "com.snapshotpb.composite",
     "module": "composite",
-    "version": "1.0-b26d6972daed",
+    "version": "1.0-dd165f8718dd",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -27,8 +27,8 @@
       },
       "files": [
         {
-          "name": "composite-1.0-b26d6972daed.jar",
-          "url": "composite-1.0-b26d6972daed.jar",
+          "name": "composite-1.0-dd165f8718dd.jar",
+          "url": "composite-1.0-dd165f8718dd.jar",
           "size": 30576,
           "sha512": "65471b8438f6390a0cce1551befe16b15cc9752ced64efaf02d7bc1b2ecf6e64116cb737f71436d1fe20ff55a21cc304fb98c869d129a48ef8c701b07397a843",
           "sha256": "da68efc914b117d2c8fbcdd307e9ed8cb2786628fbec11ca6ff4c23fa6335c94",
@@ -50,8 +50,8 @@
       },
       "files": [
         {
-          "name": "composite-1.0-b26d6972daed.jar",
-          "url": "composite-1.0-b26d6972daed.jar",
+          "name": "composite-1.0-dd165f8718dd.jar",
+          "url": "composite-1.0-dd165f8718dd.jar",
           "size": 30576,
           "sha512": "65471b8438f6390a0cce1551befe16b15cc9752ced64efaf02d7bc1b2ecf6e64116cb737f71436d1fe20ff55a21cc304fb98c869d129a48ef8c701b07397a843",
           "sha256": "da68efc914b117d2c8fbcdd307e9ed8cb2786628fbec11ca6ff4c23fa6335c94",

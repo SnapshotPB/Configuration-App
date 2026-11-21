@@ -62,7 +62,9 @@ dependencies {
     // and `composite` in one plugins {} block, so they load in the same class loader, and
     // configureOptIns() finds the KGP classes of the root build at runtime.
     compileOnly(libs.kotlin.gradle)
-    testImplementation(libs.kotlin.test)
+    // The kotlin-dsl plugin compiles this build with the embedded Kotlin version of Gradle.
+    // Use that version for the tests so that the test metadata matches the compiler.
+    testImplementation(kotlin("test", embeddedKotlinVersion))
 }
 
 // The version mapping is release-critical and easy to get subtly wrong (jpackage rejects a
