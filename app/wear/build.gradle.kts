@@ -9,7 +9,11 @@ plugins {
 
 android {
     namespace = "com.snapshotpb.configuration"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk {
+        version = release(libs.versions.android.compileSdk.get().toInt()) {
+            minorApiLevel = libs.versions.android.compileSdkMinor.get().toInt()
+        }
+    }
 
     defaultConfig {
         // Matches :app:android so Google Play Services' Wearable Data Layer (DataClient /

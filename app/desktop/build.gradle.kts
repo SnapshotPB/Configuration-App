@@ -64,7 +64,6 @@ kotlin {
                 implementation(projects.platform.desktop.bluetooth)
                 implementation(projects.platform.desktop.di)
 
-                implementation(compose.desktop.currentOs)
                 implementation(libs.blue.falcon)
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.kotlinx.datetime)

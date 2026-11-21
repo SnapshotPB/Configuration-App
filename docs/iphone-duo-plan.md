@@ -60,8 +60,9 @@ crash on 1.12.2. Step 1 finds which statement is correct for this app.
 
 | Part | State | Source |
 |---|---|---|
-| Compose Multiplatform | 1.10.3. The open Dependabot branch `dependabot/gradle/kotlin-toolchain-aa47d07718` moves it to 1.12.2, with Kotlin 2.4.21 and material3 1.13.0-beta01. Both versions are before the crash fix | `gradle/libs.versions.toml` |
-| Kotlin | 2.3.20 | `gradle/libs.versions.toml` |
+| Compose Multiplatform | 1.13.0-rc01 on the branch of step 1, with material3 1.13.0-rc01 and `compose-hot-reload` 1.3.0. `master` has 1.12.2, which does not have the crash fix | `gradle/libs.versions.toml` |
+| Kotlin | 2.4.21 | `gradle/libs.versions.toml` |
+| Android `compileSdk` | 37.1 on the branch of step 1, because the androidx Compose 1.13 libraries need it. `targetSdk` stays 37 | `gradle/libs.versions.toml` |
 | Deployment target | iOS 17.0, `TARGETED_DEVICE_FAMILY = "1,2"` | `iosApp/iosApp.xcodeproj/project.pbxproj` |
 | Orientations, iPhone | Portrait, landscape left, landscape right | `project.pbxproj` |
 | `UIRequiresFullScreen` | Not set | `iosApp/iosApp/Info.plist` |
@@ -89,8 +90,9 @@ must do the update again.
 
 ### Step 1. Move to a Compose Multiplatform version with the fix
 
-1. Merge the Dependabot toolchain branch, or make the same change on a new branch.
-2. Set `compose-multiplatform` to 1.13.0-beta02 (decision 1). Change it to 1.13.0 when that
+1. Make the change on a new branch. Do not merge the Dependabot toolchain branch: it is now
+   older than `master`.
+2. Set `compose-multiplatform` to 1.13.0-rc01 (decision 1). Change it to 1.13.0 when that
    version is stable.
 3. Align `material3` and `compose-hot-reload` with that CMP version.
 4. Run `./gradlew -p composite clean test publish` and commit `composite/m2`.
@@ -98,6 +100,22 @@ must do the update again.
    manual republish.
 5. Run the five CI targets.
 6. Do step 0 again with the new build. Make sure that no fold stops the app.
+
+Result on 2026-11-21 (branch `feat/iphone-duo-cmp-1.13`):
+
+- Kotlin stays 2.4.21, so `composite` needs no republish (item 4).
+- material3 1.13 makes `ExposedDropdownMenu` an extension function of
+  `ExposedDropdownMenuBoxScope`. `ConfigureDeviceScreen.kt` and `ProfileScreen.kt` now import it.
+- CMP 1.13 deprecates `compose.desktop.currentOs`. `compose.ui` now brings the Skiko runtime of
+  each desktop OS (`skiko-awt-runtime-all`), and the packaging removes the binaries of the
+  other systems. `app/desktop` thus does not declare `currentOs`.
+- The androidx Compose 1.13 libraries need `compileSdk` 37.1. The catalog has
+  `android-compileSdkMinor = "1"`, and each Android module sets
+  `compileSdk { version = release(37) { minorApiLevel = 1 } }`.
+- The Compose plugin warns that Coil 3.6.3 uses Skiko 0.150.1 and CMP 1.13 uses 0.156.1.
+  Coil 3.6.3 is the newest Coil. Examine the device photos on desktop and iOS in step 5.5.
+- The `android`, `desktop`, `browser` and `ios` targets pass on Linux. The `macos` target
+  and item 6 need a Mac.
 
 If the crash stays with 1.13.0, find the call that starts it before step 2. Report it on
 CMP-10776.
@@ -188,6 +206,7 @@ A fold changes the size of the window. It does not start the app again.
 The owner made these decisions on 2026-11-18.
 
 1. **CMP version: the beta on a branch.** Use 1.13.0-beta02 on a branch for steps 0 to 6.
+   On 2026-11-21 the owner changed this to 1.13.0-rc01, which came after beta02.
    Release only with the stable 1.13.0 (estimated mid-December). Before the release, change
    the branch to the stable 1.13.0 and do step 1.5 and step 1.6 again.
 2. **Two panes on the inner display in portrait: decide after step 4.1.** The rule now gives

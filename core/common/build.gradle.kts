@@ -14,7 +14,11 @@ kotlin {
     configureOptIns()
     android {
         namespace = "com.snapshotpb.configuration.core"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        compileSdk {
+            version = release(libs.versions.android.compileSdk.get().toInt()) {
+                minorApiLevel = libs.versions.android.compileSdkMinor.get().toInt()
+            }
+        }
     }
     jvm()
     iosArm64()

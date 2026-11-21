@@ -205,7 +205,7 @@ Kodein. `coreDiModule` (`core:di`) is the root, importing bluetooth/media/store/
 - Adding a non-nullable field without a default to a persisted `@Serializable` model breaks deserialization of stored JSON — give new fields defaults or make them nullable.
 - Logging uses Arbor: `private val log = Arbor.tag("ClassName")`, then `log.d {}`/`log.e {}` (lambda form). No `println`/`android.util.Log`.
 - New strings go in `core/resources`, not hardcoded. Add the English string to `values/strings.xml` **and** the translation to every `values-*` locale in the same change — `localizationCheck` warns for each locale you leave behind.
-- Version catalog: `gradle/libs.versions.toml`. Android `compileSdk` and `targetSdk` 37, `minSdk` 24 (Wear overrides to 30). A `targetSdk` change alters the behaviour of the app at run time, so it is an owner decision. Android/Wear compile to JVM 11.
+- Version catalog: `gradle/libs.versions.toml`. Android `compileSdk` 37.1 (`android-compileSdk` and `android-compileSdkMinor`; the androidx Compose 1.13 libraries need the minor level), `targetSdk` 37, `minSdk` 24 (Wear overrides to 30). A `targetSdk` change alters the behaviour of the app at run time, so it is an owner decision. Android/Wear compile to JVM 11.
 - Key libraries: Compose Multiplatform, Kodein (DI), BlueFalcon (BLE), Arbor (logging), Coil (images), Nucleus (desktop packaging), kotlinx serialization/coroutines/datetime, androidx.navigation3, play-services-wearable, Ktor client and kotlincrypto `sha2` (`core:firmware` only).
 
 ## Claude Code Tooling (`.claude/`)
