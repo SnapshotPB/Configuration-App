@@ -22,11 +22,10 @@ class ExternalBackControlTest {
     }
 
     @Test
-    fun newControl_startsHiddenAndIgnoresRequestBack() {
+    fun newControl_startsHiddenWithEmptyLabel() {
         val control = ExternalBackControl()
 
         assertEquals(ExternalBackState(visible = false, label = ""), control.state.value)
-        control.requestBack()
     }
 
     @Test
@@ -58,15 +57,35 @@ class ExternalBackControlTest {
     fun detach_resetsStateAndClearsHandler() {
         val control = ExternalBackControl()
         var calls = 0
-        control.attach { calls += 1 }
+        val handler: () -> Unit = { calls += 1 }
+        control.attach(handler)
         control.update(visible = true, label = "Back")
 
-        control.detach()
+        control.detach(handler)
 
         assertEquals(ExternalBackState(), control.state.value)
         control.requestBack()
         control.update(visible = true, label = "Back")
         control.requestBack()
         assertEquals(0, calls)
+    }
+
+    @Test
+    fun detach_ignoresOldHandlerAfterNewerAttach() {
+        val control = ExternalBackControl()
+        var callsA = 0
+        var callsB = 0
+        val handlerA: () -> Unit = { callsA += 1 }
+        val handlerB: () -> Unit = { callsB += 1 }
+        control.attach(handlerA)
+        control.attach(handlerB)
+        control.update(visible = true, label = "Back")
+
+        control.detach(handlerA)
+
+        assertEquals(ExternalBackState(visible = true, label = "Back"), control.state.value)
+        control.requestBack()
+        assertEquals(0, callsA)
+        assertEquals(1, callsB)
     }
 }

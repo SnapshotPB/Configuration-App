@@ -67,8 +67,8 @@ private val log = Arbor.tag("App")
  * @param onExitRequested Runs when the user asks to go back on the root screen.
  * @param showFloatingBackButton Shows the Compose back button when the app is not on the device list.
  * @param externalBackControl A bridge that a platform host (the iOS side bar of iPhone Duo) gives
- *   to show its own back button. `App` keeps it in step with the back stack. A `null` value means
- *   no external back control.
+ *   to show its own back button. `App` updates it to agree with the back stack. A `null` value
+ *   means no external back control.
  */
 @Composable
 @Preview

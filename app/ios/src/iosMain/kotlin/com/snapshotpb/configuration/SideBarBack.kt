@@ -1,10 +1,8 @@
-/**
- * Swift API for the side-bar back button on iPhone Duo.
- *
- * This API stays small on purpose. Swift calls it directly because Kotlin/Native has no bindings
- * for the iOS 27.1 vertical bar. The rule that decides when the button shows is `showsBackControl`
- * in `core:common`.
- */
+// Swift API for the side-bar back button on iPhone Duo.
+//
+// This API stays small on purpose. Swift calls it directly because Kotlin/Native has no bindings
+// for the iOS 27.1 vertical bar. The rule that decides when the button shows is showsBackControl
+// in core:common.
 package com.snapshotpb.configuration
 
 import com.snapshotpb.configuration.common.navigation.ExternalBackControl
@@ -13,7 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** The back control that the iOS host shows in the side bar of iPhone Duo. One for the process. */
+/**
+ * The back control that the iOS host shows in the side bar of iPhone Duo. The process has one
+ * instance. A second window uses the same instance, so all windows show the same side-bar state.
+ */
 internal val sideBarBackControl = ExternalBackControl()
 
 /**
@@ -29,7 +30,7 @@ class SideBarBackState internal constructor(
 
 /** A registration from [observeSideBarBack]. Call [cancel] to stop the calls. */
 class SideBarBackObservation internal constructor(private val job: Job) {
-    /** Stops future [observeSideBarBack] callbacks. */
+    /** Stops the calls to the `onChange` of this registration. */
     fun cancel() {
         job.cancel()
     }

@@ -37,14 +37,11 @@ class ExternalBackControlEffectTest {
 
         // While visible is false, requestBack does not call onBack.
         runOnIdle { control.requestBack() }
-        waitForIdle()
         assertEquals(emptyList(), calls)
 
         // When visible becomes true and label changes, state follows and requestBack calls onBack.
-        runOnIdle {
-            visible = true
-            label = "Back to devices"
-        }
+        visible = true
+        label = "Back to devices"
         waitForIdle()
         assertEquals(
             ExternalBackState(visible = true, label = "Back to devices"),
@@ -52,18 +49,16 @@ class ExternalBackControlEffectTest {
         )
 
         runOnIdle { control.requestBack() }
-        waitForIdle()
         assertEquals(listOf("first"), calls)
 
         // After onBack changes, requestBack calls the new lambda.
-        runOnIdle { onBack = { calls += "second" } }
+        onBack = { calls += "second" }
         waitForIdle()
         runOnIdle { control.requestBack() }
-        waitForIdle()
         assertEquals(listOf("first", "second"), calls)
 
         // When visible returns to false, requestBack does not call onBack.
-        runOnIdle { visible = false }
+        visible = false
         waitForIdle()
         assertEquals(
             ExternalBackState(visible = false, label = "Back to devices"),
@@ -71,11 +66,10 @@ class ExternalBackControlEffectTest {
         )
 
         runOnIdle { control.requestBack() }
-        waitForIdle()
         assertEquals(listOf("first", "second"), calls)
 
         // Show the control again before the effect leaves the composition.
-        runOnIdle { visible = true }
+        visible = true
         waitForIdle()
         assertEquals(
             ExternalBackState(visible = true, label = "Back to devices"),
@@ -83,12 +77,56 @@ class ExternalBackControlEffectTest {
         )
 
         // When the effect leaves the composition, state resets and requestBack does nothing.
-        runOnIdle { shown = false }
+        shown = false
         waitForIdle()
         assertEquals(ExternalBackState(), control.state.value)
 
         runOnIdle { control.requestBack() }
-        waitForIdle()
         assertEquals(listOf("first", "second"), calls)
+    }
+
+    @Test
+    fun lateDisposeOfFirstEffect_keepsSecondHandlerAndState() = runComposeUiTest {
+        val control = ExternalBackControl()
+        var shown1 by mutableStateOf(true)
+        var shown2 by mutableStateOf(false)
+        var calls1 = 0
+        var calls2 = 0
+
+        setContent {
+            if (shown1) {
+                ExternalBackControlEffect(
+                    control = control,
+                    visible = true,
+                    label = "Back 1",
+                    onBack = { calls1 += 1 },
+                )
+            }
+            if (shown2) {
+                ExternalBackControlEffect(
+                    control = control,
+                    visible = true,
+                    label = "Back 2",
+                    onBack = { calls2 += 1 },
+                )
+            }
+        }
+
+        waitForIdle()
+        assertEquals(ExternalBackState(visible = true, label = "Back 1"), control.state.value)
+
+        // The second effect enters the composition while the first is still attached.
+        shown2 = true
+        waitForIdle()
+        assertEquals(ExternalBackState(visible = true, label = "Back 2"), control.state.value)
+
+        // When the first effect leaves the composition, the second handler and state must remain.
+        shown1 = false
+        waitForIdle()
+        assertEquals(ExternalBackState(visible = true, label = "Back 2"), control.state.value)
+
+        runOnIdle { control.requestBack() }
+        assertEquals(0, calls1)
+        assertEquals(1, calls2)
     }
 }

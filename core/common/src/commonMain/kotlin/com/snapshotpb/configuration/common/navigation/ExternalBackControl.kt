@@ -34,9 +34,10 @@ data class ExternalBackState(
  * Connects the navigation of `App` to a back control outside Compose. For example, iPhone Duo
  * draws this back button in its side bar.
  *
- * `App` keeps [state] in step with its back stack through [ExternalBackControlEffect]. A platform
- * host reads [state] to show or hide the back control and to set its label. When the user selects
- * that control, the host calls [requestBack] to move `App` back one screen.
+ * `App` updates [state] to agree with its back stack through [ExternalBackControlEffect]. A
+ * platform host reads [state] to show or hide the back control and to set its label. When the user
+ * selects that control, the host calls [requestBack] to move `App` back one screen. A detach of an
+ * old handler does not change the state of a newer attach.
  *
  * Call [requestBack], [attach], [update], and [detach] on the main thread only. This class uses no
  * locks.
@@ -71,15 +72,22 @@ class ExternalBackControl {
         _state.value = ExternalBackState(visible = visible, label = label)
     }
 
-    /** Clears the back handler and resets [state] to default values. Call on the main thread only. */
-    internal fun detach() {
-        onBack = null
+    /**
+     * Clears the back handler and resets [state] to default values when [onBack] is the attached
+     * handler.
+     *
+     * A detach of an old handler does not change the state of a newer attach. Call on the main
+     * thread only.
+     */
+    internal fun detach(onBack: () -> Unit) {
+        if (this.onBack !== onBack) return
+        this.onBack = null
         _state.value = ExternalBackState()
     }
 }
 
 /**
- * Keeps [control] in step with the current screen.
+ * Updates [control] to agree with the current screen.
  *
  * This effect attaches [onBack] while it is in the composition and updates [control] with
  * [visible] and [label] after each recomposition. When it leaves the composition, it detaches
@@ -94,8 +102,9 @@ internal fun ExternalBackControlEffect(
 ) {
     val currentOnBack by rememberUpdatedState(onBack)
     DisposableEffect(control) {
-        control.attach { currentOnBack() }
-        onDispose { control.detach() }
+        val handler: () -> Unit = { currentOnBack() }
+        control.attach(handler)
+        onDispose { control.detach(handler) }
     }
     SideEffect {
         control.update(visible = visible, label = label)
