@@ -1,5 +1,7 @@
 package com.snapshotpb.configuration.common.layout
 
+import com.snapshotpb.configuration.common.screen.device.DeviceBrowserActions
+import com.snapshotpb.configuration.common.screen.profile.ProfilesActions
 import com.snapshotpb.configuration.firmware.FirmwareStatus
 import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
@@ -134,4 +136,33 @@ internal fun layoutFirmwareStatus(
         ),
     ),
     reason = null,
+)
+
+/** Device list actions that do nothing, for layout tests. */
+internal fun noOpDeviceBrowserActions(): DeviceBrowserActions = DeviceBrowserActions(
+    onDeviceSelected = {},
+    onDeviceConnect = {},
+    onDeviceDeleted = {},
+    onStartScanning = {},
+    onStopScanning = {},
+    onPairBoard = {},
+    onRequestPermission = {},
+    onRequestEnableBluetooth = {},
+    onRequestEnableLocation = {},
+    onAddDemoDevice = {},
+    onOpenBluetoothLog = {},
+)
+
+/** Profile list actions that do nothing, for layout tests. */
+internal fun noOpProfilesActions(): ProfilesActions = ProfilesActions(
+    onShowImagePicker = {},
+    onShowGalleryPicker = {},
+    onConnect = {},
+    onDisconnect = {},
+    onOpenConfiguration = {},
+    onOpenProfile = {},
+    onDeleteProfile = {},
+    onAddProfile = {},
+    onDiscardChanges = {},
+    onSaveToBoard = {},
 )

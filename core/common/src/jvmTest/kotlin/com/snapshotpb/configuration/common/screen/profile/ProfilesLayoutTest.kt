@@ -12,6 +12,7 @@ import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.ScrollTarget
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
 import com.snapshotpb.configuration.common.layout.layoutDevice
+import com.snapshotpb.configuration.common.layout.noOpProfilesActions
 import com.snapshotpb.configuration.common.layout.unclippedBoundsInRoot
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.device_pending_changes_banner_title
@@ -54,7 +55,7 @@ class ProfilesLayoutTest {
                     isConnected = true,
                     saveInFlight = false,
                     saveFailed = false,
-                    actions = ProfilesActions(),
+                    actions = noOpProfilesActions(),
                 )
             }
         }
@@ -134,7 +135,7 @@ class ProfilesLayoutTest {
             isConnected = false,
             saveInFlight = false,
             saveFailed = false,
-            actions = ProfilesActions(),
+            actions = noOpProfilesActions(),
         )
     }
 

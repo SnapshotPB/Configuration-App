@@ -87,18 +87,21 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.kodein.di.compose.viewmodel.rememberViewModel
 
-/** The actions of the profile list. Each default does nothing. */
+/**
+ * The actions of the profile list. Each action is required, so the compiler finds an action that
+ * the screen does not connect.
+ */
 internal class ProfilesActions(
-    val onShowImagePicker: () -> Unit = {},
-    val onShowGalleryPicker: () -> Unit = {},
-    val onConnect: () -> Unit = {},
-    val onDisconnect: () -> Unit = {},
-    val onOpenConfiguration: () -> Unit = {},
-    val onOpenProfile: (MarkerProfile) -> Unit = {},
-    val onDeleteProfile: (MarkerProfile) -> Unit = {},
-    val onAddProfile: () -> Unit = {},
-    val onDiscardChanges: () -> Unit = {},
-    val onSaveToBoard: () -> Unit = {},
+    val onShowImagePicker: () -> Unit,
+    val onShowGalleryPicker: () -> Unit,
+    val onConnect: () -> Unit,
+    val onDisconnect: () -> Unit,
+    val onOpenConfiguration: () -> Unit,
+    val onOpenProfile: (MarkerProfile) -> Unit,
+    val onDeleteProfile: (MarkerProfile) -> Unit,
+    val onAddProfile: () -> Unit,
+    val onDiscardChanges: () -> Unit,
+    val onSaveToBoard: () -> Unit,
 )
 
 @Composable

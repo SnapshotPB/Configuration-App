@@ -101,19 +101,22 @@ const val DEVICE_SCREEN_TERMS_OF_SERVICE_TAG = "deviceScreenTermsOfService"
 private const val PRIVACY_POLICY_URL = "https://snapshotpb.com/privacy"
 private const val TERMS_OF_SERVICE_URL = "https://snapshotpb.com/terms-and-conditions"
 
-/** The actions of the device list. Each default does nothing, so a test or a preview can omit it. */
+/**
+ * The actions of the device list. Each action is required, so the compiler finds an action that
+ * the screen does not connect.
+ */
 internal class DeviceBrowserActions(
-    val onDeviceSelected: (Device) -> Unit = {},
-    val onDeviceConnect: (Device) -> Unit = {},
-    val onDeviceDeleted: (Device) -> Unit = {},
-    val onStartScanning: () -> Unit = {},
-    val onStopScanning: () -> Unit = {},
-    val onPairBoard: () -> Unit = {},
-    val onRequestPermission: () -> Unit = {},
-    val onRequestEnableBluetooth: () -> Unit = {},
-    val onRequestEnableLocation: () -> Unit = {},
-    val onAddDemoDevice: () -> Unit = {},
-    val onOpenBluetoothLog: () -> Unit = {},
+    val onDeviceSelected: (Device) -> Unit,
+    val onDeviceConnect: (Device) -> Unit,
+    val onDeviceDeleted: (Device) -> Unit,
+    val onStartScanning: () -> Unit,
+    val onStopScanning: () -> Unit,
+    val onPairBoard: () -> Unit,
+    val onRequestPermission: () -> Unit,
+    val onRequestEnableBluetooth: () -> Unit,
+    val onRequestEnableLocation: () -> Unit,
+    val onAddDemoDevice: () -> Unit,
+    val onOpenBluetoothLog: () -> Unit,
 )
 
 @Composable

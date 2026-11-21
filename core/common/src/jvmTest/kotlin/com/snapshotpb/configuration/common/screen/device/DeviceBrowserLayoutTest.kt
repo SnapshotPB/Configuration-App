@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
 import com.snapshotpb.configuration.common.layout.layoutDevice
+import com.snapshotpb.configuration.common.layout.noOpDeviceBrowserActions
 import kotlin.test.Test
 import kotlin.uuid.Uuid
 
@@ -30,7 +31,7 @@ class DeviceBrowserLayoutTest {
                     scannedDevices = emptyList(),
                     pairsWithDeviceChooser = false,
                     systemSupportsBluetoothEnable = true,
-                    actions = DeviceBrowserActions(),
+                    actions = noOpDeviceBrowserActions(),
                 )
             }
         }
@@ -46,7 +47,7 @@ class DeviceBrowserLayoutTest {
                     scannedDevices = scannedDevices,
                     pairsWithDeviceChooser = false,
                     systemSupportsBluetoothEnable = true,
-                    actions = DeviceBrowserActions(),
+                    actions = noOpDeviceBrowserActions(),
                 )
             }
         }
