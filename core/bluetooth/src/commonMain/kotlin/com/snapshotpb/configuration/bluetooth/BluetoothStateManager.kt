@@ -109,14 +109,8 @@ class BluetoothStateManager {
         _connectedDevices.update { it + deviceId }
     }
 
-    /**
-     * Marks [deviceId] as disconnected and removes its recorded eye state.
-     *
-     * The eye watcher count does not change, so a screen can keep its watch over a reconnect.
-     */
     fun deviceDisconnected(deviceId: String) {
         _connectedDevices.update { it - deviceId }
-        _eyeReadings.update { it - deviceId }
     }
 
     private val _updateServices: MutableStateFlow<Map<String, BoardUpdateService>> = MutableStateFlow(emptyMap())
@@ -202,9 +196,12 @@ class BluetoothStateManager {
     }
 
     /**
-     * Removes the eye state of [deviceId], for example at the teardown of its link.
+     * Removes the eye state of [deviceId]. The teardown of the link must call it, as it calls
+     * [clearUpdateService].
      *
-     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices].
+     * [deviceId] is the board id, the same key as [connectedDevices] and [updateServices]. While
+     * the board is not in [connectedDevices], [eyeReading] gives `null`, also when a state stays
+     * recorded.
      */
     fun clearEyeReading(deviceId: String) {
         _eyeReadings.update { readings -> readings - deviceId }

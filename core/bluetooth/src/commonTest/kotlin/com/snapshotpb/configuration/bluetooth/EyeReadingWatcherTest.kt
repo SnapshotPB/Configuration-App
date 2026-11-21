@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.model.EYE_ADC_FULL_SCALE_RAW
 import com.snapshotpb.configuration.model.EyeReading
 import com.snapshotpb.configuration.model.EyeSensorState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
@@ -40,7 +41,7 @@ class EyeReadingWatcherTest {
         assertEquals(listOf<EyeReadingState?>(null), values)
         assertEquals(1, manager.eyeWatchers.value[BOARD_A])
 
-        job.cancel()
+        job.cancelAndJoin()
         assertFalse(BOARD_A in manager.eyeWatchers.value)
     }
 
@@ -57,11 +58,10 @@ class EyeReadingWatcherTest {
 
         assertEquals(2, manager.eyeWatchers.value[BOARD_A])
 
-        job1.cancel()
+        job1.cancelAndJoin()
         assertEquals(1, manager.eyeWatchers.value[BOARD_A])
 
-        job2.cancel()
-        assertEquals(0, manager.eyeWatchers.value[BOARD_A] ?: 0)
+        job2.cancelAndJoin()
         assertFalse(BOARD_A in manager.eyeWatchers.value)
     }
 
@@ -104,11 +104,41 @@ class EyeReadingWatcherTest {
             values,
         )
 
-        job.cancel()
+        job.cancelAndJoin()
     }
 
     @Test
-    fun deviceDisconnected_clearsStateAndKeepsWatcherAcrossReconnect() = runTest {
+    fun deviceDisconnected_keepsRecordedStateOverLiveReReadAndKeepsWatcher() = runTest {
+        val manager = BluetoothStateManager()
+        manager.deviceConnected(BOARD_A)
+        val values = mutableListOf<EyeReadingState?>()
+
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            manager.eyeReading(BOARD_A).collect { values.add(it) }
+        }
+        manager.setEyeReading(BOARD_A, EyeReadingState.Unsupported)
+
+        manager.deviceDisconnected(BOARD_A)
+        assertEquals(1, manager.eyeWatchers.value[BOARD_A])
+        assertEquals(listOf<EyeReadingState?>(EyeReadingState.Waiting, EyeReadingState.Unsupported, null), values)
+
+        manager.deviceConnected(BOARD_A)
+        assertEquals(1, manager.eyeWatchers.value[BOARD_A])
+        assertEquals(
+            listOf<EyeReadingState?>(
+                EyeReadingState.Waiting,
+                EyeReadingState.Unsupported,
+                null,
+                EyeReadingState.Unsupported,
+            ),
+            values,
+        )
+
+        job.cancelAndJoin()
+    }
+
+    @Test
+    fun clearEyeReading_resetsStateToWaitingAfterTeardownAndReconnect() = runTest {
         val manager = BluetoothStateManager()
         manager.deviceConnected(BOARD_A)
         val values = mutableListOf<EyeReadingState?>()
@@ -119,17 +149,16 @@ class EyeReadingWatcherTest {
         manager.setEyeReading(BOARD_A, sampleReading)
 
         manager.deviceDisconnected(BOARD_A)
-        assertEquals(1, manager.eyeWatchers.value[BOARD_A])
+        manager.clearEyeReading(BOARD_A)
         assertEquals(listOf<EyeReadingState?>(EyeReadingState.Waiting, sampleReading, null), values)
 
         manager.deviceConnected(BOARD_A)
-        assertEquals(1, manager.eyeWatchers.value[BOARD_A])
         assertEquals(
             listOf<EyeReadingState?>(EyeReadingState.Waiting, sampleReading, null, EyeReadingState.Waiting),
             values,
         )
 
-        job.cancel()
+        job.cancelAndJoin()
     }
 
     @Test
@@ -149,7 +178,7 @@ class EyeReadingWatcherTest {
         manager.setEyeReading(BOARD_B, sampleReading)
         assertEquals(listOf<EyeReadingState?>(EyeReadingState.Waiting), valuesA)
 
-        jobA.cancel()
+        jobA.cancelAndJoin()
     }
 
     @Test
@@ -167,10 +196,10 @@ class EyeReadingWatcherTest {
         }
         assertEquals(listOf(0, 1), counts)
 
-        watcherJob.cancel()
+        watcherJob.cancelAndJoin()
         assertEquals(listOf(0, 1, 0), counts)
 
-        countJob.cancel()
+        countJob.cancelAndJoin()
     }
 
     private companion object {
