@@ -68,7 +68,7 @@ crash on 1.12.2. Step 1 finds which statement is correct for this app.
 | Deployment target | iOS 17.0, `TARGETED_DEVICE_FAMILY = "1,2"` | `iosApp/iosApp.xcodeproj/project.pbxproj` |
 | Orientations, iPhone | Portrait, landscape left, landscape right | `project.pbxproj` |
 | `UIRequiresFullScreen` | Not set | `iosApp/iosApp/Info.plist` |
-| Host | A SwiftUI `WindowGroup` holds a `UIViewControllerRepresentable` with `.ignoresSafeArea()`. The Compose content uses `Modifier.safeDrawingPadding()` | `ContentView.swift`, `MainViewController.kt` |
+| Host | A SwiftUI `WindowGroup` holds a `UIViewControllerRepresentable` with `.ignoresSafeArea()`. It returns `SideBarNavigationController` with the Compose controller as its root. Compose uses `Modifier.safeDrawingPadding()` | `ContentView.swift`, `SideBarNavigationController.swift`, `MainViewController.kt` |
 | `UIScreen.main` | Not used in the app code | `grep` of `*.kt` and `*.swift` |
 | Two-pane rule | `fitsTwoPanes`: two panes only when the container is wider than it is tall and at least 600 dp wide. A square container shows one column (`squareScreen_showsOneColumn`) | `core/common/.../composable/TwoPaneLayout.kt` |
 | Firmware update | The coordinator is not tied to the screen. The upload holds `writeMutex`, and `FirmwareUpdateScreen` uses `Modifier.keepScreenOn()` | `CLAUDE.md`, `FirmwareUpdateScreen.kt` |
@@ -473,6 +473,32 @@ button is under the status bar or the camera. The inset areas show the window ba
 the app background: white in light mode and black in dark mode. On iPhone Duo these areas are
 larger than on other iPhone models, so the white column at the right is easy to see in light
 mode. This is an open item for the owner.
+
+### Back button in the side bar
+
+These results come from the iPhone Duo simulator on Xcode 27.2 with the iOS 27.2 SDK.
+
+- The owner asked for the side-bar back button on each screen except the device list.
+- The system shows the navigation bar items of a `UINavigationController` in the vertical bar.
+  `SideBarNavigationController` now hosts the Compose controller as its root. A `leftBarButtonItem`
+  with `chevron.backward` and `axisBehavior = .verticalPreferred` shows as a round button below
+  the status bar. Its accessibility identifier is `sideBarBack`.
+- `verticalBarEdge` is `.trailing` on the folded iPhone Duo and `.unspecified` on iPhone 18 Pro.
+  The navigation bar is visible only when `verticalBarEdge` is not `.unspecified`. A hidden
+  navigation bar hides the item too, so the bar must stay visible on iPhone Duo.
+- On the folded iPhone Duo, the visible bar has zero height at y = 24 pt and adds a 24 pt top
+  safe area. Compose then moved the content down 7 pt, from 17 pt to 24 pt. The host sets a
+  negative `additionalSafeAreaInsets.top` on the Compose controller, so the content starts at 17 pt
+  again.
+- On iPhone 18 Pro, a visible bar adds 54 pt at the top. The bar stays hidden there. A screenshot
+  of the device list matches the build with no navigation controller pixel for pixel.
+- `testSimulator_sideBarBackButton` passed on iPhone Duo in light and dark mode. No button showed
+  on the device list, and a button showed on Configure Device, the Profiles screen, and one
+  profile. Each tap went back one screen, and the edge swipe still went back. On iPhone 18 Pro,
+  the test passed with no button. `testSmoke_appLaunchesAndStartsScanning` and
+  `testSimulator_rotationKeepsStateAndEdgeSwipeGoesBack` also passed on iPhone 18 Pro.
+- With `TEST_RUNNER_RUN_FOLD_TESTS=1`, the test also unfolds and folds on Configure Device.
+- RESULT_FOLD
 
 ### Not done yet
 
