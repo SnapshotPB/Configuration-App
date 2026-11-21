@@ -245,18 +245,7 @@ The owner made these decisions on 2026-11-18.
 | The sizes in section 1 are not correct | The two-pane decision uses wrong values | Step 4.1 measures them |
 | Apple sets a deadline for the iOS 27 SDK on the App Store | An old build cannot go to the App Store. One third-party source names April 2027, and Apple has not confirmed it | Step 2 |
 
-## 8. Sources
-
-- Apple, "Prepare your app for iPhone Duo", tech talk 111461:
-  https://developer.apple.com/videos/play/tech-talks/111461/
-- 9to5Mac, "Here's how iPhone Duo treats apps not optimized for the foldable display", 2026-09-09:
-  https://9to5mac.com/2026/09/09/heres-how-iphone-duo-treats-apps-not-optimized-for-the-foldable-display/
-- Librechat-Mobile issue #602, the CMP crash at a fold:
-  https://github.com/garfiec/Librechat-Mobile/issues/602
-- Theodo showroom for CMP on foldables:
-  https://github.com/theodo-group/compose-multiplatforme-duo-fold-showroom
-
-## 9. Results on the dev Mac (2026-11-21)
+## 8. Results on the dev Mac (2026-11-21)
 
 These results come from the iPhone Duo simulator on the dev MacBook, with the Debug build of
 commit f238df4 (CMP 1.13.0-rc01) and the simulated board (`--fake-board`).
@@ -322,3 +311,14 @@ mode. This is an open item for the owner.
 - Step 5.2 (Bluetooth at a fold) needs a real iPhone Duo (decision 3).
 - Step 5.4 (the screen stays on during an update after a fold) and step 5.5 (sheets, dialogs, the
   keyboard and the photo picker at a fold).
+
+## 9. Sources
+
+- Apple, "Prepare your app for iPhone Duo", tech talk 111461:
+  https://developer.apple.com/videos/play/tech-talks/111461/
+- 9to5Mac, "Here's how iPhone Duo treats apps not optimized for the foldable display", 2026-09-09:
+  https://9to5mac.com/2026/09/09/heres-how-iphone-duo-treats-apps-not-optimized-for-the-foldable-display/
+- Librechat-Mobile issue #602, the CMP crash at a fold:
+  https://github.com/garfiec/Librechat-Mobile/issues/602
+- Theodo showroom for CMP on foldables:
+  https://github.com/theodo-group/compose-multiplatforme-duo-fold-showroom
