@@ -85,6 +85,16 @@
     <string name="profile_label_eye_threshold_details">Seuil de détection de l’œil de chambre, de 0 à 100 pour cent de la pleine échelle; l’œil voit une bille lorsque la lecture est inférieure au seuil. L’application n’envoie jamais 0 — le micrologiciel appliquerait sa valeur par défaut de 50 pour cent.</string>
     <string name="profile_label_eye_debounce">Anti-rebond de l’œil</string>
     <string name="profile_label_eye_debounce_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel l’œil doit rester sous le seuil pour confirmer qu’une bille est dans la chambre.</string>
+    <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
+    <string name="profile_eye_live_level">Niveau de l’œil en direct&#160;: %1$s&#160;%</string>
+    <string name="profile_eye_level_bar_description">Niveau de l’œil %1$s&#160;%, seuil %2$d&#160;%</string>
+    <string name="profile_eye_result_ball">Bille</string>
+    <string name="profile_eye_result_empty">Vide</string>
+    <string name="profile_eye_hint_eye_off">Choisissez sur la carte un profil avec un œil pour voir la valeur de l’œil.</string>
+    <string name="profile_eye_hint_override_off">Activez les yeux sur la carte pour voir la valeur de l’œil.</string>
+    <string name="profile_eye_hint_fault">La carte signale un défaut de l’œil.</string>
+    <string name="profile_eye_hint_unsupported">Mettez à jour le micrologiciel pour voir la valeur de l’œil en direct.</string>
+    <string name="profile_eye_hint_not_permitted">Connectez-vous de nouveau à la carte avec le sélecteur du navigateur pour voir la valeur de l’œil.</string>
     <string name="profile_label_sear_solenoid_dwell">Maintien du solénoïde de sear</string>
     <string name="profile_label_sear_solenoid_dwell_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel le solénoïde de sear est alimenté durant le cycle de tir.</string>
     <string name="profile_label_sear_solenoid_delay">Délai du solénoïde de sear</string>

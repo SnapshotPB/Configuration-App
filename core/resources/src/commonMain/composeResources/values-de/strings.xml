@@ -85,6 +85,16 @@
     <string name="profile_label_eye_threshold_details">Erkennungsschwelle der Augen im Breech als 0–100 Prozent des Vollausschlags; das Auge erkennt einen Ball, wenn der Messwert darunter liegt. Die App sendet nie 0 — die Firmware würde ihren Standardwert von 50 Prozent einsetzen.</string>
     <string name="profile_label_eye_debounce">Augen-Entprellung</string>
     <string name="profile_label_eye_debounce_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Auge innerhalb der Schwelle bleiben muss, damit ein Ball im Breech erkannt wird.</string>
+    <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
+    <string name="profile_eye_live_level">Live-Augenpegel: %1$s&#160;%</string>
+    <string name="profile_eye_level_bar_description">Augenpegel %1$s&#160;%, Schwelle %2$d&#160;%</string>
+    <string name="profile_eye_result_ball">Ball</string>
+    <string name="profile_eye_result_empty">Leer</string>
+    <string name="profile_eye_hint_eye_off">Wählen Sie auf der Platine ein Profil mit Auge, um den Augenwert zu sehen.</string>
+    <string name="profile_eye_hint_override_off">Schalten Sie die Augen an der Platine ein, um den Augenwert zu sehen.</string>
+    <string name="profile_eye_hint_fault">Die Platine meldet einen Augenfehler.</string>
+    <string name="profile_eye_hint_unsupported">Aktualisieren Sie die Firmware, um den Live-Augenwert zu sehen.</string>
+    <string name="profile_eye_hint_not_permitted">Verbinden Sie sich über die Browser-Auswahl erneut mit der Platine, um den Augenwert zu sehen.</string>
     <string name="profile_label_sear_solenoid_dwell">Haltezeit Sear-Magnetventil</string>
     <string name="profile_label_sear_solenoid_dwell_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Sear-Magnetventil während des Schusszyklus bestromt wird.</string>
     <string name="profile_label_sear_solenoid_delay">Verzögerung Sear-Magnetventil</string>

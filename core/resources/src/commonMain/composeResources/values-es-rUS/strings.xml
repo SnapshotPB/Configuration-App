@@ -85,6 +85,16 @@
     <string name="profile_label_eye_threshold_details">Umbral de detección del ojo de la recámara, del 0 al 100 por ciento de la escala completa; el ojo ve una bola cuando la lectura está por debajo. La aplicación nunca envía 0 — el firmware aplicaría su valor predeterminado del 50 por ciento.</string>
     <string name="profile_label_eye_debounce">Antirrebote de ojo</string>
     <string name="profile_label_eye_debounce_details">El tiempo en milisegundos (pasos de 0,1 ms) que el ojo debe permanecer dentro del umbral para determinar que hay una bola en la recámara.</string>
+    <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
+    <string name="profile_eye_live_level">Nivel del ojo en vivo: %1$s&#160;%</string>
+    <string name="profile_eye_level_bar_description">Nivel del ojo %1$s&#160;%, umbral %2$d&#160;%</string>
+    <string name="profile_eye_result_ball">Bola</string>
+    <string name="profile_eye_result_empty">Vacío</string>
+    <string name="profile_eye_hint_eye_off">Seleccione en la placa un perfil con ojo para ver el valor del ojo.</string>
+    <string name="profile_eye_hint_override_off">Active los ojos en la placa para ver el valor del ojo.</string>
+    <string name="profile_eye_hint_fault">La placa indica una falla del ojo.</string>
+    <string name="profile_eye_hint_unsupported">Actualice el firmware para ver el valor del ojo en vivo.</string>
+    <string name="profile_eye_hint_not_permitted">Vuelva a conectarse a la placa con el selector del navegador para ver el valor del ojo.</string>
     <string name="profile_label_sear_solenoid_dwell">Dwell del solenoide del fiador</string>
     <string name="profile_label_sear_solenoid_dwell_details">El tiempo en milisegundos (pasos de 0,1 ms) que el solenoide del fiador permanece activado durante el ciclo de disparo.</string>
     <string name="profile_label_sear_solenoid_delay">Retraso del solenoide del fiador</string>
