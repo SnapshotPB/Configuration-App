@@ -272,11 +272,17 @@ commit f238df4 (CMP 1.13.0-rc01) and the simulated board (`--fake-board`).
 
 ### Window sizes (step 4.1)
 
-| State | Window, points | Status bar | `fitsTwoPanes` |
-|---|---|---|---|
-| Folded, outer display | 466 x 678 | A column at the right edge, about 84 pt wide | One column |
-| Open, inner display | 951 x 669 | A column at the right edge | Two panes |
-| Open, inner display, turned with the Device Hub | 669 x 951 | A strip at the top | One column |
+| State | Window, points | Insets: left, top, right, bottom | Content area, points | `fitsTwoPanes` |
+|---|---|---|---|---|
+| Folded, outer display, portrait | 466 x 678 | 0, 17, 84, 34 | 382 x 627 | One column |
+| Folded, outer display, landscape | 678 x 466 | 84, 17, 0, 34 | 594 x 415 | One column |
+| Open, inner display | 951 x 669 | 0, 16, 84, 34 | 867 x 619 | Two panes |
+| Open, inner display, turned with the Device Hub | 669 x 951 | 0, 82, 0, 34 | 669 x 835 | One column |
+
+The status bar is a column of 84 pt at the side of the camera, except on the turned inner
+display, where it is a strip at the top. The values come from pixel screenshots of the simulator.
+The content area is what `fitsTwoPanes` gets, because the Compose content is inside
+`safeDrawingPadding()`. The ratio of the turned inner content is 835 / 669 = 1.25.
 
 The device opens in the 951 x 669 state. `XCUIDevice.orientation` does not turn the inner
 display. Thus decision 2 is about the 669 x 951 state only, which the user gets when they turn
