@@ -10,8 +10,12 @@ import androidx.compose.ui.window.application
 import com.snapshotpb.configuration.bluetooth.BluetoothManager
 import com.snapshotpb.configuration.bluetooth.BluetoothRequest
 import com.snapshotpb.configuration.common.App
+import com.snapshotpb.configuration.common.share.ShareRequest
 import com.snapshotpb.configuration.di.platformModule
 import com.snapshotpb.configuration.screen.screenModule
+import com.snapshotpb.configuration.share.AwtSaveTargetChooser
+import com.snapshotpb.configuration.share.DesktopFileSaver
+import java.awt.Frame
 import io.github.kdroidfilter.nucleus.updater.NucleusUpdater
 import io.github.kdroidfilter.nucleus.updater.UpdateResult
 import io.github.kdroidfilter.nucleus.updater.UpdateInfo
@@ -48,6 +52,9 @@ import org.kodein.di.instance
 class Application(private val firmwareSiteUrl: String? = null) : BaseApplication() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private val isUpdateAvailable = MutableStateFlow<UpdateInfo?>(null)
+    @Volatile
+    private var mainWindow: Frame? = null
+    private val fileSaver = DesktopFileSaver(AwtSaveTargetChooser { mainWindow })
 
     override val di: DI by DI.lazy {
         import(appModule)
@@ -82,6 +89,19 @@ class Application(private val firmwareSiteUrl: String? = null) : BaseApplication
         }
     }
 
+    override suspend fun onShareRequest(request: ShareRequest) {
+        when (request) {
+            is ShareRequest.Text -> {
+                val savedFile = fileSaver.save(request)
+                if (savedFile != null) {
+                    log.d { "Saved shared text to ${savedFile.name}" }
+                } else {
+                    log.d { "User cancelled save of ${request.fileName}" }
+                }
+            }
+        }
+    }
+
     private fun checkForUpdates() {
         scope.launch {
             try {
@@ -109,6 +129,10 @@ class Application(private val firmwareSiteUrl: String? = null) : BaseApplication
                 onCloseRequest = ::exitApplication,
                 title = "Snapshot PB",
             ) {
+                DisposableEffect(window) {
+                    mainWindow = window
+                    onDispose { mainWindow = null }
+                }
                 withDI(di) {
                     AppTheme {
                         Surface(modifier = Modifier.fillMaxSize()) {
