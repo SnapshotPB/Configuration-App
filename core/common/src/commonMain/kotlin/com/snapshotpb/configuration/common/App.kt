@@ -24,6 +24,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.snapshotpb.configuration.common.navigation.BrowserHistoryEffect
+import com.snapshotpb.configuration.common.navigation.ExternalBackControl
+import com.snapshotpb.configuration.common.navigation.ExternalBackControlEffect
 import com.snapshotpb.configuration.common.navigation.NavigationController
 import com.snapshotpb.configuration.common.navigation.ScreenKeyBluetoothLog
 import com.snapshotpb.configuration.common.navigation.ScreenKeyConnectingDevice
@@ -34,6 +36,7 @@ import com.snapshotpb.configuration.common.navigation.ScreenKeyProfile
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfileAdd
 import com.snapshotpb.configuration.common.navigation.ScreenKeyProfiles
 import com.snapshotpb.configuration.common.navigation.navConfig
+import com.snapshotpb.configuration.common.navigation.showsBackControl
 import com.snapshotpb.configuration.common.screen.delegate.ConflictChoice
 import com.snapshotpb.configuration.common.screen.delegate.DeviceSyncDelegate
 import com.snapshotpb.configuration.common.screen.delegate.PendingSync
@@ -58,11 +61,21 @@ import org.kodein.di.compose.rememberInstance
 
 private val log = Arbor.tag("App")
 
+/**
+ * The root composable of the shared user interface.
+ *
+ * @param onExitRequested Runs when the user asks to go back on the root screen.
+ * @param showFloatingBackButton Shows the Compose back button when the app is not on the device list.
+ * @param externalBackControl A bridge that a platform host (the iOS side bar of iPhone Duo) gives
+ *   to show its own back button. `App` keeps it in step with the back stack. A `null` value means
+ *   no external back control.
+ */
 @Composable
 @Preview
 fun App(
     onExitRequested: () -> Unit = {},
     showFloatingBackButton: Boolean = false,
+    externalBackControl: ExternalBackControl? = null,
 ) {
     val backStack = rememberNavBackStack(
         configuration = navConfig,
@@ -161,7 +174,8 @@ fun App(
         }
 
         val currentScreen = backStack.lastOrNull()
-        if (showFloatingBackButton && currentScreen != null && currentScreen != ScreenKeyDeviceBrowser) {
+        val canGoBack = showsBackControl(currentScreen)
+        if (showFloatingBackButton && canGoBack) {
             FloatingActionButton(
                 onClick = { navigationController.goBack() },
                 modifier = Modifier
@@ -177,6 +191,14 @@ fun App(
                     tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
+        }
+        if (externalBackControl != null) {
+            ExternalBackControlEffect(
+                control = externalBackControl,
+                visible = canGoBack,
+                label = stringResource(Res.string.navigation_back),
+                onBack = { navigationController.goBack() },
+            )
         }
     }
 }
