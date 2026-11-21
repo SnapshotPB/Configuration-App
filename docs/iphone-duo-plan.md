@@ -169,11 +169,13 @@ Result on 2026-11-21 (branch `feat/iphone-duo-xcode-27`):
   the `scripts` job passed. The `macos` job ran on `xcode-27-arm64` 20261104.0337.1 and selected
   Xcode 27.2 (27B52) with the iOS 27.2 SDK. Its build took 23 min 40 s, because `~/.konan` had no
   entry for the step 1 libraries. The last `master` run took 5 min 11 s.
-- That run restored a `~/.konan` entry that Xcode 26 made, and the linker wrote 2552 warnings
-  (`could not open ...-cache.a(...)`). The `master` run with Xcode 26.6 had none. The `~/.konan`
-  key of `macos` now holds the Xcode version (`macOS-konan-xcode27.2-<hash>`). The key of the
-  Linux `ios` target does not change.
-  CI_RESULT_RUN2
+- The linker of that run wrote 2552 warnings `could not open ...-cache.a(...)` in the link of
+  the test binaries. The `master` run with Xcode 26.6 had none. CI run 44925178041 (commit
+  `6a646d6`, https://github.com/SnapshotPB/Configuration-App/actions/runs/44925178041) used a
+  cache key with the Xcode version and started with an empty `~/.konan`. All five targets
+  passed, and the linker wrote the same 2552 warnings. Thus the warnings come from Kotlin
+  2.4.21 with the Xcode 27 linker, not from an old cache. The cache key stays as before.
+  Examine them again with Kotlin 2.5.0 (open item).
 - Item 5: Needs the Mac and is open.
 
 ### Step 3. Insets near the status bar and the camera
@@ -234,7 +236,8 @@ A fold changes the size of the window. It does not start the app again.
 2. Add a fold during a firmware update to the same test, with the simulated board.
 3. Make sure that the `macos` CI target still runs only the tests that do not need the
    iPhone Duo simulator, if the runner image does not have that runtime.
-   Result (2026-11-21): `macos` runs only Gradle tasks (two framework links and `iosSimulatorArm64Test`), no XCUITest, so it needs no iPhone Duo runtime.
+   Result (2026-11-21): `macos` runs only Gradle tasks (two framework links and
+   `iosSimulatorArm64Test`), no XCUITest, so it needs no iPhone Duo runtime.
 
 ### Step 7. Documentation
 
