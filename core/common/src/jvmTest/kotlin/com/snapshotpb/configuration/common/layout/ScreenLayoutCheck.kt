@@ -308,7 +308,12 @@ private fun isTextClipped(
     insideVerticalScroll: Boolean,
 ): Boolean {
     val clippedBounds = node.boundsInRoot
-    val clippedInWidth = unclippedBounds.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
+    // Inside a vertical scroll, an off-screen node has empty clipped bounds. Check width only
+    // when the node is partly in view.
+    val visibleInScroll = clippedBounds.width > 0f && clippedBounds.height > 0f
+    val checkWidth = !insideVerticalScroll || visibleInScroll
+    val clippedInWidth = checkWidth &&
+        unclippedBounds.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
     val clippedInHeight = !insideVerticalScroll &&
         unclippedBounds.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
     if (clippedInWidth || clippedInHeight) return true
