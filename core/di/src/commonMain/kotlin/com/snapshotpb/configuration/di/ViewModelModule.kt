@@ -6,11 +6,13 @@ import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelega
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegateImpl
 import com.snapshotpb.configuration.common.screen.device.ConnectingDeviceViewModel
 import com.snapshotpb.configuration.common.screen.device.ConfigureDeviceViewModel
+import com.snapshotpb.configuration.common.screen.log.BluetoothLogViewModel
 import com.snapshotpb.configuration.common.screen.profile.ProfileAddViewModel
 import com.snapshotpb.configuration.common.screen.profile.ProfileViewModel
 import com.snapshotpb.configuration.common.screen.profile.ProfilesScreenViewModel
 import org.kodein.di.DI
 import org.kodein.di.bindFactory
+import org.kodein.di.bindProvider
 import org.kodein.di.bindSingleton
 import org.kodein.di.instance
 
@@ -64,6 +66,12 @@ val viewModelModule = DI.Module("viewModelModule") {
             deviceStore = instance(),
             deviceReadResultBus = instance(),
             bluetoothRequestManager = instance(),
+        )
+    }
+    bindProvider {
+        BluetoothLogViewModel(
+            bluetoothLog = instance(),
+            shareRequestManager = instance(),
         )
     }
 }
