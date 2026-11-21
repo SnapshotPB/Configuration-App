@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.DisabledBluetoothLog
 import com.snapshotpb.configuration.bluetooth.ots.toDomainDevice
 import com.snapshotpb.configuration.bluetooth.smp.FakeImageBoard
@@ -20,6 +21,7 @@ import com.snapshotpb.configuration.model.HardwareTarget
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheralState
+import dev.bluefalcon.core.BluetoothService
 import dev.bluefalcon.core.CharacteristicWriteResult
 import dev.bluefalcon.core.ConnectionPriority
 import kotlinx.coroutines.CompletableDeferred
@@ -67,12 +69,17 @@ class BluetoothConnectionEngineFirmwareTest {
     )
 
     /** A board with the OTS service, and with [smp] when it is not null. */
-    private fun TestScope.newFixture(smp: FakeSmpBoard? = FakeSmpBoard(), installSmp: Boolean = true): Fixture {
+    private fun TestScope.newFixture(
+        smp: FakeSmpBoard? = FakeSmpBoard(),
+        installSmp: Boolean = true,
+        extraServices: List<BluetoothService> = emptyList(),
+        bluetoothLog: BluetoothLog = DisabledBluetoothLog,
+    ): Fixture {
         val falconEngine = FakeBlueFalconEngine(backgroundScope).apply {
             emitManagerState(BluetoothManagerState.Ready)
             connectionStateResult = BluetoothPeripheralState.Connected
         }
-        val board = FakeOtsBoard(extraServices = listOfNotNull(smp?.service)).apply {
+        val board = FakeOtsBoard(extraServices = listOfNotNull(smp?.service) + extraServices).apply {
             setContent("device", ProtoBuf.encodeToByteArray(snapshotpb.v1.Device.serializer(), BOARD_DEVICE))
             setContent("device_config", ProtoBuf.encodeToByteArray(DeviceConfig.serializer(), BOARD_CONFIG))
             setContent("profiles", ProtoBuf.encodeToByteArray(Profiles.serializer(), BOARD_PROFILES))
@@ -90,7 +97,7 @@ class BluetoothConnectionEngineFirmwareTest {
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
             bleDebugLog = BleDebugLog(),
-            bluetoothLog = DisabledBluetoothLog,
+            bluetoothLog = bluetoothLog,
             deviceReadResultBus = DeviceReadResultBus(),
             deviceWriteResultBus = writeBus,
             seams = seams,
@@ -533,6 +540,36 @@ class BluetoothConnectionEngineFirmwareTest {
         runCurrent()
 
         assertEquals(FirmwareUpdateProgress.Failed(FirmwareUpdateFailure.NOT_CONNECTED), f.lastUpload().progress)
+    }
+
+    @Test
+    fun updateFirmware_withConcurrentBoardLogLines_succeedsAndRecordsChunks() = runTest(UnconfinedTestDispatcher()) {
+        val nus = FakeBoardLogService()
+        val log = RecordingBluetoothLog()
+        val f = newFixture(extraServices = listOf(nus.service), bluetoothLog = log)
+        connect(f)
+        val smp = assertNotNull(f.smp)
+        val delegateWrite = assertNotNull(f.falconEngine.onTypedWrite)
+        var sentLines = 0
+        f.falconEngine.onTypedWrite = { characteristic, value, type ->
+            sentLines += 1
+            nus.send("[00:00:01.000,000] smp: write $sentLines\r\n")
+            delegateWrite(characteristic, value, type)
+        }
+
+        f.engine.updateFirmware(BOARD_ID, IMAGE, requestId = 10L)
+        advanceTimeBy(UPLOAD_MILLIS)
+        runCurrent()
+
+        val last = f.lastUpload()
+        assertEquals(10L, last.requestId)
+        assertIs<FirmwareUpdateProgress.AwaitingSwap>(last.progress)
+        assertEquals(ImageHash(FakeSmpBoard.NEW_HASH).toHex(), last.uploadedImageHash)
+        assertContentEquals(IMAGE.bytes, smp.imageBoard.written)
+        assertEquals(1, smp.resetCount)
+        assertEquals(sentLines, log.chunks.size)
+        assertTrue(log.chunks.isNotEmpty())
+        assertTrue(log.chunks.all { it.first == 1 })
     }
 
     private fun boardDevice() = toDomainDevice(

@@ -1,6 +1,8 @@
 package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BoardLogState
+import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.bluetooth.ots.OtsClient
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
 import com.snapshotpb.configuration.bluetooth.ots.ProfilesWire
@@ -87,6 +89,8 @@ class BluetoothConnectionEngine(
     private var nextLogSession = 1
     /** The log session of each scan key with a link or an attempt. Guarded by [connectionLock]. */
     private val logSessions: MutableMap<String, Int> = mutableMapOf()
+    /** The board log collector of each scan key. Guarded by [connectionLock]. */
+    private val boardLogJobs: MutableMap<String, Job> = mutableMapOf()
     private val otsClients: MutableMap<String, OtsClient> = mutableMapOf()
     /**
      * Ids already logged on first discovery, so a busy scan doesn't repeat the same line. Bounded:
@@ -373,6 +377,7 @@ class BluetoothConnectionEngine(
                     )
                 )
                 seams.onServicesDiscovered(peripheral)
+                subscribeBoardLog(session, key, peripheral)
                 // Only observe a live, OTS-ready link: a failed OTS init or initial read tears the
                 // link down (finding #6, H1), and the services-not-discovered branch already
                 // disconnected the peripheral, so observing either would leak collectors on a dead
@@ -511,9 +516,51 @@ class BluetoothConnectionEngine(
         markDisconnected(deviceId)
     }
 
-    /** Ends the log session of [sessionKey], if it has one. Must be called while [connectionLock] is held. */
+    /** Cancels the board log collector and ends the log session of [sessionKey]. Must be called while [connectionLock] is held. */
     private fun endLogSession(sessionKey: String) {
+        boardLogJobs.remove(sessionKey)?.cancel()
         logSessions.remove(sessionKey)?.let(bluetoothLog::endSession)
+    }
+
+    /**
+     * Subscribes to NUS TX on [peripheral] for [session] and records the result in [bluetoothLog].
+     * A failure or time-out sets [BoardLogState.FAILED] and does not fail the connect.
+     * Must be called while [connectionLock] is held.
+     */
+    private suspend fun subscribeBoardLog(
+        session: Int,
+        sessionKey: String,
+        peripheral: BluetoothPeripheral,
+    ) {
+        if (!bluetoothLog.recordsBoardLines) return
+        boardLogJobs.remove(sessionKey)?.cancel()
+        val result = try {
+            withTimeoutOrNull(BOARD_LOG_SETUP_LIMIT_MILLIS) {
+                val service = seams.serviceWithCharacteristics(peripheral, BoardLogUuids.Service)
+                    ?: return@withTimeoutOrNull if (seams.servicesFollowPermission) {
+                        BoardLogState.NOT_VISIBLE
+                    } else {
+                        BoardLogState.ABSENT
+                    }
+                val tx = service.characteristics.firstOrNull { it.uuid == BoardLogUuids.Tx }
+                    ?: return@withTimeoutOrNull BoardLogState.FAILED
+                val collector = coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                    tx.notifications.collect { bytes -> bluetoothLog.boardChunk(session, bytes) }
+                }
+                boardLogJobs[sessionKey] = collector
+                blueFalcon.notifyCharacteristic(peripheral, tx, notify = true)
+                BoardLogState.REQUESTED
+            } ?: BoardLogState.FAILED
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            BoardLogState.FAILED
+        }
+        if (result != BoardLogState.REQUESTED) {
+            boardLogJobs.remove(sessionKey)?.cancel()
+        }
+        bluetoothLog.boardLogState(session, result)
+        log.d { "Board log state: $result" }
     }
 
     /** Clears the connected flag of the scan key [sessionKey]. Must be called while [connectionLock] is held. */
@@ -1140,7 +1187,8 @@ class BluetoothConnectionEngine(
         debugJobs.remove(deviceId)?.forEach(Job::cancel)
         bleDebugLog.clear(deviceId)
 
-        val notifiable = peripheral.characteristics.filter { it.isNotifying }
+        // Skip NUS TX because subscribeBoardLog already subscribes to it.
+        val notifiable = peripheral.characteristics.filter { it.isNotifying && it.uuid != BoardLogUuids.Tx }
         if (notifiable.isEmpty()) {
             log.d { "No notifying characteristics to observe on $deviceId" }
             return
@@ -1425,6 +1473,9 @@ class BluetoothConnectionEngine(
     }
 
     companion object {
+        /** Maximum time to discover NUS characteristics and enable board log notifications. */
+        private const val BOARD_LOG_SETUP_LIMIT_MILLIS = 3_000L
+
         /**
          * The time limit of the SMP read after a connect: the subscription and three commands. The
          * SMP client has a limit of 5 s for each answer.

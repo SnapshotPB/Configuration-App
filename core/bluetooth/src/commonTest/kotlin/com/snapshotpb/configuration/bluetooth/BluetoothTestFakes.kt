@@ -4,6 +4,7 @@ import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
 import com.snapshotpb.configuration.bluetooth.log.BoardLogState
+import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.model.AdvertisementData
 import dev.bluefalcon.core.BlueFalconEngine
 import dev.bluefalcon.core.BluetoothCharacteristic
@@ -156,12 +157,16 @@ internal class FakeBlueFalconEngine(
     /** Each `notifyCharacteristic` call: the characteristic and the requested state. */
     val notifyCalls: MutableList<Pair<BluetoothCharacteristic, Boolean>> = mutableListOf()
 
+    /** Hook called after each `notifyCharacteristic` record. A test sets it to throw or suspend. */
+    var onNotifyCharacteristic: (suspend (BluetoothCharacteristic, Boolean) -> Unit)? = null
+
     override suspend fun notifyCharacteristic(
         peripheral: BluetoothPeripheral,
         characteristic: BluetoothCharacteristic,
         notify: Boolean
     ) {
         notifyCalls += characteristic to notify
+        onNotifyCharacteristic?.invoke(characteristic, notify)
     }
     override suspend fun indicateCharacteristic(
         peripheral: BluetoothPeripheral,
@@ -321,4 +326,15 @@ internal class RecordingBluetoothLog(override val recordsBoardLines: Boolean = t
     override fun clear() {
         calls += "clear()"
     }
+}
+
+/** The NUS service of the board log, for engine tests. [send] acts as one board notification. */
+internal class FakeBoardLogService(isNotifying: Boolean = false, withTx: Boolean = true) {
+    val tx = FakeOtsCharacteristic(BoardLogUuids.Tx, isNotifying = isNotifying)
+    val service = FakeBluetoothService(
+        uuid = BoardLogUuids.Service,
+        characteristics = if (withTx) listOf(tx) else emptyList(),
+    )
+
+    suspend fun send(text: String) = tx.emitter.emit(text.encodeToByteArray())
 }

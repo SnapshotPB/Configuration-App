@@ -16,9 +16,13 @@ import kotlinx.coroutines.flow.SharedFlow
 
 /**
  * A characteristic whose value the fake board sets. A read stores the new value, and the fake engine
- * returns it from `readCharacteristic`, as the BlueFalcon 3.7 engines do (ADR 0014).
+ * returns it from `readCharacteristic`, as the BlueFalcon 3.7 engines do (ADR 0014). [isNotifying]
+ * defaults to false so the debug observer leaves test characteristics alone unless a test sets it.
  */
-internal class FakeOtsCharacteristic(override val uuid: Uuid) : BluetoothCharacteristic {
+internal class FakeOtsCharacteristic(
+    override val uuid: Uuid,
+    override val isNotifying: Boolean = false,
+) : BluetoothCharacteristic {
     var current: ByteArray? = null
     val emitter = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
 
@@ -26,9 +30,6 @@ internal class FakeOtsCharacteristic(override val uuid: Uuid) : BluetoothCharact
     override val value: ByteArray? get() = current
     override val notifications: SharedFlow<ByteArray> get() = emitter
     override val descriptors: List<BluetoothCharacteristicDescriptor> = emptyList()
-
-    /** False, so the engine's debug observer leaves these characteristics alone. */
-    override val isNotifying: Boolean = false
     override val service: BluetoothService? = null
 }
 
