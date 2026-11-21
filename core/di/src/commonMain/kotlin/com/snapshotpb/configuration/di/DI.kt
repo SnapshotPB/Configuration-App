@@ -7,6 +7,7 @@ import org.kodein.di.bindSingleton
 val coreDiModule = DI.Module("coreDiModule") {
     import(bluetoothCoreModule)
     import(mediaCoreModule)
+    import(shareModule)
     import(storeIOProviderModule)
     import(storeModule)
     import(viewModelModule)
