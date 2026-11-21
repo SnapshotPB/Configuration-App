@@ -157,12 +157,19 @@ jobs:
             tasks: ":app:desktop:build jvmTest :core:resources:localizationCheck"
           - target: browser
             tasks: ":app:browser:build wasmJsBrowserTest"
+            # The wasm links of core:common, core:di and app:browser run at the same time in one
+            # Kotlin daemon. With the 3 GB heap of gradle.properties, the master run of d0c8376
+            # failed with "Java heap space", and with Compose Multiplatform 1.12 the job stayed
+            # in garbage collection for more than 45 minutes. The Linux runner has 15.6 GiB of
+            # RAM, so this target gives the Kotlin daemon 6 GB. gradle.properties keeps 3 GB,
+            # because the macOS runner of the release build has only 7 GB.
+            gradle-args: "'-Pkotlin.daemon.jvmargs=-Xmx6g -XX:+UseParallelGC'"
           - target: ios
             tasks: ":app:ios:build"
           - target: macos
             tasks: ":app:ios:linkDebugFrameworkIosArm64 :app:ios:linkDebugFrameworkIosSimulatorArm64 iosSimulatorArm64Test"
-            # Only this entry has the key, so the matrix values of the Linux targets, and thus
-            # their Gradle cache keys, do not change.
+            # Only the macos and browser entries have this key. A new key changes the matrix
+            # values of that target, and thus its Gradle cache key.
             gradle-args: "--max-workers=1"
     steps:
       - name: Checkout repository
@@ -240,8 +247,9 @@ jobs:
 
       # No --no-parallel / --no-daemon / build-split needed anymore: each runner builds a single target
       # family, so org.gradle.parallel (gradle.properties) and the setup-gradle-managed daemon are back
-      # on and peak RAM stays under the 15.6 GiB of the Linux runner. The macos target is the
-      # exception: its `gradle-args` sets one worker (see the matrix comment).
+      # on and peak RAM stays under the 15.6 GiB of the Linux runner. Two targets are exceptions: the
+      # `gradle-args` of macos set one worker, and the `gradle-args` of browser give the Kotlin daemon
+      # a 6 GB heap (see the matrix comments).
       #
       # --continue runs the independent tasks after a failure, and `if: ${{ !cancelled() }}` runs
       # this step even when the composite test step fails. On master, setup-gradle then saves the
