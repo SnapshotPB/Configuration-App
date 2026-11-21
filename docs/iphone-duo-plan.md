@@ -297,6 +297,10 @@ buttons when the test printed `===FOLD_NOW===`.
   `TEST_RUNNER_RUN_FOLD_TESTS=1` on a folded iPhone Duo simulator, and click Open or Closed in
   the Device Hub each time that the log shows `===FOLD_NOW===`. CI does not run the XCUITests, so
   the `macos` target needs no iPhone Duo runtime (step 6.3).
+- Xcode 27.3 Beta 2 adds a fold API (release note 95593221): `XCUIDevice.shared.hinge` gives an
+  `XCUIHinge`, and its `angle` (radians) sets the hinge angle. When Xcode 27.3 is stable, the test
+  can set the angle itself and run with no person. Code that uses `XCUIHinge` does not compile
+  with Xcode 27.2. This fact comes from the Apple release notes; nobody tested it here.
 
 ### Insets (step 3)
 
