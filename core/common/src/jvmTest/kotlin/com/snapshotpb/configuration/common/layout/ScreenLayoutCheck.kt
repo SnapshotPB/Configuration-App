@@ -135,7 +135,13 @@ internal fun checkScreenLayout(
         }
 
         for (target in scrollTargets) {
-            onNode(target.matcher, useUnmergedTree = true).performScrollTo()
+            // performScrollTo needs clock frames, so turn autoAdvance on for that call only.
+            mainClock.autoAdvance = true
+            try {
+                onNode(target.matcher, useUnmergedTree = true).performScrollTo()
+            } finally {
+                mainClock.autoAdvance = false
+            }
             mainClock.advanceTimeBy(SCROLL_SETTLE_MS)
             waitForIdle()
 
