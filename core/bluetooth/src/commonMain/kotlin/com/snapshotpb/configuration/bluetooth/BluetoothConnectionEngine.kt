@@ -812,8 +812,9 @@ class BluetoothConnectionEngine(
             if (error is CancellationException) throw error
             log.d { "OTS initial read failed for $deviceId: ${error::class.simpleName}: ${error.message}" }
             val current = bluetoothStateManager.connectionProgress.value
-            // Only the class name goes into the progress and the log. R8 can shorten a class name
-            // in an Android release build.
+            // Only the class name goes into the progress and the log. The message text can hold
+            // board data, and the progress goes into a test tag that iOS shows as an accessibility
+            // identifier. R8 can shorten a class name in an Android release build.
             val code = error::class.simpleName ?: UNKNOWN_FAILURE_CODE
             val failedProgress = if (current.step3 == StepStatus.IN_PROGRESS) {
                 current.copy(step3 = StepStatus.FAILED, failureCode = code)
@@ -935,6 +936,8 @@ class BluetoothConnectionEngine(
         // (findings 3/3b/4/5). By mirroring the firmware here, the wire value, the reported write
         // result, and (via the write-result observer) the editable + baseline device all agree.
         val clamped = domainDevice.clampedToFirmwareRanges()
+        var logSession: Int? = null
+        var failureCode: String? = null
         // Catch every failure (not connected, OTS object missing, link dropped mid-write) and report
         // it on the write-result bus so the UI can surface it.
         try {
@@ -942,20 +945,25 @@ class BluetoothConnectionEngine(
             // the lock — the maps are mutated on the connect/teardown coroutines. The write itself
             // runs outside the lock so it never blocks a connect/disconnect.
             val (client, knownProfiles, knownDeviceConfig) = connectionLock.withLock {
+                logSession = logSessions[deviceId]
                 Triple(otsClients[deviceId], lastReadProfiles[deviceId], lastReadDeviceConfig[deviceId])
             }
+            logEvent(logSession, BluetoothLogEvent.WRITE_STARTED)
             if (client == null) {
+                failureCode = NOT_CONNECTED_FAILURE_CODE
                 throw IllegalStateException("Device $deviceId is not connected or OTS not initialized")
             }
             if (knownProfiles == null) {
                 // The initial read has not finished (H1). Without the board's Profiles the write
                 // would reset board_auto_off in every slot, so refuse it.
+                failureCode = NOT_READ_FAILURE_CODE
                 throw IllegalStateException("Device $deviceId has not finished its initial read")
             }
             if (clamped.knownProfiles.size < Device.MIN_PROFILE_COUNT) {
                 // A Profiles object with no profiles has zero length. The board refuses a
                 // zero-length OACP WRITE, and it also refuses a roster with no profiles. Refuse the
                 // write here, before device_config goes, so the board does not keep half a save.
+                failureCode = NO_PROFILES_FAILURE_CODE
                 throw IllegalStateException("Device $deviceId has no profiles; the board keeps at least one")
             }
             // The user can edit the board in its menu while the app is connected, and the board
@@ -1074,7 +1082,9 @@ class BluetoothConnectionEngine(
             deviceWriteResultBus.emit(
                 DeviceWriteResult(stored, error = null, requestedDevice = domainDevice, requestId = requestId)
             )
+            logEvent(logSession, BluetoothLogEvent.WRITE_DONE)
         } catch (cancellation: CancellationException) {
+            logEvent(logSession, BluetoothLogEvent.WRITE_FAILED, CANCELLED_FAILURE_CODE)
             // Only a cancelled engine scope gets here. Report the write as failed all the same, so
             // the UI never waits for a result that does not come (M1).
             withContext(NonCancellable) {
@@ -1089,8 +1099,15 @@ class BluetoothConnectionEngine(
             }
             throw cancellation
         } catch (error: Exception) {
-            if (error !is BoardChangedBeforeWriteException) {
+            if (error is BoardChangedBeforeWriteException) {
+                logEvent(logSession, BluetoothLogEvent.BOARD_CHANGED_BEFORE_WRITE)
+            } else {
                 log.e(error) { "Failed to write device configuration to $deviceId" }
+                logEvent(
+                    logSession,
+                    BluetoothLogEvent.WRITE_FAILED,
+                    failureCode ?: error::class.simpleName ?: UNKNOWN_FAILURE_CODE,
+                )
             }
             deviceWriteResultBus.emit(
                 DeviceWriteResult(clamped, error = error, requestedDevice = domainDevice, requestId = requestId)
@@ -1524,6 +1541,10 @@ class BluetoothConnectionEngine(
         private const val STEP2_FAILURE_CODE = "step2"
         private const val STEP3_FAILURE_CODE = "step3"
         private const val UNEXPECTED_FAILURE_CODE = "unexpected"
+        private const val NOT_CONNECTED_FAILURE_CODE = "not_connected"
+        private const val NOT_READ_FAILURE_CODE = "not_read"
+        private const val NO_PROFILES_FAILURE_CODE = "no_profiles"
+        private const val CANCELLED_FAILURE_CODE = "cancelled"
 
         private val log = Arbor.tag("BluetoothManager")
 

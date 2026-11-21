@@ -2,6 +2,7 @@ package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogImpl
+import com.snapshotpb.configuration.model.Device
 import dev.bluefalcon.core.BlueFalcon
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
@@ -9,12 +10,14 @@ import dev.bluefalcon.core.BluetoothPeripheralState
 import dev.bluefalcon.core.BluetoothService
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.protobuf.ProtoBuf
 import snapshotpb.autococker.v1.AutocockerConfig
 import snapshotpb.autococker.v1.AutocockerFireMode
@@ -30,7 +33,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-/** Engine tests for connect, disconnect, and link-loss events in the Bluetooth log. */
+/** Engine tests for connect, write, disconnect, and link-loss events in the Bluetooth log. */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BluetoothConnectionEngineLogEventTest {
 
@@ -45,6 +48,7 @@ class BluetoothConnectionEngineLogEventTest {
         val board: FakeOtsBoard,
         val seams: FakePlatformBluetoothSeams,
         val log: L,
+        val reads: List<DeviceReadResult>,
     )
 
     private fun newBoard(
@@ -79,22 +83,30 @@ class BluetoothConnectionEngineLogEventTest {
             setDevices(mapOf(DEVICE_ID to board.peripheral))
         }
         val stateManager = BluetoothStateManager().apply { update(BluetoothState.Ready) }
+        val readBus = DeviceReadResultBus()
+        val reads = mutableListOf<DeviceReadResult>()
+        backgroundScope.launch { readBus.results.collect { reads += it } }
         val engine = BluetoothConnectionEngine(
             blueFalcon = BlueFalcon(falconEngine),
             bluetoothStateManager = stateManager,
             bluetoothLog = log,
-            deviceReadResultBus = DeviceReadResultBus(),
+            deviceReadResultBus = readBus,
             deviceWriteResultBus = DeviceWriteResultBus(),
             seams = seams,
             coroutineScope = backgroundScope,
         )
-        return Fixture(engine, stateManager, falconEngine, board, seams, log)
+        return Fixture(engine, stateManager, falconEngine, board, seams, log, reads)
     }
 
     private fun TestScope.connectComplete(f: Fixture<*>, deviceId: String = DEVICE_ID) {
         f.engine.connect(deviceId)
         advanceTimeBy(CONNECT_MILLIS)
         runCurrent()
+    }
+
+    private fun TestScope.connectAndSync(f: Fixture<*>, deviceId: String = DEVICE_ID): Device {
+        connectComplete(f, deviceId)
+        return f.reads.last().device
     }
 
     private fun assertOrder(calls: List<String>, vararg expected: String) {
@@ -319,12 +331,106 @@ class BluetoothConnectionEngineLogEventTest {
         assertFalse(texts.any { "MARKER" in it || BOARD_ID in it || DEVICE_ID in it })
     }
 
+    @Test
+    fun write_success_logsWriteStartedThenWriteDone() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(RecordingBluetoothLog())
+        val synced = connectAndSync(f)
+        val beforeWrite = f.log.calls.size
+
+        f.engine.writeDeviceConfiguration(DEVICE_ID, synced.copy(bootText = "APP"))
+        advanceTimeBy(WRITE_MILLIS)
+        runCurrent()
+
+        val writeCalls = f.log.calls.drop(beforeWrite)
+        assertEquals(
+            listOf("app(1, WRITE_STARTED)", "app(1, WRITE_DONE)"),
+            writeCalls,
+        )
+    }
+
+    @Test
+    fun write_notConnected_logsWriteStartedAndNotConnectedOnSession0() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(RecordingBluetoothLog())
+        val device = Device(
+            id = Uuid.parse(BOARD_ID),
+            name = "Board",
+            lastSeen = LocalDate(2026, 10, 23),
+            knownProfiles = emptyList(),
+        )
+
+        f.engine.writeDeviceConfiguration(DEVICE_ID, device)
+        runCurrent()
+
+        assertEquals(
+            listOf("app(0, WRITE_STARTED)", "app(0, WRITE_FAILED, not_connected)"),
+            f.log.calls,
+        )
+    }
+
+    @Test
+    fun write_noProfiles_logsWriteFailedNoProfiles() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(RecordingBluetoothLog())
+        val synced = connectAndSync(f)
+        val beforeWrite = f.log.calls.size
+
+        f.engine.writeDeviceConfiguration(DEVICE_ID, synced.copy(knownProfiles = emptyList()))
+        runCurrent()
+
+        val writeCalls = f.log.calls.drop(beforeWrite)
+        assertEquals(
+            listOf("app(1, WRITE_STARTED)", "app(1, WRITE_FAILED, no_profiles)"),
+            writeCalls,
+        )
+    }
+
+    @Test
+    fun write_boardMenuEditBeforeWrite_logsBoardChangedAndNoWriteFailed() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(RecordingBluetoothLog())
+        val synced = connectAndSync(f)
+        f.board.setContent("profiles", ProtoBuf.encodeToByteArray(Profiles.serializer(), MENU_PROFILES))
+        f.board.setContent(
+            "device",
+            ProtoBuf.encodeToByteArray(snapshotpb.v1.Device.serializer(), BOARD_DEVICE.copy(lockoutEnabled = true)),
+        )
+        val beforeWrite = f.log.calls.size
+
+        f.engine.writeDeviceConfiguration(DEVICE_ID, synced.copy(bootText = "APP"))
+        advanceTimeBy(WRITE_MILLIS)
+        runCurrent()
+
+        val writeCalls = f.log.calls.drop(beforeWrite)
+        assertEquals(
+            listOf("app(1, WRITE_STARTED)", "app(1, BOARD_CHANGED_BEFORE_WRITE)"),
+            writeCalls,
+        )
+        assertTrue(writeCalls.none { "WRITE_FAILED" in it })
+    }
+
+    @Test
+    fun write_boardFailure_logsFailureClassNameWithNoMessage() = runTest(UnconfinedTestDispatcher()) {
+        val f = newFixture(RecordingBluetoothLog())
+        val synced = connectAndSync(f)
+        f.board.failWriteOf = "profiles"
+        val beforeWrite = f.log.calls.size
+
+        f.engine.writeDeviceConfiguration(DEVICE_ID, synced.copy(bootText = "APP"))
+        advanceTimeBy(WRITE_MILLIS)
+        runCurrent()
+
+        val writeCalls = f.log.calls.drop(beforeWrite)
+        assertEquals(
+            listOf("app(1, WRITE_STARTED)", "app(1, WRITE_FAILED, OacpFailure)"),
+            writeCalls,
+        )
+    }
+
     private companion object {
         const val DEVICE_ID = "5350425f-4f54-4000-8000-000000000001"
         const val BOARD_ID = "00112233-4455-6677-8899-aabbccddeeff"
         const val SECOND_BOARD_ID = "11223344-5566-7788-99aa-bbccddeeff00"
 
         const val CONNECT_MILLIS = 20_000L
+        const val WRITE_MILLIS = 20_000L
         const val SCAN_TIMEOUT_MILLIS = 15_000L
         const val MONITOR_WAIT_MILLIS = 3_000L
         const val PUBLISH_WAIT_MILLIS = 300L
@@ -341,6 +447,21 @@ class BluetoothConnectionEngineLogEventTest {
             profiles = listOf(
                 Profile(
                     name = "P0",
+                    boardAutoOff = 11u,
+                    autococker = AutocockerConfig(fireMode = AutocockerFireMode.AUTOCOCKER_FIRE_MODE_SEMI),
+                ),
+                Profile(
+                    name = "P1",
+                    boardAutoOff = 22u,
+                    autococker = AutocockerConfig(fireMode = AutocockerFireMode.AUTOCOCKER_FIRE_MODE_FULL_AUTO),
+                ),
+            ),
+        )
+
+        val MENU_PROFILES = Profiles(
+            profiles = listOf(
+                Profile(
+                    name = "MENU",
                     boardAutoOff = 11u,
                     autococker = AutocockerConfig(fireMode = AutocockerFireMode.AUTOCOCKER_FIRE_MODE_SEMI),
                 ),
