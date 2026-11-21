@@ -263,6 +263,8 @@ class ConnectReliabilityE2ETest {
             }
         }
 
+        // API 37 deprecates this overload. Its replacement needs API 37, and minSdk is 24.
+        @Suppress("DEPRECATION")
         val gatt: BluetoothGatt =
             device.connectGatt(context, autoConnect, callback, BluetoothDevice.TRANSPORT_LE)
 
@@ -316,6 +318,8 @@ class ConnectReliabilityE2ETest {
         }
         Log.i(TAG, "leak phase 1: issuing $count orphaned direct-connects (never closed) t=${now()}")
         for (i in 1..count) {
+            // API 37 deprecates this overload. Its replacement needs API 37, and minSdk is 24.
+            @Suppress("DEPRECATION")
             val g = device.connectGatt(app, false, cb, BluetoothDevice.TRANSPORT_LE)
             if (g != null) leaked.add(g)
             Log.i(TAG, "arm=leak iter=$i issued leaked=${leaked.size} t=${now()}")
