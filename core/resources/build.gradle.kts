@@ -16,7 +16,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(libs.androidx.lifecycle.runtimeCompose)
                 implementation(libs.compose.components.resources)

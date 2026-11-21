@@ -10,7 +10,7 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 // The seam's own signatures carry BluetoothRequest and BluetoothDeviceState, so
                 // every consumer sees them: api, not implementation.

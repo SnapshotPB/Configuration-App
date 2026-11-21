@@ -37,7 +37,7 @@ val stampBuildMetadata = providers.gradleProperty("snapshotpb.stampBuildMetadata
     .map(String::toBoolean)
     .getOrElse(false)
 
-val generateAppVersion by tasks.registering {
+val generateAppVersion = tasks.register("generateAppVersion") {
     val outputDir = layout.buildDirectory.dir("generated/appVersion")
     val fullVersion = rootProject.version.toString()
     val versionName = if (stampBuildMetadata) fullVersion else fullVersion.substringBefore('+')
@@ -92,7 +92,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             kotlin.srcDir(generateAppVersion)
         }
     }

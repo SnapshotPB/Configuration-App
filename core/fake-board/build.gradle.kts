@@ -10,7 +10,7 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 api(projects.core.debugBoard)
                 implementation(projects.core.bluetooth)
@@ -25,7 +25,7 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)

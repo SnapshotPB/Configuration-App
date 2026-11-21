@@ -14,7 +14,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(projects.core.util)
 
@@ -22,14 +22,14 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
             }
         }
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
             }
         }
         // The parity tests of MarkerProfileField and MarkerProfile read the JSON fixtures in
         // src/jvmTest/resources.
-        val jvmTest by getting {
+        jvmTest {
             dependencies {
                 implementation(libs.kotlinx.serialization.json)
             }

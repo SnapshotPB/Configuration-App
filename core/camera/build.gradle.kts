@@ -17,7 +17,7 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(projects.core.common)
                 implementation(projects.core.model)

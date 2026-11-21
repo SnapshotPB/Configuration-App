@@ -21,7 +21,7 @@ kotlin {
     iosSimulatorArm64()
     wasmJs { browser() }
     sourceSets {
-        val commonMain by getting {
+        commonMain {
             dependencies {
                 implementation(projects.core.appVersion)
                 implementation(projects.core.bluetooth)
@@ -51,8 +51,8 @@ kotlin {
         // The imagepickerkmp implementation of ImagePicker lives in :core:camera so its Android
         // CameraX native libraries and manifest permissions only reach the apps that capture
         // device photos, not :app:wear or :app:browser.
-        val nonWasmMain by creating {
-            dependsOn(commonMain)
+        val nonWasmMain = create("nonWasmMain") {
+            dependsOn(commonMain.get())
         }
         // Every non-wasm leaf target must depend on nonWasmMain so it gets the real (imagepickerkmp)
         // MediaSelection actual. Wired per-leaf rather than via the default `iosMain` intermediate
@@ -63,7 +63,7 @@ kotlin {
         getByName("androidMain").dependsOn(nonWasmMain)
         getByName("iosArm64Main").dependsOn(nonWasmMain)
         getByName("iosSimulatorArm64Main").dependsOn(nonWasmMain)
-        val commonTest by getting {
+        commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.kotlinx.coroutines.test)
