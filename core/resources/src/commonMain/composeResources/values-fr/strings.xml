@@ -82,7 +82,7 @@
     <string name="profile_eye_mode_reflective">Réfléchissant</string>
     <string name="profile_eye_mode_break_beam">Barrière lumineuse</string>
     <string name="profile_label_eye_threshold">Seuil de l’œil</string>
-    <string name="profile_label_eye_threshold_details">Seuil de détection de l’œil de chambre, de 0 à 100 pour cent de la pleine échelle; l’œil voit une bille lorsque la lecture est inférieure au seuil. L’application n’envoie jamais 0 — le firmware appliquerait sa valeur par défaut de 50 pour cent.</string>
+    <string name="profile_label_eye_threshold_details">Seuil de détection de l’œil de chambre, de 0 à 100 pour cent de la pleine échelle. En mode Barrière lumineuse, l’œil voit une bille lorsque la lecture est inférieure ou égale au seuil; en mode Réfléchissant, lorsque la lecture est supérieure au seuil. L’application n’envoie jamais 0 — le firmware appliquerait sa valeur par défaut de 50 pour cent.</string>
     <string name="profile_label_eye_debounce">Anti-rebond de l’œil</string>
     <string name="profile_label_eye_debounce_details">Le temps en millisecondes (pas de 0,1 ms) pendant lequel l’œil doit rester sous le seuil pour confirmer qu’une bille est dans la chambre.</string>
     <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
