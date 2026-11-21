@@ -1,6 +1,7 @@
 package com.snapshotpb.configuration.bluetooth
 
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
+import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
 import com.snapshotpb.configuration.bluetooth.log.BoardLogState
 import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.bluetooth.ots.OtsClient
@@ -48,6 +49,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -234,6 +236,7 @@ class BluetoothConnectionEngine(
      * cleaning up before it runs — guaranteeing only a single connect is ever in flight.
      */
     fun connect(deviceId: String) {
+        logEvent(0, BluetoothLogEvent.CONNECT_REQUESTED)
         connectionJob?.cancel()
         connectionJob = coroutineScope.launch { connectInternal(deviceId) }
     }
@@ -263,6 +266,7 @@ class BluetoothConnectionEngine(
     private suspend fun connectAttempt(deviceId: String) {
         var sessionKey: String? = null
         var attemptSession: Int? = null
+        var refused = false
         try {
             if (bluetoothStateManager.bluetoothState.value == BluetoothState.Scanning) {
                 // A throw from the platform scan stop must not abort the connect (L18).
@@ -279,7 +283,11 @@ class BluetoothConnectionEngine(
                 ConnectionProgress(step1 = StepStatus.IN_PROGRESS)
             )
 
-            if (!seams.awaitReadyToConnect(deviceId)) return
+            if (!seams.awaitReadyToConnect(deviceId)) {
+                refused = true
+                logEvent(0, BluetoothLogEvent.BLUETOOTH_NOT_READY)
+                return
+            }
 
             // A second connect to a board that is already connected reuses the live link and only
             // reads the board again (N6). A second blueFalcon.connect on a live link can make the
@@ -290,6 +298,7 @@ class BluetoothConnectionEngine(
                 sessionKey = knownKey
                 val (client, livePeripheral) = live
                 log.d { "Device $deviceId is already connected; reading it again on the live link" }
+                logEvent(logSessions[knownKey], BluetoothLogEvent.LIVE_REREAD)
                 bluetoothStateManager.updateProgress(
                     ConnectionProgress(
                         step1 = StepStatus.COMPLETED,
@@ -315,6 +324,7 @@ class BluetoothConnectionEngine(
             val found = ensurePeripheral(deviceId)
             if (found == null) {
                 log.d { "Cannot connect, device $deviceId not discovered before timeout" }
+                logEvent(session, BluetoothLogEvent.CONNECT_FAILED, NOT_FOUND_FAILURE_CODE)
                 bluetoothStateManager.updateProgress(
                     ConnectionProgress(step1 = StepStatus.FAILED)
                 )
@@ -338,6 +348,7 @@ class BluetoothConnectionEngine(
             var servicesDiscovered = false
             for (attempt in 1..CONNECT_ATTEMPTS) {
                 log.d { "Connecting to $deviceId (attempt $attempt/$CONNECT_ATTEMPTS)" }
+                logEvent(session, BluetoothLogEvent.CONNECT_ATTEMPT, "$attempt/$CONNECT_ATTEMPTS")
                 // The attempt number goes into the progress, so the connect screen can show a retry.
                 bluetoothStateManager.updateProgress(
                     ConnectionProgress(
@@ -366,6 +377,7 @@ class BluetoothConnectionEngine(
 
             var otsReady = false
             if (servicesDiscovered) {
+                logEvent(session, BluetoothLogEvent.SERVICES_FOUND)
                 bluetoothStateManager.updateProgress(
                     ConnectionProgress(
                         step1 = StepStatus.COMPLETED,
@@ -378,8 +390,11 @@ class BluetoothConnectionEngine(
                 otsReady = withHighConnectionPriority(peripheral) {
                     initializeOtsClient(key, peripheral, expectedBoardId(deviceId, key))
                 }
+                if (otsReady) logEvent(session, BluetoothLogEvent.OTS_READY)
             } else {
                 log.d { "Services not discovered for $deviceId after $CONNECT_ATTEMPTS attempts" }
+                logEvent(session, BluetoothLogEvent.SERVICES_NOT_FOUND)
+                logEvent(session, BluetoothLogEvent.CONNECT_FAILED, STEP2_FAILURE_CODE)
                 bluetoothStateManager.updateProgress(
                     ConnectionProgress(
                         step1 = StepStatus.COMPLETED,
@@ -397,10 +412,19 @@ class BluetoothConnectionEngine(
             // the deviceId guard avoids clobbering a connect that already advanced.
             val state = bluetoothStateManager.bluetoothState.value
             if (state is BluetoothState.Connecting && state.deviceId == deviceId) {
+                val cancelled = !currentCoroutineContext().isActive
                 withContext(NonCancellable) {
                     log.d { "Connect to $deviceId cancelled; cleaning up" }
                     runCatching { seams.stopScanForDevices() }
                     val key = sessionKey ?: sessionKeyFor(deviceId) ?: deviceId
+                    if (!refused) {
+                        val eventSession = attemptSession ?: logSessions[key]
+                        if (cancelled) {
+                            logEvent(eventSession, BluetoothLogEvent.CONNECT_CANCELLED)
+                        } else {
+                            logEvent(eventSession, BluetoothLogEvent.CONNECT_FAILED, UNEXPECTED_FAILURE_CODE)
+                        }
+                    }
                     teardownConnection(key, disconnectPeripheral = true)
                     restoreIdleState()
                     bluetoothStateManager.resetProgress()
@@ -467,6 +491,7 @@ class BluetoothConnectionEngine(
      */
     suspend fun disconnect(deviceId: String) {
         log.d { "Disconnecting $deviceId" }
+        logEvent(0, BluetoothLogEvent.DISCONNECT_REQUESTED)
         connectionJob?.let { job ->
             connectionJob = null
             job.cancel()
@@ -503,6 +528,16 @@ class BluetoothConnectionEngine(
             }
         }
         markDisconnected(deviceId)
+    }
+
+    /**
+     * Records an app event in [bluetoothLog] for [session], or session `0` when [session] is null.
+     *
+     * [detail] is a fixed code or, as a last choice, an exception class name.
+     * R8 can shorten a class name in an Android release build.
+     */
+    private fun logEvent(session: Int?, event: BluetoothLogEvent, detail: String? = null) {
+        bluetoothLog.app(session ?: 0, event, detail)
     }
 
     /** Cancels the board log collector and ends the log session of [sessionKey]. Must be called while [connectionLock] is held. */
@@ -587,6 +622,7 @@ class BluetoothConnectionEngine(
                         // monitor-cancel can't cancel this coroutine mid-teardown.
                         if (connectionMonitors[deviceId] === self) {
                             connectionMonitors.remove(deviceId)
+                            logEvent(logSessions[deviceId], BluetoothLogEvent.LINK_LOST)
                             teardownConnection(deviceId, disconnectPeripheral = false)
                         }
                     }
@@ -704,6 +740,7 @@ class BluetoothConnectionEngine(
             // (disconnectOthers only iterates connectedBoardIds) and its later drop would never be
             // detected (finding #6). Safe to call
             // teardownConnection here: connectAttempt holds connectionLock across this call.
+            logEvent(logSessions[deviceId], BluetoothLogEvent.CONNECT_FAILED, STEP3_FAILURE_CODE)
             bluetoothStateManager.updateProgress(
                 ConnectionProgress(
                     step1 = StepStatus.COMPLETED,
@@ -775,8 +812,8 @@ class BluetoothConnectionEngine(
             if (error is CancellationException) throw error
             log.d { "OTS initial read failed for $deviceId: ${error::class.simpleName}: ${error.message}" }
             val current = bluetoothStateManager.connectionProgress.value
-            // Only the class name goes into the progress. The message text can hold board data, and
-            // the progress goes into a test tag that iOS shows as an accessibility identifier.
+            // Only the class name goes into the progress and the log. R8 can shorten a class name
+            // in an Android release build.
             val code = error::class.simpleName ?: UNKNOWN_FAILURE_CODE
             val failedProgress = if (current.step3 == StepStatus.IN_PROGRESS) {
                 current.copy(step3 = StepStatus.FAILED, failureCode = code)
@@ -784,6 +821,7 @@ class BluetoothConnectionEngine(
                 current.copy(step4 = StepStatus.FAILED, failureCode = code)
             }
             bluetoothStateManager.updateProgress(failedProgress)
+            logEvent(logSessions[deviceId], BluetoothLogEvent.CONNECT_FAILED, code)
         }.getOrNull()
 
         if (read == null) {
@@ -801,6 +839,7 @@ class BluetoothConnectionEngine(
             // The failure code holds no board id, because it goes into a test tag (see
             // ConnectionProgress.failureCode).
             log.d { "Board $boardId answered on $deviceId, but the connect was for $expectedBoardId" }
+            logEvent(logSessions[deviceId], BluetoothLogEvent.CONNECT_FAILED, DIFFERENT_BOARD_FAILURE_CODE)
             bluetoothStateManager.updateProgress(
                 bluetoothStateManager.connectionProgress.value.copy(
                     step4 = StepStatus.FAILED,
@@ -1480,6 +1519,11 @@ class BluetoothConnectionEngine(
 
         /** The [ConnectionProgress.failureCode] when a different board answered a connect by board id. */
         private const val DIFFERENT_BOARD_FAILURE_CODE = "DifferentBoard"
+
+        private const val NOT_FOUND_FAILURE_CODE = "not_found"
+        private const val STEP2_FAILURE_CODE = "step2"
+        private const val STEP3_FAILURE_CODE = "step3"
+        private const val UNEXPECTED_FAILURE_CODE = "unexpected"
 
         private val log = Arbor.tag("BluetoothManager")
 

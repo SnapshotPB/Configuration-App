@@ -198,8 +198,24 @@ class BluetoothLogImpl(
 
     private fun handleBoardLogState(input: Input.BoardLogStateChange) {
         val open = openSessions[input.session] ?: return
-        if (!(input.state == BoardLogState.REQUESTED && open.boardLogState == BoardLogState.RECEIVING)) {
+        val ignored = input.state == BoardLogState.REQUESTED && open.boardLogState == BoardLogState.RECEIVING
+        if (!ignored && open.boardLogState != input.state) {
             open.boardLogState = input.state
+            when (input.state) {
+                BoardLogState.REQUESTED,
+                BoardLogState.ABSENT,
+                BoardLogState.NOT_VISIBLE,
+                BoardLogState.FAILED,
+                -> addEntry(
+                    timeMillis = input.timeMillis,
+                    session = input.session,
+                    source = BluetoothLogSource.APP,
+                    rawText = "session ${input.session}: board log ${input.state.name.lowercase()}",
+                )
+                BoardLogState.NO_SESSION,
+                BoardLogState.RECEIVING,
+                -> Unit
+            }
         }
         publish()
     }
