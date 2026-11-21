@@ -1,6 +1,8 @@
 import * as ble from '@zos/ble';
 import { queryPermission, requestPermission } from '@zos/app';
 import { EyeStatusUuids } from './eyeStatus';
+import { EyeStatusWatcher } from './EyeStatusWatcher';
+import { createMockEyeSource } from './mockEyeSource';
 import { isTransportTimeout, OtsClient } from './OtsClient';
 import {
   BoardBluetoothAtBoot,
@@ -128,6 +130,8 @@ class BleManagerImpl {
     // True when the live link uses the profile with the eye service, false after
     // the OTS-only fallback, or null with no live link.
     this.eyeServiceSupported = null;
+    this._eyeWatcher = null;
+    this._stopMockEyeSource = null;
   }
 
   isMock(deviceOrId) {
@@ -151,12 +155,64 @@ class BleManagerImpl {
     return idOrAddress === this.connectedBoardId || idOrAddress === this.connectedAddress;
   }
 
+  _closeEyeWatcher() {
+    if (this._stopMockEyeSource) {
+      this._stopMockEyeSource();
+      this._stopMockEyeSource = null;
+    }
+    const watcher = this._eyeWatcher;
+    this._eyeWatcher = null;
+    if (watcher) {
+      watcher.close();
+    }
+  }
+
+  // Chains a board GATT operation onto _writeQueue so no eye CCC write runs
+  // inside a configuration write. Mirrors writeMutex in the KMP engine.
+  _enqueueBoardOp(client, op) {
+    const run = () => {
+      if (this._otsClient !== client || client.closed) {
+        return Promise.reject(new Error("Not connected to device"));
+      }
+      return Promise.resolve().then(op);
+    };
+    const result = this._writeQueue.then(run, run);
+    this._writeQueue = result.then(() => {}, () => {});
+    return result;
+  }
+
+  /**
+   * Watches the live eye status of the connected board.
+   *
+   * Each caller is a watcher. Call the returned unwatch function when the
+   * caller stops (a page calls it in onDestroy). The listener receives null
+   * when the link drops or when the board is not connected.
+   *
+   * @param {string} deviceId
+   * @param {(state: object|null) => void} listener
+   * @returns {() => void}
+   */
+  watchEye(deviceId, listener) {
+    if (!this.isConnected(deviceId) || !this._eyeWatcher) {
+      try {
+        listener(null);
+      } catch (err) {
+        console.log("watchEye listener failed:", err);
+      }
+      return () => {};
+    }
+    return this._eyeWatcher.watch(listener);
+  }
+
   disconnect(onDone) {
     // Invalidate any in-flight connect so its late success drops the link.
     this._connectGen++;
     // Tear down whichever link exists: an established one, or one still being
     // established (cancel mid-handshake).
     const address = this.connectedAddress || this.connectingAddress;
+
+    // Close the eye watcher before the OtsClient closes.
+    this._closeEyeWatcher();
 
     // Close the OtsClient before the link drops, so it sends no more GATT ops.
     // The subscriptions end with the link, so no CCCD unsubscribe is sent: on a
@@ -559,6 +615,19 @@ class BleManagerImpl {
             this.connectedAddress = MOCK_DEVICE_ID;
             this.connectedBoardId = MOCK_DEVICE_ID;
             this.eyeServiceSupported = true;
+            this._closeEyeWatcher();
+            let mockWatcher = null;
+            const mockSource = createMockEyeSource(() => mockWatcher);
+            this._stopMockEyeSource = () => mockSource.stop();
+            mockWatcher = new EyeStatusWatcher({
+              supported: true,
+              setNotifications: (enable) => {
+                if (enable) mockSource.start();
+                else mockSource.stop();
+                return Promise.resolve();
+              }
+            });
+            this._eyeWatcher = mockWatcher;
             onSuccess(mockDevice);
           }, 500);
         }, 500);
@@ -568,6 +637,8 @@ class BleManagerImpl {
 
   _runRealConnect(device, onProgress, onSuccess, onFailure) {
     const gen = ++this._connectGen;
+    // Close any watcher from a prior link before a new connect begins.
+    this._closeEyeWatcher();
     // Defensive: a new connection must not leak a prior client's subscriptions
     // (normal flows disconnect first, which already closes it).
     if (this._otsClient) {
@@ -744,6 +815,11 @@ class BleManagerImpl {
           // Record the board UUID resolved from the decoded Device so store-key
           // isConnected() checks (device_config uses device.id) match this link.
           this.connectedBoardId = deviceData.id;
+          this._eyeWatcher = new EyeStatusWatcher({
+            supported: withEye,
+            address: address,
+            setNotifications: enable => this._enqueueBoardOp(client, () => client.setEyeNotifications(enable))
+          });
           onSuccess(deviceData);
         }, (err) => {
           if (gen !== this._connectGen) return;

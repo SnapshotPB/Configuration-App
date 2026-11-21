@@ -1,4 +1,5 @@
 import * as ble from '@zos/ble';
+import { EyeStatusUuids } from './eyeStatus';
 import { addressMatches, eventCharacteristicUuid, uuidMatches } from './gattMatch';
 import { addNotificationRoute } from './notificationRouter';
 import {
@@ -244,7 +245,7 @@ export class OtsClient {
     }));
   }
 
-  _subscribeChar(charUuid, enable, preferIndicate = false) {
+  _subscribeChar(charUuid, enable, preferIndicate = false, serviceUuid = SERVICE_UUID) {
     return this._serialize(() => new Promise((resolve, reject) => {
       // A CCCD write the stack drops calls neither callback. Without a bound, prepare() never
       // settles, the GATT queue stays blocked and close() can never run its unsubscribes.
@@ -262,7 +263,7 @@ export class OtsClient {
       };
       const options = {
         address: this.address,
-        serviceUuid: SERVICE_UUID,
+        serviceUuid: serviceUuid,
         characteristicUuid: charUuid,
         enable: enable,
         success: once(() => resolve()),
@@ -287,6 +288,17 @@ export class OtsClient {
         }
       }
     }));
+  }
+
+  // The eye characteristic lives in its own service. Its CCC write uses the
+  // same GATT queue as the OTS ops because the stack allows one op in flight.
+  setEyeNotifications(enable) {
+    return this._subscribeChar(
+      EyeStatusUuids.Status,
+      enable,
+      false,
+      EyeStatusUuids.Service
+    );
   }
 
   // Best-effort teardown: a failed unsubscribe (fail callback on a flaky link)

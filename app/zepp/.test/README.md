@@ -317,7 +317,8 @@ App-specific knowledge — page urls, button labels, screen copy — lives only 
 that file is the only thing that should need editing.
 
 `startHarness(options)` takes `state` (board fixture), `boardOptions`
-(`chunkSize`, `padAlignment`, `strictSubscriptions`, `eyeService`), `faults`, `knownDevices`,
+(`chunkSize`, `padAlignment`, `strictSubscriptions`, `eyeService`, `eyeStatus`,
+`eyeNotifyIntervalMs`), `faults`, `knownDevices`,
 `devices`, `uuidFormat`, `latency`. The harness exposes `board`, `radio`, `ble`,
 `store`, `ui`, `router`, `app` (the `@zos/app` permission recorder), `stack`, plus `open` / `click` / `clickWhere` / `back` /
 `texts` / `hasText` / `waitFor` / `waitForText` / `connect` / `writeConfiguration` /
@@ -326,7 +327,7 @@ that file is the only thing that should need editing.
 Fault keys: `connect: 'fail' | 'silent'`, `connectDelayMs`, `buildProfile: 'fail'`,
 `missingService: 'fail' | 'break' | 'ignore'`,
 `olcpResult`, `oacpResult`, `silentOlcp`, `silentOacp`, `dropDataChunksAfter`,
-`readError`, `writeError`, `chunkDelayMs`, `abortPendingConnectOnDisconnect`,
+`readError`, `writeError`, `silentWrite`, `silentSubscribe`, `chunkDelayMs`, `abortPendingConnectOnDisconnect`,
 `scan: 'refuse' | 'fail'` (mstStartScan returns false, or calls `fail` with
 `scanError`). The
 fixture you pass is copied, so the same object can be reused across harnesses.

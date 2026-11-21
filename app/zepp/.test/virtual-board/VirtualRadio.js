@@ -6,7 +6,7 @@
 // the whole point of the harness is to make the app's transport assumptions
 // visible instead of letting them pass silently.
 
-import { normalizeUuid, OTS_UUID } from './VirtualBoard';
+import { EYE_UUID, normalizeUuid, OTS_UUID } from './VirtualBoard';
 import { realClearTimeout } from '../mocks/globals';
 
 const CANONICAL_SUFFIX = '-0000-1000-8000-00805F9B34FB';
@@ -264,6 +264,14 @@ export class VirtualRadio {
     });
     const board = this._requireLink(options);
     if (!board) return;
+    // faults.silentSubscribe names a characteristic whose subscribe the stack
+    // drops: neither callback fires and the board never sees the subscription.
+    if (
+      this.faults.silentSubscribe &&
+      normalizeUuid(this.faults.silentSubscribe) === normalizeUuid(characteristicUuid)
+    ) {
+      return;
+    }
     this._schedule(() => {
       const result = board.setSubscription(characteristicUuid, !!enable, kind);
       if (result && result.error) {
@@ -335,10 +343,12 @@ export class VirtualRadio {
 
   _event(address, uuid, bytes) {
     const copy = Uint8Array.from(bytes);
+    const short = normalizeUuid(uuid);
+    const serviceUuid = short === EYE_UUID.STATUS ? EYE_UUID.SERVICE : OTS_UUID.SERVICE;
     return {
       address,
       dev_id: address,
-      serviceUuid: this._formatUuid(OTS_UUID.SERVICE),
+      serviceUuid: this._formatUuid(serviceUuid),
       characteristicUuid: this._formatUuid(uuid),
       // Real stacks hand back an ArrayBuffer; OtsClient wraps it in a Uint8Array.
       value: copy.buffer
