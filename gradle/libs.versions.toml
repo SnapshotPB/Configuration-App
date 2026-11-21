@@ -1,28 +1,23 @@
 [versions]
 agp = "9.5.2"
 android-baseline = "1.6.0-alpha01"
-android-compileSdk = "36"
+android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
-# androidx core 1.19 needs compileSdk 37. Keep this version until the owner increases compileSdk.
-androidx-core = "1.18.0"
+androidx-core = "1.19.1"
 androidx-core-splash = "1.2.0"
 androidx-espresso = "3.7.0"
-# androidx lifecycle 2.11 needs compileSdk 37. Keep this version until the owner increases compileSdk.
-androidx-lifecycle = "2.10.0"
+androidx-lifecycle = "2.11.0"
 androidx-material = "1.13.0"
-# androidx navigation3 1.2 needs compileSdk 37. Keep this version until the owner increases compileSdk.
-androidx-navigation3 = "1.1.0-rc01"
+androidx-navigation3 = "1.2.0"
 androidx-testExt = "1.3.0"
 androidx-uiautomator = "2.4.0"
 arbor = "3.0.136"
 blue-falcon = "3.7.16"
 coil = "3.4.0"
 compose-hot-reload = "1.2.0"
-# Compose Multiplatform 1.12 and material3 1.13 need compileSdk 37 (Jetpack Compose 1.12 AARs).
-# Keep these versions until the owner increases compileSdk.
-compose-multiplatform = "1.10.3"
+compose-multiplatform = "1.12.2"
 image-picker = "1.1.7"
 jna = "5.14.0"
 kodein = "7.31.0"
@@ -36,7 +31,9 @@ kotlinx-datetime = "0.8.0"
 kotlinx-io = "0.9.3"
 kotlinx-serialization = "1.13.0"
 ktor = "3.6.1"
-material3 = "1.10.0-alpha05"
+# material3 1.12.0-alpha03 is the material3 version of Compose Multiplatform 1.12.2.
+# material3 1.13 needs Compose 1.13, which has no stable release yet.
+material3 = "1.12.0-alpha03"
 protobuf = "0.10.0"
 protobufSchema = "4.34.0"
 nucleus = "1.15.7"
@@ -111,8 +108,9 @@ androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-fou
 play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "play-services-wearable" }
 
 # Ktor: the HTTP client of core:firmware. Each platform picks its engine. Android uses the
-# Android engine (HttpURLConnection), not OkHttp: the OkHttp 5.5.0 of Ktor 3.6.0 needs
-# compileSdk 37.
+# Android engine (HttpURLConnection), not OkHttp. The project selected this engine when
+# compileSdk was 36, because the OkHttp engine of Ktor 3.6 needs compileSdk 37. compileSdk
+# is 37 now, and the engine did not change.
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
