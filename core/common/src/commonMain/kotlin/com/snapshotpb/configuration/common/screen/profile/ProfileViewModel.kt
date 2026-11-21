@@ -4,7 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegate
+import com.snapshotpb.configuration.common.screen.delegate.EyeReadingDelegate
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerProfile
 import com.snapshotpb.configuration.store.DeviceStore
@@ -41,6 +43,7 @@ class ProfileViewModel(
     private val args: Args,
     private val deviceStore: DeviceStore,
     private val deviceViewModelDelegate: DeviceViewModelDelegate,
+    private val eyeReadingDelegate: EyeReadingDelegate,
 ) : ViewModel() {
 
     data class Args(
@@ -96,6 +99,12 @@ class ProfileViewModel(
                 else -> ProfileLoad.Loading
             }
         }
+
+    /**
+     * Gives the live eye state of the edited device. A collector is an eye watcher (see
+     * [EyeReadingDelegate]).
+     */
+    fun eyeReading(): Flow<EyeReadingState?> = eyeReadingDelegate.eyeReading(args.deviceId)
 
     /**
      * Commits the edited profile through the shared delegate, so the phone and the watch apply

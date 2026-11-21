@@ -4,6 +4,8 @@ import com.snapshotpb.configuration.common.screen.delegate.DeviceSyncDelegate
 import com.snapshotpb.configuration.common.screen.delegate.DeviceSyncDelegateImpl
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegate
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegateImpl
+import com.snapshotpb.configuration.common.screen.delegate.EyeReadingDelegate
+import com.snapshotpb.configuration.common.screen.delegate.EyeReadingDelegateImpl
 import com.snapshotpb.configuration.common.screen.device.ConnectingDeviceViewModel
 import com.snapshotpb.configuration.common.screen.device.ConfigureDeviceViewModel
 import com.snapshotpb.configuration.common.screen.log.BluetoothLogViewModel
@@ -36,6 +38,7 @@ val viewModelModule = DI.Module("viewModelModule") {
             args = args,
             deviceStore = instance(),
             deviceViewModelDelegate = instance(),
+            eyeReadingDelegate = instance(),
         )
     }
     bindFactory<String, ConfigureDeviceViewModel> { deviceId: String ->
@@ -66,6 +69,11 @@ val viewModelModule = DI.Module("viewModelModule") {
             deviceStore = instance(),
             deviceReadResultBus = instance(),
             bluetoothRequestManager = instance(),
+        )
+    }
+    bindSingleton<EyeReadingDelegate> {
+        EyeReadingDelegateImpl(
+            bluetoothStateManager = instance(),
         )
     }
     bindProvider {

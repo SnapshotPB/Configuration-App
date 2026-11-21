@@ -1,23 +1,31 @@
 package com.snapshotpb.configuration.common.screen.profile
 
 import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
+import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
 import com.snapshotpb.configuration.bluetooth.DeviceWriteResultBus
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.screen.delegate.DeviceViewModelDelegateImpl
+import com.snapshotpb.configuration.common.screen.delegate.EyeReadingDelegateImpl
 import com.snapshotpb.configuration.common.testDevice
 import com.snapshotpb.configuration.common.testDeviceId
 import com.snapshotpb.configuration.common.testDeviceStore
 import com.snapshotpb.configuration.common.testProfile
 import com.snapshotpb.configuration.common.testProfileId
 import com.snapshotpb.configuration.model.BoardState
+import com.snapshotpb.configuration.model.EyeReading
+import com.snapshotpb.configuration.model.EyeSensorState
 import com.snapshotpb.configuration.store.DeviceStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.uuid.Uuid
@@ -151,8 +159,35 @@ class ProfileViewModelTest {
         assertEquals("Edited", viewModel.draft?.name)
     }
 
+    @Test
+    fun eyeReading_followsTheEditedDevice() = runTest {
+        val store = testDeviceStore(UnconfinedTestDispatcher(testScheduler), listOf(testDevice()))
+        val bluetoothStateManager = BluetoothStateManager()
+        val deviceId = testDeviceId.toString()
+        val expected = EyeReadingState.Reading(
+            EyeReading(levelRaw = 1000, fullScaleRaw = 4095, state = EyeSensorState.ACTIVE),
+        )
+        bluetoothStateManager.deviceConnected(deviceId)
+        bluetoothStateManager.setEyeReading(deviceId, expected)
+
+        val viewModel = viewModel(store, bluetoothStateManager)
+        var latest: EyeReadingState? = null
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.eyeReading().collect { latest = it }
+        }
+
+        assertEquals(expected, latest)
+        assertEquals(1, bluetoothStateManager.eyeWatchers.value[deviceId])
+
+        job.cancelAndJoin()
+        assertFalse(deviceId in bluetoothStateManager.eyeWatchers.value)
+    }
+
     /** The screen commits through the shared delegate, so the test builds the real one. */
-    private fun viewModel(store: DeviceStore) = ProfileViewModel(
+    private fun viewModel(
+        store: DeviceStore,
+        bluetoothStateManager: BluetoothStateManager = BluetoothStateManager(),
+    ) = ProfileViewModel(
         args = args(),
         deviceStore = store,
         deviceViewModelDelegate = DeviceViewModelDelegateImpl(
@@ -161,5 +196,6 @@ class ProfileViewModelTest {
             deviceWriteResultBus = DeviceWriteResultBus(),
             dispatcher = UnconfinedTestDispatcher(),
         ),
+        eyeReadingDelegate = EyeReadingDelegateImpl(bluetoothStateManager),
     )
 }
