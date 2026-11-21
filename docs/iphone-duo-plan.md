@@ -498,7 +498,9 @@ These results come from the iPhone Duo simulator on Xcode 27.2 with the iOS 27.2
   the test passed with no button. `testSmoke_appLaunchesAndStartsScanning` and
   `testSimulator_rotationKeepsStateAndEdgeSwipeGoesBack` also passed on iPhone 18 Pro.
 - With `TEST_RUNNER_RUN_FOLD_TESTS=1`, the test also unfolds and folds on Configure Device.
-- RESULT_FOLD
+- The fold run passed: after the unfold (951 x 669 points) and after the fold (466 x 678
+  points), the button stayed on Configure Device, and a tap on it was possible. A host script
+  clicked the Device Hub buttons.
 
 ### Not done yet
 
