@@ -10,6 +10,8 @@ import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothPeripheralState
+import dev.bluefalcon.core.BluetoothService
+import dev.bluefalcon.core.Uuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -111,6 +113,27 @@ private class IosBluetoothSeams(
             retries++
         }
         log.d { "Characteristic discovery settled for ${peripheral.uuid}" }
+    }
+
+    /**
+     * Returns [serviceUuid] on [peripheral] after its characteristics populate, or null when the
+     * peripheral does not expose it. [onServicesDiscovered] requests the characteristics of every
+     * service already, so this only polls until the list is non-empty or retries end.
+     */
+    override suspend fun serviceWithCharacteristics(
+        peripheral: BluetoothPeripheral,
+        serviceUuid: Uuid,
+    ): BluetoothService? {
+        if (peripheral.services.none { it.uuid == serviceUuid }) return null
+        var retries = 0
+        while (
+            peripheral.services.firstOrNull { it.uuid == serviceUuid }?.characteristics?.isEmpty() == true &&
+            retries < CHARACTERISTIC_DISCOVERY_RETRIES
+        ) {
+            delay(CHARACTERISTIC_DISCOVERY_POLL_INTERVAL_MILLIS)
+            retries++
+        }
+        return peripheral.services.firstOrNull { it.uuid == serviceUuid }
     }
 
     /**

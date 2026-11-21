@@ -3,6 +3,8 @@ package com.snapshotpb.configuration.bluetooth
 import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
+import dev.bluefalcon.core.BluetoothService
+import dev.bluefalcon.core.Uuid
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -61,6 +63,16 @@ interface PlatformBluetoothSeams {
      * whether the stack reports it, differs per platform.
      */
     suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic)
+
+    /**
+     * The service [serviceUuid] of [peripheral] with its characteristics, or null when the discovered
+     * services do not hold it. Discovers the characteristics when the engine did not supply them
+     * (MacosJvmEngine). Returns the service with an empty list when no characteristic comes in time.
+     */
+    suspend fun serviceWithCharacteristics(peripheral: BluetoothPeripheral, serviceUuid: Uuid): BluetoothService?
+
+    /** True when the engine hides a service that the user did not permit (Web Bluetooth). */
+    val servicesFollowPermission: Boolean get() = false
 
     /** Renders a captured debug event for the log line (hex by default; Android logs ASCII text). */
     fun formatDebugBytes(event: BleDebugEvent): String

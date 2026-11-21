@@ -255,5 +255,23 @@ internal class FakePlatformBluetoothSeams : PlatformBluetoothSeams {
     override suspend fun awaitSubscribed(peripheral: BluetoothPeripheral, characteristic: BluetoothCharacteristic) {
         subscribedCharacteristics += characteristic
     }
+    /** The value of [servicesFollowPermission]. A test sets it to act as Web Bluetooth. */
+    override var servicesFollowPermission: Boolean = false
+
+    /** The service UUIDs given to [serviceWithCharacteristics], in order. */
+    val serviceWithCharacteristicsCalls: MutableList<Uuid> = mutableListOf()
+
+    /** When set, parks each [serviceWithCharacteristics] call until completed. */
+    var serviceWithCharacteristicsGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun serviceWithCharacteristics(
+        peripheral: BluetoothPeripheral,
+        serviceUuid: Uuid,
+    ): BluetoothService? {
+        serviceWithCharacteristicsCalls += serviceUuid
+        serviceWithCharacteristicsGate?.await()
+        return peripheral.services.firstOrNull { it.uuid == serviceUuid }
+    }
+
     override fun formatDebugBytes(event: BleDebugEvent): String = event.hex
 }

@@ -17,6 +17,8 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Unit tests for the shared [DefaultBluetoothSeams] behavior (the desktop seam and the base for the others). */
@@ -212,6 +214,96 @@ class DefaultBluetoothSeamsTest {
         // L14: the card shows a failure, and the state follows the radio instead of Ready.
         assertEquals(StepStatus.FAILED, stateManager.connectionProgress.value.step1)
         assertEquals(BluetoothState.Disabled, stateManager.bluetoothState.value)
+    }
+
+    @Test
+    fun serviceWithCharacteristics_returnsAtOnceWhenCharacteristicsArePresent() = runTest {
+        val falconEngine = FakeBlueFalconEngine(backgroundScope)
+        val seams = DefaultBluetoothSeams(BlueFalcon(falconEngine), BluetoothStateManager())
+        val serviceUuid = Uuid.random()
+        val characteristicUuid = Uuid.random()
+        val service = MutableService(serviceUuid).apply {
+            characteristics = listOf(FakeOtsCharacteristic(characteristicUuid))
+        }
+        val peripheral = MutablePeripheral().apply { services = listOf(service) }
+
+        val result = seams.serviceWithCharacteristics(peripheral, serviceUuid)
+
+        assertNotNull(result)
+        assertEquals(listOf(characteristicUuid), result.characteristics.map { it.uuid })
+        assertTrue(falconEngine.discoverCharacteristicsCalls.isEmpty())
+    }
+
+    @Test
+    fun serviceWithCharacteristics_discoversNonOtsServiceAndWaitsForItsEvent() = runTest {
+        val falconEngine = FakeBlueFalconEngine(backgroundScope)
+        val seams = DefaultBluetoothSeams(BlueFalcon(falconEngine), BluetoothStateManager())
+        val serviceUuid = Uuid.random()
+        val firstCharacteristic = Uuid.random()
+        val secondCharacteristic = Uuid.random()
+        val service = MutableService(serviceUuid)
+        val peripheral = MutablePeripheral().apply { services = listOf(service) }
+        falconEngine.onDiscoverCharacteristics = { discovered, _ ->
+            service.characteristics = listOf(FakeOtsCharacteristic(firstCharacteristic))
+            launch {
+                delay(500)
+                service.characteristics += FakeOtsCharacteristic(secondCharacteristic)
+                falconEngine.serviceDiscoveryEvents.emit(
+                    ServiceDiscoveryUpdate(discovered, ServiceDiscoveryPhase.CharacteristicsDiscovered, service),
+                )
+            }
+        }
+
+        val result = seams.serviceWithCharacteristics(peripheral, serviceUuid)
+
+        assertNotNull(result)
+        assertEquals(listOf(firstCharacteristic, secondCharacteristic), result.characteristics.map { it.uuid })
+        assertEquals(listOf(serviceUuid), falconEngine.discoverCharacteristicsCalls.map { it.uuid })
+    }
+
+    @Test
+    fun serviceWithCharacteristics_ignoresOtherServiceEventAndStopsAtTimeLimit() = runTest {
+        val falconEngine = FakeBlueFalconEngine(backgroundScope)
+        val seams = DefaultBluetoothSeams(BlueFalcon(falconEngine), BluetoothStateManager())
+        val targetUuid = Uuid.random()
+        val otherUuid = Uuid.random()
+        val targetService = MutableService(targetUuid)
+        val otherService = MutableService(otherUuid)
+        val peripheral = MutablePeripheral().apply { services = listOf(targetService, otherService) }
+        falconEngine.onDiscoverCharacteristics = { discovered, _ ->
+            launch {
+                delay(500)
+                falconEngine.serviceDiscoveryEvents.emit(
+                    ServiceDiscoveryUpdate(discovered, ServiceDiscoveryPhase.CharacteristicsDiscovered, otherService),
+                )
+            }
+        }
+
+        val result = seams.serviceWithCharacteristics(peripheral, targetUuid)
+
+        assertNotNull(result)
+        assertEquals(targetUuid, result.uuid)
+        assertTrue(result.characteristics.isEmpty())
+        assertEquals(listOf(targetUuid), falconEngine.discoverCharacteristicsCalls.map { it.uuid })
+    }
+
+    @Test
+    fun serviceWithCharacteristics_unknownUuid_returnsNullWithoutDiscovery() = runTest {
+        val falconEngine = FakeBlueFalconEngine(backgroundScope)
+        val seams = DefaultBluetoothSeams(BlueFalcon(falconEngine), BluetoothStateManager())
+        val peripheral = MutablePeripheral().apply { services = listOf(MutableService(Uuid.random())) }
+
+        val result = seams.serviceWithCharacteristics(peripheral, Uuid.random())
+
+        assertNull(result)
+        assertTrue(falconEngine.discoverCharacteristicsCalls.isEmpty())
+    }
+
+    @Test
+    fun servicesFollowPermission_isFalse() = runTest {
+        val (seams, _) = newSeams()
+
+        assertFalse(seams.servicesFollowPermission)
     }
 
     /** A service whose characteristics a test fills. */
