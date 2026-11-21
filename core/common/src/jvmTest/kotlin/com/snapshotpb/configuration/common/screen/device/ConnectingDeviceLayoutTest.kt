@@ -41,16 +41,15 @@ class ConnectingDeviceLayoutTest {
     }
 
     /**
-     * [ConnectingProgress] has no vertical scroll. In a one-column window that is 466 dp high, the
-     * column is too tall and cuts its last rows. The two-pane layout at the same height fits. The
-     * plan records this as a known defect. When a change to the screen corrects the defect, change
-     * this test to assert that no text is clipped.
+     * [ConnectingProgress] has no vertical scroll. In a one-column window that is 415 dp high, the
+     * column is too tall and cuts its last rows. The plan records this as a known defect. When a
+     * change to the screen corrects the defect, change this test to assert that no text is clipped.
      */
     @Test
     fun progress_clipsCancelInShortWindow_knownDefect() {
         val cancelLabel = runBlocking { getString(Res.string.new_device_screen_cancel_button) }
 
-        val landscapeReport = checkScreenLayout("connecting-progress-defect", DuoSize.OUTER_LANDSCAPE_SIDE_BAR) {
+        val landscapeReport = checkScreenLayout("connecting-progress-defect", DuoSize.OUTER_LANDSCAPE) {
             ConnectingProgress(
                 deviceName = DEVICE_NAME,
                 fwVersion = FW_VERSION,
@@ -63,7 +62,7 @@ class ConnectingDeviceLayoutTest {
         }
         assertTrue(
             cancelLabel in landscapeReport.clippedTexts,
-            "Expected \"$cancelLabel\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE_SIDE_BAR.label}, got ${landscapeReport.clippedTexts}",
+            "Expected \"$cancelLabel\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE.label}, got ${landscapeReport.clippedTexts}",
         )
 
         val portraitReport = checkScreenLayout("connecting-progress-defect", DuoSize.INNER_ROTATED) {

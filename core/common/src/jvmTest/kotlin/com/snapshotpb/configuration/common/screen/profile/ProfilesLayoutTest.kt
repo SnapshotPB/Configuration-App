@@ -75,7 +75,7 @@ class ProfilesLayoutTest {
                 scrollTargets = scrollTargets,
                 inspect = { inspectedSize ->
                     if (!fitsTwoPanes(inspectedSize.width, inspectedSize.height) &&
-                        inspectedSize != DuoSize.OUTER_LANDSCAPE_SIDE_BAR
+                        inspectedSize != DuoSize.OUTER_LANDSCAPE
                     ) {
                         val position = lastProfilePosition(
                             lastProfileMatcher = lastProfileMatcher,
@@ -95,7 +95,7 @@ class ProfilesLayoutTest {
     }
 
     /**
-     * In a one-column window 466 dp high, the 260 dp photo header and `PendingChangesCard` cover
+     * In a one-column window 415 dp high, the 260 dp photo header and `PendingChangesCard` cover
      * the profile list. The plan records this as a known defect. When a change to the screen
      * corrects the defect, change this test to assert that the last profile clears the banner.
      */
@@ -108,7 +108,7 @@ class ProfilesLayoutTest {
 
         checkScreenLayout(
             screen = "profiles-pending-defect",
-            size = DuoSize.OUTER_LANDSCAPE_SIDE_BAR,
+            size = DuoSize.OUTER_LANDSCAPE,
             scrollTargets = scrollTargets,
             inspect = { inspectedSize ->
                 val position = lastProfilePosition(
