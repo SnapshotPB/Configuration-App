@@ -82,7 +82,7 @@
     <string name="profile_eye_mode_reflective">Reflective</string>
     <string name="profile_eye_mode_break_beam">Break Beam</string>
     <string name="profile_label_eye_threshold">Eye Threshold</string>
-    <string name="profile_label_eye_threshold_details">Breach eye detection threshold as 0–100 percent of full scale; the eye sees a ball when the reading is below it. The app never sends 0 — the firmware would substitute its 50 percent default.</string>
+    <string name="profile_label_eye_threshold_details">Breach eye detection threshold as 0–100 percent of full scale. In Break Beam mode, the eye sees a ball when the reading is at or below it; in Reflective mode, when the reading is above it. The app never sends 0 — the firmware would substitute its 50 percent default.</string>
     <string name="profile_label_eye_debounce">Eye Debounce</string>
     <string name="profile_label_eye_debounce_details">The time in milliseconds (0.1 ms steps) the eye must be within threshold to determine a ball is in the breach.</string>
     <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->

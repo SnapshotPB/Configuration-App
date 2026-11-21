@@ -82,7 +82,7 @@
     <string name="profile_eye_mode_reflective">Reflektierend</string>
     <string name="profile_eye_mode_break_beam">Lichtschranke</string>
     <string name="profile_label_eye_threshold">Augenschwelle</string>
-    <string name="profile_label_eye_threshold_details">Erkennungsschwelle der Augen im Breech als 0–100 Prozent des Vollausschlags; das Auge erkennt einen Ball, wenn der Messwert darunter liegt. Die App sendet nie 0 — die Firmware würde ihren Standardwert von 50 Prozent einsetzen.</string>
+    <string name="profile_label_eye_threshold_details">Erkennungsschwelle der Augen im Breech als 0–100 Prozent des Vollausschlags. Im Modus Lichtschranke erkennt das Auge einen Ball, wenn der Messwert auf oder unter der Schwelle liegt; im Modus Reflektierend, wenn der Messwert darüber liegt. Die App sendet nie 0 — die Firmware würde ihren Standardwert von 50 Prozent einsetzen.</string>
     <string name="profile_label_eye_debounce">Augen-Entprellung</string>
     <string name="profile_label_eye_debounce_details">Die Zeit in Millisekunden (Schritte von 0,1 ms), die das Auge innerhalb der Schwelle bleiben muss, damit ein Ball im Breech erkannt wird.</string>
     <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->

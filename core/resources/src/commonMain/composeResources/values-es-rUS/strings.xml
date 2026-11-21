@@ -82,7 +82,7 @@
     <string name="profile_eye_mode_reflective">Reflectante</string>
     <string name="profile_eye_mode_break_beam">Barrera óptica</string>
     <string name="profile_label_eye_threshold">Umbral del ojo</string>
-    <string name="profile_label_eye_threshold_details">Umbral de detección del ojo de la recámara, del 0 al 100 por ciento de la escala completa; el ojo ve una bola cuando la lectura está por debajo. La aplicación nunca envía 0 — el firmware aplicaría su valor predeterminado del 50 por ciento.</string>
+    <string name="profile_label_eye_threshold_details">Umbral de detección del ojo de la recámara, del 0 al 100 por ciento de la escala completa. En el modo Barrera óptica, el ojo ve una bola cuando la lectura es igual o inferior al umbral; en el modo Reflectante, cuando la lectura es superior. La aplicación nunca envía 0 — el firmware aplicaría su valor predeterminado del 50 por ciento.</string>
     <string name="profile_label_eye_debounce">Antirrebote de ojo</string>
     <string name="profile_label_eye_debounce_details">El tiempo en milisegundos (pasos de 0,1 ms) que el ojo debe permanecer dentro del umbral para determinar que hay una bola en la recámara.</string>
     <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
