@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -74,12 +75,16 @@ private val METRICS_LOCK = Any()
  * right edge of the window. It also records the widths of scroll columns and text fields, and each
  * clipped text, in the returned [LayoutReport]. The harness writes PNG images and `metrics.tsv`
  * only when [LAYOUT_RENDER_DIR_PROPERTY] is set, so CI writes no file.
+ *
+ * @param inspect Optional check that runs after each scroll target, or after the first check when
+ *   [scrollTargets] is empty, before the image.
  */
 @OptIn(ExperimentalTestApi::class)
 internal fun checkScreenLayout(
     screen: String,
     size: DuoSize,
     scrollTargets: List<ScrollTarget> = emptyList(),
+    inspect: SemanticsNodeInteractionsProvider.(DuoSize) -> Unit = {},
     content: @Composable () -> Unit,
 ): LayoutReport {
     val windowWidthPx = size.width.value * RENDER_DENSITY
@@ -122,6 +127,9 @@ internal fun checkScreenLayout(
             textFieldWidths = textFieldWidths,
             clippedTexts = clippedTexts,
         )
+        if (scrollTargets.isEmpty()) {
+            inspect(size)
+        }
         if (renderDir != null) {
             writePng(renderDir, "$screen-${size.label}.png", onRoot().captureToImage().toAwtImage())
         }
@@ -141,6 +149,7 @@ internal fun checkScreenLayout(
                 textFieldWidths = textFieldWidths,
                 clippedTexts = clippedTexts,
             )
+            inspect(size)
             if (renderDir != null) {
                 writePng(
                     renderDir,
