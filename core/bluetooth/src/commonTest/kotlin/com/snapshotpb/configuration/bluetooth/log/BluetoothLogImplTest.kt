@@ -369,4 +369,26 @@ class BluetoothLogImplTest {
 
         assertEquals("session 1 ended", log.snapshot.value.entries.last().text)
     }
+
+    @Test
+    fun endSession_atExactEndOfPublishInterval_keepsEndedEntry() = runTest {
+        val log = BluetoothLogImpl(backgroundScope, TestClock(testScheduler))
+        log.startSession(1)
+        runCurrent()
+
+        advanceTimeBy(10)
+        log.boardChunk(1, "burst line\r\n".encodeToByteArray())
+        runCurrent()
+        assertEquals(0, log.snapshot.value.entries.count { it.source == BluetoothLogSource.BOARD })
+
+        // Advance to t = 250, the exact end of the publish interval, before runCurrent().
+        advanceTimeBy(240)
+        log.endSession(1)
+        runCurrent()
+
+        assertEquals(
+            listOf("session 1 started", "burst line", "session 1 ended"),
+            log.snapshot.value.entries.map { it.text },
+        )
+    }
 }

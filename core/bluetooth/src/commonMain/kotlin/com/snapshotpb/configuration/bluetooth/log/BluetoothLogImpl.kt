@@ -4,12 +4,12 @@ import com.toxicbakery.logging.Arbor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
 /**
@@ -23,7 +23,8 @@ import kotlin.time.Clock
  * One coroutine reads the channel and owns all mutable state.
  * Control calls publish [snapshot] at once.
  * A board chunk or an app event publishes at once after 250 ms since the last publish.
- * Otherwise it waits for the rest of that interval.
+ * A burst gives one publish at its start and one when the 250 ms interval ends.
+ * The end of the interval sends a tick input through the same queue, so no input is lost.
  *
  * Retention keeps at most 2,000 entries and 262,144 text characters, with each entry cut to
  * 512 characters after redaction.
@@ -31,7 +32,7 @@ import kotlin.time.Clock
  * queued chunks.
  */
 class BluetoothLogImpl(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val clock: Clock = Clock.System,
 ) : BluetoothLog {
 
@@ -54,6 +55,7 @@ class BluetoothLogImpl(
     private var droppedAtClear = 0L
     private var lastPublishMillis: Long? = null
     private var dirty = false
+    private var tickPending = false
 
     init {
         scope.launch {
@@ -117,28 +119,7 @@ class BluetoothLogImpl(
 
     private suspend fun runConsumer() {
         while (true) {
-            val input = if (!dirty) {
-                inputs.receive()
-            } else {
-                val last = lastPublishMillis
-                val elapsed = if (last == null) {
-                    PUBLISH_INTERVAL_MILLIS
-                } else {
-                    nowMillis() - last
-                }
-                val waitMillis = (PUBLISH_INTERVAL_MILLIS - elapsed).coerceIn(0L, PUBLISH_INTERVAL_MILLIS)
-                if (waitMillis == 0L) {
-                    publish()
-                    continue
-                }
-                val next = withTimeoutOrNull(waitMillis) { inputs.receive() }
-                if (next == null) {
-                    publish()
-                    continue
-                }
-                next
-            }
-            handleSafely(input)
+            handleSafely(inputs.receive())
         }
     }
 
@@ -158,6 +139,7 @@ class BluetoothLogImpl(
             is Input.AppEvent -> handleAppEvent(input)
             is Input.EndSession -> handleEndSession(input)
             is Input.Clear -> handleClear()
+            is Input.Tick -> handleTick()
         }
     }
 
@@ -267,6 +249,13 @@ class BluetoothLogImpl(
         publish()
     }
 
+    private fun handleTick() {
+        tickPending = false
+        if (dirty) {
+            publish()
+        }
+    }
+
     private fun addEntry(
         timeMillis: Long,
         session: Int,
@@ -309,6 +298,14 @@ class BluetoothLogImpl(
             publish()
         } else {
             dirty = true
+            if (!tickPending) {
+                val waitMillis = (PUBLISH_INTERVAL_MILLIS - elapsed).coerceIn(1L, PUBLISH_INTERVAL_MILLIS)
+                tickPending = true
+                scope.launch {
+                    delay(waitMillis)
+                    inputs.trySend(Input.Tick(timeMillis = nowMillis()))
+                }
+            }
         }
     }
 
@@ -347,6 +344,7 @@ class BluetoothLogImpl(
 
         class EndSession(val session: Int, override val timeMillis: Long) : Input
         class Clear(override val timeMillis: Long) : Input
+        class Tick(override val timeMillis: Long) : Input
     }
 
     private companion object {
