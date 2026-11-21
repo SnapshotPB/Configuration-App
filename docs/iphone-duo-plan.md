@@ -168,6 +168,107 @@ gives two panes.
 The two-pane rule is in `core:common`, so a change also applies to Android, desktop, the web
 and iPad. Examine the Android foldables and the iPad in portrait after each change.
 
+#### Results of steps 4.1, 4.2 and 4.5 (2026-11-21, outer landscape not measured)
+
+**Sizes.** The owner measured the window sizes on the iPhone Duo simulator (iOS 27.2,
+Xcode 27.2). The table gives the content size that the screens get, in dp (1 dp = 1 pt).
+The tests keep these values in one table, `DuoSize` (`core/common/src/jvmTest/.../layout/DuoSize.kt`).
+
+| Size | Window | Content | Source | Layout |
+|---|---|---|---|---|
+| Outer, portrait | 466 x 678 | 383 x 678 | Measured, simulator. The status bar is a column of about 83 pt at the right edge | One column |
+| Outer, landscape, side bar | 678 x 466 | 595 x 466 | Provisional. Not measured. It assumes that the 83 pt column stays at the side | One column |
+| Outer, landscape, no side inset | 678 x 466 | 678 x 466 | Provisional. Not measured. It assumes no side inset | Two panes |
+| Inner, open | 951 x 669 | 868 x 669 | Measured, simulator. The normal state when the user opens the device. The status bar is a column of about 83 pt at the right edge | Two panes |
+| Inner, turned | 669 x 951 | 669 x 951 | Measured, simulator. The state after the user turns the open device. The status bar is a strip at the top. Its height is not measured and is not subtracted | One column |
+
+The content sizes do not subtract the small strips at the top and the bottom. The two outer
+landscape values bracket the real value. The two-pane result changes between them, because 595 dp
+is less than 600 dp. Measure the outer display in landscape before the release.
+
+**Method.** The `jvmTest` source set of `core:common` has a layout check
+(`layout/ScreenLayoutCheck.kt`) on the Compose UI test API. It renders each screen at each size,
+with no Bluetooth and no DI. Each screen now has an internal stateless content composable
+(`DeviceBrowserContent`, `ConfigureDeviceContent`, `ProfilesContent`, `ProfileContent`;
+`FirmwareUpdateContent` and `ConnectingProgress` already had one). The screens call it with the
+same behavior as before. The check fails a test when a screen scrolls sideways or when a node goes
+past the left or right edge. It also records the scroll columns, the text fields and the cut
+texts. To get the images and `metrics.tsv`, run:
+
+```bash
+./gradlew :core:common:jvmTest --tests '*LayoutTest*' --rerun -Psnapshotpb.layoutRenderDir=<folder>
+```
+
+**Results for each screen.** No screen scrolls sideways, and no node goes past an edge, at any
+size. The widths are in dp. "Fields" gives the width of the text fields (the narrower value is the
+field of a number stepper).
+
+| Screen | Outer, portrait (383) | Outer, landscape, side bar (595) | Outer, landscape, no inset (678) | Inner, open (868) | Inner, turned (669) |
+|---|---|---|---|---|---|
+| `DeviceBrowserScreen` | One column, 383 | One column, 595 | Two panes, 323 + 323 | Two panes, 418 + 418 | One column, 669. Each card is 661 wide with a photo of about 260 high, so 1.8 cards show. The scan card is below the fold |
+| `ConfigureDeviceScreen` | One column. Fields 359, 263 | One column. Fields 571, 475 | Two panes: fixed 340 + form 290. Fields 266, 170. Descriptions wrap to 3 or 4 lines | Two panes: 340 + 480. Fields 456, 360 | One column. Fields 645, 549 (the screen-off delay has three digits in a field of 549) |
+| `ProfilesScreen` | One column | One column. **Defect 2** | Two panes, 275 + 356. **Defect 4** | Two panes, 360 + 460 | One column, 669 |
+| `ProfileScreen` | One column. Fields 359, 263 | One column. Fields 571, 475 | Two panes, 291 + 340. Fields 316, 220 | Two panes, 376 + 444. Fields 420, 324 | One column. Fields 645, 549 |
+| `FirmwareUpdateScreen` | One column | One column | Two panes: fixed 360 + steps 270. **Defect 3** | Two panes, 360 + 460 | One column, 669. The buttons stay at 400 (`widthIn`) |
+| `ConnectingDeviceScreen` | One column | One column. **Defect 1** | Two panes. All rows show | Two panes | One column |
+
+Defects that the check found. They do not come from decision 2, and this work does not correct
+them:
+
+1. `ConnectingDeviceScreen` has no vertical scroll. In a one-column window that is 466 dp high,
+   the column is too high. The last step and the bottom button (Cancel or Finish Configuration)
+   are cut, and the user cannot touch the button. The test
+   `progress_clipsCancelInShortWindow_knownDefect` records it.
+2. `ProfilesScreen` in one column, 466 dp high, with unsaved changes: the photo header (260 dp)
+   and the pending changes card with the add button cover the full list. No profile shows. The
+   test `pendingCard_coversListInShortOneColumnWindow_knownDefect` records it.
+3. A two-pane screen with a fixed left pane (340 dp in `ConfigureDeviceScreen`, 360 dp in
+   `FirmwareUpdateScreen`) leaves a narrow right pane near the limit of 600 dp: 290 dp and 270 dp
+   at 678 dp. The step texts wrap to two or three lines, and the update button is below the fold.
+4. `ProfilesScreen` in two panes at 678 dp: the left pane is 275 dp, and the title
+   "Board Connection" of `ConnectionCard` breaks inside the word ("Board Co" / "nnection").
+
+Defects 1 and 2 occur only when the outer landscape content is less than 600 dp wide. They also
+occur in each other one-column window of about 466 dp high.
+
+**Step 4.5.** The timing diagram of `ProfileScreen` fills its column at each size (645 dp at the
+669 dp column), and its 360 dp height fits in the window after a scroll. The panel drawing of the
+display area keeps the shape of the panel (128 x 32, width = 4 x height) at each size. At the
+669 dp column it is 645 x 161 dp, and it fits in the window after a scroll. The tests
+`timingDiagram_fitsItsColumn` and `panelDrawing_staysSquareAndVisible` check these conditions.
+
+**Facts for decision 2.** Decision 2 applies only to the turned inner display (669 x 951). The
+normal open state (868 x 669) already shows two panes. The sizes of the other devices come from
+public device tables and are not measured in this work: iPad mini 744 x 1133 pt, 11-inch iPad Air
+820 x 1180 pt, 11-inch iPad Pro 834 x 1210 pt, each with insets of about 24 pt at the top and
+20 pt at the bottom in portrait. A large Android foldable, open in portrait, is about 700 to
+850 dp wide and a little taller than wide.
+
+- **Option A (keep the rule).** No screen changes. On the turned inner display, each screen shows
+  one column at 669 dp: fields of 645 dp, a stepper field of 549 dp, device cards of 661 dp. All
+  content shows, and nothing is cut. The iPad mini, the iPads in portrait, the Android foldables
+  in portrait and the web do not change.
+- **Option B (two panes when the height is less than a limit times the width).** The ratio of
+  the turned inner display is 951 / 669 = 1.42 (less after the top strip, which is not measured).
+  With the example limit of 1.25, the turned inner display stays one column, so option B does
+  not change iPhone Duo. To give it two panes, the limit must be more than about 1.42. Then the
+  11-inch iPads in portrait (ratio about 1.39 to 1.40 after the insets) also show two panes. The
+  iPad mini (about 1.46) stays one column only with a limit below 1.46. The range is small, and a
+  different inset moves a device to the other side. Each limit above about 1.2 gives two panes to
+  the Android foldables in portrait, and to web windows that are at least 600 dp wide and a little
+  taller than wide. With two panes at 669 dp, the fixed left panes leave about 281 dp for the
+  configuration form and about 261 dp for the update steps (defect 3), the left pane of
+  `ProfilesScreen` is about 271 dp (defect 4), and each pane of the device list is about 318 dp.
+- **Option C (one column with a limit on the content width).** `fitsTwoPanes` does not change.
+  Each one-column layout puts its content in a column of a maximum width, for example 600 dp,
+  at the center. On the turned inner display, the fields become about 576 dp in place of 645 dp:
+  a small change. Phones and the outer display do not change, because they are less than 600 dp
+  wide. The iPad mini and the iPads in portrait, the Android foldables in portrait and wide web
+  windows in portrait get side margins. Each screen needs the change in its one-column branch:
+  the device list, the forms with a photo header (`CollapsingPhotoHeaderColumn`), the profile
+  list with its sticky header and its bottom card, and the firmware and connect screens, which
+  already limit their buttons to 400 dp.
+
 ### Step 5. Continuity at a fold
 
 A fold changes the size of the window. It does not start the app again.
