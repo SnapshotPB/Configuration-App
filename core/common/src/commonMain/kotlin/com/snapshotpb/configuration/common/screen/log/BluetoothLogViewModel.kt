@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
+private val log = Arbor.tag("BluetoothLogViewModel")
+
 /** The view model of the Bluetooth log screen. */
 class BluetoothLogViewModel(
     private val bluetoothLog: BluetoothLog,
@@ -72,9 +74,5 @@ class BluetoothLogViewModel(
                 )
             )
         }
-    }
-
-    private companion object {
-        private val log = Arbor.tag("BluetoothLogViewModel")
     }
 }
