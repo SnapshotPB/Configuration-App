@@ -245,7 +245,78 @@ The owner made these decisions on 2026-11-18.
 | The sizes in section 1 are not correct | The two-pane decision uses wrong values | Step 4.1 measures them |
 | Apple sets a deadline for the iOS 27 SDK on the App Store | An old build cannot go to the App Store. One third-party source names April 2027, and Apple has not confirmed it | Step 2 |
 
-## 8. Sources
+## 8. Results on the dev Mac (2026-11-21)
+
+These results come from the iPhone Duo simulator on the dev MacBook, with the Debug build of
+commit f238df4 (CMP 1.13.0-rc01) and the simulated board (`--fake-board`).
+
+### Tools
+
+| Item | Value |
+|---|---|
+| Xcode | 27.2 (27B52), iOS 27.2 SDK. The app links with this SDK, so it does not run in the compatibility mode |
+| Simulator runtime | `iOS 27.2 (24B91016s)`, `com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4`. `xcodebuild -downloadPlatform iOS` installed it together with the normal iOS 27.2 runtime |
+| Device type | `com.apple.CoreSimulator.SimDeviceType.iPhone-Duo` |
+| Fold control | Only the Closed, Partially Open and Open buttons of the Xcode Device Hub. XCTest, XCUIAutomation and `simctl` have no fold API. `simctl io screenConfig power off` turns a screen off but does not fold the device, and it made SpringBoard crash |
+
+### Window sizes (step 4.1)
+
+| State | Window, points | Insets: left, top, right, bottom | Content area, points | `fitsTwoPanes` |
+|---|---|---|---|---|
+| Folded, outer display, portrait | 466 x 678 | 0, 17, 84, 34 | 382 x 627 | One column |
+| Folded, outer display, landscape | 678 x 466 | 84, 17, 0, 34 | 594 x 415 | One column |
+| Open, inner display | 951 x 669 | 0, 16, 84, 34 | 867 x 619 | Two panes |
+| Open, inner display, turned with the Device Hub | 669 x 951 | 0, 82, 0, 34 | 669 x 835 | One column |
+
+The status bar is a column of 84 pt at the side of the camera, except on the turned inner
+display, where it is a strip at the top. The values come from pixel screenshots of the simulator.
+The content area is what `fitsTwoPanes` gets, because the Compose content is inside
+`safeDrawingPadding()`. The ratio of the turned inner content is 835 / 669 = 1.25.
+
+The device opens in the 951 x 669 state. `XCUIDevice.orientation` does not turn the inner
+display. Thus decision 2 is about the 669 x 951 state only, which the user gets when they turn
+the open device.
+
+### Fold and unfold (steps 1.6, 5 and 6)
+
+`testSimulator_foldKeepsStateAndLayout` (`SnapshotPBUITests.swift`) passed with 14 changes on 7
+screens: the device list, Configure Device, the update confirm page, the update while it runs,
+the Bluetooth log, the Profiles screen and one profile. A host script clicked the Device Hub
+buttons when the test printed `===FOLD_NOW===`.
+
+- The crash of section 2 did not occur. The app process stayed the same, and no crash report
+  came, also 5 s after each change.
+- The screen and its back stack stayed. The unsaved boot text and the unsaved profile name stayed.
+- A firmware update in the download step continued through a fold and an unfold, and ended with
+  `done`.
+- Step 0: the same test also passed with the `master` build (commit 104ddea, CMP 1.12.2), with
+  14 changes and no crash. So the crash of Librechat-Mobile #602 does not occur in this app on
+  the simulator, the same result as the Theodo showroom. Keep CMP 1.13 (decision 1): it has the
+  fix, and a real device can behave differently.
+- The test skips when `RUN_FOLD_TESTS` is not 1. To run it by hand: start the test with
+  `TEST_RUNNER_RUN_FOLD_TESTS=1` on a folded iPhone Duo simulator, and click Open or Closed in
+  the Device Hub each time that the log shows `===FOLD_NOW===`. CI does not run the XCUITests, so
+  the `macos` target needs no iPhone Duo runtime (step 6.3).
+- Xcode 27.3 Beta 2 adds a fold API (release note 95593221): `XCUIDevice.shared.hinge` gives an
+  `XCUIHinge`, and its `angle` (radians) sets the hinge angle. When Xcode 27.3 is stable, the test
+  can set the angle itself and run with no person. Code that uses `XCUIHinge` does not compile
+  with Xcode 27.2. This fact comes from the Apple release notes; nobody tested it here.
+
+### Insets (step 3)
+
+`safeDrawingPadding()` keeps the content clear of the status bar column on each display. No
+button is under the status bar or the camera. The inset areas show the window background, not
+the app background: white in light mode and black in dark mode. On iPhone Duo these areas are
+larger than on other iPhone models, so the white column at the right is easy to see in light
+mode. This is an open item for the owner.
+
+### Not done yet
+
+- Step 5.2 (Bluetooth at a fold) needs a real iPhone Duo (decision 3).
+- Step 5.4 (the screen stays on during an update after a fold) and step 5.5 (sheets, dialogs, the
+  keyboard and the photo picker at a fold).
+
+## 9. Sources
 
 - Apple, "Prepare your app for iPhone Duo", tech talk 111461:
   https://developer.apple.com/videos/play/tech-talks/111461/
