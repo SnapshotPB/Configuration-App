@@ -41,6 +41,17 @@
                 <data android:scheme="wear" android:host="*" android:pathPrefix="/deleted" />
             </intent-filter>
         </service>
+
+        <!-- Gives shared Bluetooth log files from the app cache to the share sheet. -->
+        <provider
+            android:name=".share.BluetoothLogFileProvider"
+            android:authorities="${applicationId}.bluetoothlog"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/bluetooth_log_paths" />
+        </provider>
     </application>
 
 </manifest>

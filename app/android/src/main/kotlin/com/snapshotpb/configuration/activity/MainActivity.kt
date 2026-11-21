@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.activity
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings.ACTION_BLUETOOTH_SETTINGS
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.FileProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.snapshotpb.configuration.AppTheme
@@ -25,19 +27,25 @@ import com.snapshotpb.configuration.bluetooth.BluetoothRequestManager
 import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.bluetooth.BluetoothStateManager
 import com.snapshotpb.configuration.common.App
+import com.snapshotpb.configuration.common.share.ShareRequest
+import com.snapshotpb.configuration.common.share.ShareRequestManager
 import com.snapshotpb.configuration.debug.DebugBoard
 import com.snapshotpb.configuration.media.MediaManager
 import com.snapshotpb.configuration.media.MediaManager.Companion.hasMediaPermission
 import com.snapshotpb.configuration.media.MediaManager.Companion.requestMediaPermissions
 import com.snapshotpb.configuration.media.MediaRequest
 import com.snapshotpb.configuration.media.MediaRequestManager
+import com.snapshotpb.configuration.share.SharedLogFiles
+import com.snapshotpb.configuration.share.shareChooserIntent
 import com.snapshotpb.configuration.sync.WearSyncManager
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.bluetooth_error_settings_menu
 import com.snapshotpb.core.resources.location_error_settings_menu
 import com.toxicbakery.logging.Arbor
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
 import org.kodein.di.DI
 import org.kodein.di.DIAware
@@ -53,6 +61,7 @@ class MainActivity : ComponentActivity(), DIAware {
     private val debugBoard: DebugBoard by instance()
     private val mediaManager: MediaManager by instance()
     private val mediaRequestManager: MediaRequestManager by instance()
+    private val shareRequestManager: ShareRequestManager by instance()
     private val wearSyncManager: WearSyncManager by instance()
 
     override val di: DI by closestDI()
@@ -178,6 +187,44 @@ class MainActivity : ComponentActivity(), DIAware {
         }
     }
 
+    private fun monitorShareRequestManager() {
+        lifecycleScope.launch {
+            shareRequestManager.bus.collect { request ->
+                val summary = request.describe()
+                log.d { "ShareRequestManager bus request: $summary" }
+                runCatching { onShareRequest(request) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        log.e(error) { "Share request $summary failed" }
+                    }
+            }
+        }
+    }
+
+    private suspend fun onShareRequest(request: ShareRequest) {
+        when (request) {
+            is ShareRequest.Text -> {
+                val file = withContext(Dispatchers.IO) {
+                    SharedLogFiles.write(cacheDir, request.fileName, request.text)
+                }
+                val uri = FileProvider.getUriForFile(
+                    this,
+                    SharedLogFiles.authority(packageName),
+                    file,
+                )
+                try {
+                    startActivity(shareChooserIntent(uri, request))
+                } catch (error: ActivityNotFoundException) {
+                    log.w(error) { "No activity found to share ${request.fileName}" }
+                }
+            }
+        }
+    }
+
+    private fun ShareRequest.describe(): String = when (this) {
+        is ShareRequest.Text -> "$fileName (${text.length} characters)"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         enableEdgeToEdge()
@@ -188,6 +235,7 @@ class MainActivity : ComponentActivity(), DIAware {
 
         monitorBluetoothRequestManager()
         monitorMediaRequestManager()
+        monitorShareRequestManager()
         wearSyncManager.startSync()
 
         setContent {

@@ -71,6 +71,12 @@ kotlin {
                 implementation(libs.nucleus.updater)
             }
         }
+        jvmTest {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
 

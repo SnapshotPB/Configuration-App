@@ -51,5 +51,11 @@ kotlin {
                 implementation(libs.kotlinx.datetime)
             }
         }
+        wasmJsTest {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
+        }
     }
 }
