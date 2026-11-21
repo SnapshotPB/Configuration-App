@@ -3,25 +3,18 @@ package com.snapshotpb.configuration.common.screen.device
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
-import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.RENDER_DENSITY
 import com.snapshotpb.configuration.common.layout.ScrollTarget
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
 import com.snapshotpb.configuration.common.layout.layoutDevice
+import com.snapshotpb.configuration.common.layout.layoutFirmwareStatus
 import com.snapshotpb.configuration.common.layout.unclippedBoundsInRoot
 import com.snapshotpb.configuration.common.screen.firmware.FirmwareSectionAction
 import com.snapshotpb.configuration.common.screen.firmware.FirmwareSectionContent
 import com.snapshotpb.configuration.common.screen.firmware.FirmwareSectionState
-import com.snapshotpb.configuration.firmware.FirmwareStatus
 import com.snapshotpb.configuration.model.DISPLAY_PANEL_HEIGHT
 import com.snapshotpb.configuration.model.DISPLAY_PANEL_WIDTH
-import com.snapshotpb.configuration.model.FirmwareAsset
-import com.snapshotpb.configuration.model.FirmwareAssets
-import com.snapshotpb.configuration.model.FirmwareChannel
-import com.snapshotpb.configuration.model.FirmwareManifest
-import com.snapshotpb.configuration.model.FirmwareVersion
-import com.snapshotpb.configuration.model.HardwareTarget
 import com.snapshotpb.core.resources.Res
 import com.snapshotpb.core.resources.configure_device_screen_display_window_drawing
 import com.snapshotpb.core.resources.configure_device_screen_save_button
@@ -29,7 +22,6 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import kotlin.math.abs
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /** Layout checks for [ConfigureDeviceContent] and the panel drawing at every [DuoSize]. */
@@ -42,27 +34,7 @@ class ConfigureDeviceLayoutTest {
         .copy(displayWindowCustom = true)
 
     private val firmwareState = FirmwareSectionState(
-        status = FirmwareStatus(
-            deviceId = device.id.toString(),
-            connected = true,
-            boardVersion = FirmwareVersion(2026, 29, 1, dev = false),
-            target = HardwareTarget(board = "snapshot_v2", qualifiers = "esp32c3"),
-            latest = FirmwareManifest(
-                version = LATEST_VERSION,
-                tag = "v$LATEST_VERSION",
-                channel = FirmwareChannel.STABLE,
-                compatibleHardware = listOf("snapshot_v2"),
-                assets = FirmwareAssets(
-                    image = FirmwareAsset(
-                        name = "snapshot_v2-$LATEST_VERSION-app.signed.bin",
-                        url = "https://snapshotpb.github.io/Firmware/snapshot_v2/$LATEST_VERSION/snapshot_v2-$LATEST_VERSION-app.signed.bin",
-                        size = 900_000L,
-                        sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
-                    ),
-                ),
-            ),
-            reason = null,
-        ),
+        status = layoutFirmwareStatus(device.id.toString()),
         action = FirmwareSectionAction.UPDATE,
     )
 
@@ -76,23 +48,22 @@ class ConfigureDeviceLayoutTest {
         )
 
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("configure", size, scrollTargets) {
+            checkScreenLayout("configure", size, scrollTargets) {
                 SampleConfigureDevice()
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
     /** Checks that the panel drawing keeps the panel ratio and stays visible after scroll. */
     @Test
-    fun panelDrawing_staysSquareAndVisible() {
+    fun panelDrawing_keepsPanelShapeAndStaysVisible() {
         val drawingLabel = runBlocking { getString(Res.string.configure_device_screen_display_window_drawing) }
         val drawingMatcher = hasContentDescription(drawingLabel)
         val scrollTargets = listOf(ScrollTarget("drawing", drawingMatcher))
 
         for (size in DuoSize.entries) {
             checkScreenLayout(
-                screen = "configure",
+                screen = "configure-drawing-check",
                 size = size,
                 scrollTargets = scrollTargets,
                 inspect = { inspectedSize ->
@@ -148,7 +119,6 @@ class ConfigureDeviceLayoutTest {
     }
 
     private companion object {
-        const val LATEST_VERSION = "2026.43.1"
         const val DRAWING_ASPECT_TOLERANCE_PX = 2f
     }
 }

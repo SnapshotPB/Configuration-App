@@ -3,11 +3,13 @@ package com.snapshotpb.configuration.common.screen.device
 import com.snapshotpb.configuration.bluetooth.BluetoothState
 import com.snapshotpb.configuration.bluetooth.ConnectionProgress
 import com.snapshotpb.configuration.bluetooth.StepStatus
-import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
+import com.snapshotpb.core.resources.Res
+import com.snapshotpb.core.resources.new_device_screen_cancel_button
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -24,7 +26,7 @@ class ConnectingDeviceLayoutTest {
     @Test
     fun connectingProgressFitsEveryDuoSize() {
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("connecting-progress", size) {
+            checkScreenLayout("connecting-progress", size) {
                 ConnectingProgress(
                     deviceName = DEVICE_NAME,
                     fwVersion = FW_VERSION,
@@ -35,7 +37,6 @@ class ConnectingDeviceLayoutTest {
                     onBack = {},
                 )
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
@@ -47,7 +48,9 @@ class ConnectingDeviceLayoutTest {
      */
     @Test
     fun progress_clipsCancelInShortWindow_knownDefect() {
-        val landscapeReport = checkScreenLayout("connecting-progress", DuoSize.OUTER_LANDSCAPE_SIDE_BAR) {
+        val cancelLabel = runBlocking { getString(Res.string.new_device_screen_cancel_button) }
+
+        val landscapeReport = checkScreenLayout("connecting-progress-defect", DuoSize.OUTER_LANDSCAPE_SIDE_BAR) {
             ConnectingProgress(
                 deviceName = DEVICE_NAME,
                 fwVersion = FW_VERSION,
@@ -59,11 +62,11 @@ class ConnectingDeviceLayoutTest {
             )
         }
         assertTrue(
-            CANCEL_LABEL in landscapeReport.clippedTexts,
-            "Expected \"$CANCEL_LABEL\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE_SIDE_BAR.label}, got ${landscapeReport.clippedTexts}",
+            cancelLabel in landscapeReport.clippedTexts,
+            "Expected \"$cancelLabel\" in clippedTexts at ${DuoSize.OUTER_LANDSCAPE_SIDE_BAR.label}, got ${landscapeReport.clippedTexts}",
         )
 
-        val portraitReport = checkScreenLayout("connecting-progress", DuoSize.INNER_ROTATED) {
+        val portraitReport = checkScreenLayout("connecting-progress-defect", DuoSize.INNER_ROTATED) {
             ConnectingProgress(
                 deviceName = DEVICE_NAME,
                 fwVersion = FW_VERSION,
@@ -75,8 +78,8 @@ class ConnectingDeviceLayoutTest {
             )
         }
         assertFalse(
-            CANCEL_LABEL in portraitReport.clippedTexts,
-            "Expected \"$CANCEL_LABEL\" not in clippedTexts at ${DuoSize.INNER_ROTATED.label}, got ${portraitReport.clippedTexts}",
+            cancelLabel in portraitReport.clippedTexts,
+            "Expected \"$cancelLabel\" not in clippedTexts at ${DuoSize.INNER_ROTATED.label}, got ${portraitReport.clippedTexts}",
         )
     }
 
@@ -89,7 +92,7 @@ class ConnectingDeviceLayoutTest {
             step4 = StepStatus.COMPLETED,
         )
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("connecting-complete", size) {
+            checkScreenLayout("connecting-complete", size) {
                 ConnectingProgress(
                     deviceName = DEVICE_NAME,
                     fwVersion = FW_VERSION,
@@ -100,13 +103,11 @@ class ConnectingDeviceLayoutTest {
                     onBack = {},
                 )
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
     private companion object {
         const val DEVICE_NAME = "Snapshot PB"
         const val FW_VERSION = "1.4.0"
-        const val CANCEL_LABEL = "Cancel"
     }
 }

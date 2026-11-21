@@ -1,11 +1,18 @@
 package com.snapshotpb.configuration.common.layout
 
+import com.snapshotpb.configuration.firmware.FirmwareStatus
 import com.snapshotpb.configuration.model.BoardBluetoothAtBoot
 import com.snapshotpb.configuration.model.BoardLanguage
 import com.snapshotpb.configuration.model.BoardScreenBrightness
 import com.snapshotpb.configuration.model.BoardState
 import com.snapshotpb.configuration.model.Device
+import com.snapshotpb.configuration.model.FirmwareAsset
+import com.snapshotpb.configuration.model.FirmwareAssets
+import com.snapshotpb.configuration.model.FirmwareChannel
+import com.snapshotpb.configuration.model.FirmwareManifest
+import com.snapshotpb.configuration.model.FirmwareVersion
 import com.snapshotpb.configuration.model.GripFrame
+import com.snapshotpb.configuration.model.HardwareTarget
 import com.snapshotpb.configuration.model.MarkerBoltMode
 import com.snapshotpb.configuration.model.MarkerFireMode
 import com.snapshotpb.configuration.model.MarkerProfile
@@ -17,9 +24,13 @@ private val PROFILE_ID_1 = Uuid.parse("11111111-2222-3333-4444-555555555561")
 private val PROFILE_ID_2 = Uuid.parse("11111111-2222-3333-4444-555555555562")
 private val PROFILE_ID_3 = Uuid.parse("11111111-2222-3333-4444-555555555563")
 private val PROFILE_ID_4 = Uuid.parse("11111111-2222-3333-4444-555555555564")
+private const val LATEST_FIRMWARE_VERSION = "2026.43.1"
 
 /** A board with four profiles and a value for each board setting. Its board state equals it. */
-internal fun layoutDevice(name: String = "Snapshot PB", diverged: Boolean = false): Device {
+internal fun layoutDevice(name: String = "Snapshot", diverged: Boolean = false): Device {
+    require(name.length <= Device.MAX_NAME_LENGTH) {
+        "Device name \"$name\" exceeds ${Device.MAX_NAME_LENGTH} characters"
+    }
     val profiles = layoutProfiles()
     val activeProfileId = profiles.first().id
     val bootText = "SNAPSHOT"
@@ -35,6 +46,16 @@ internal fun layoutDevice(name: String = "Snapshot PB", diverged: Boolean = fals
         }
     } else {
         profiles
+    }
+    for (profile in profiles) {
+        require(profile.name.length <= Device.MAX_PROFILE_NAME_LENGTH) {
+            "Profile name \"${profile.name}\" exceeds ${Device.MAX_PROFILE_NAME_LENGTH} characters"
+        }
+    }
+    for (profile in boardProfiles) {
+        require(profile.name.length <= Device.MAX_PROFILE_NAME_LENGTH) {
+            "Board profile name \"${profile.name}\" exceeds ${Device.MAX_PROFILE_NAME_LENGTH} characters"
+        }
     }
     return Device(
         id = DEFAULT_DEVICE_ID,
@@ -75,12 +96,12 @@ internal fun layoutProfiles(): List<MarkerProfile> = listOf(
     ),
     MarkerProfile(
         id = PROFILE_ID_2,
-        name = "Tournament NXL",
+        name = "NXL Event",
         fireMode = MarkerFireMode.RAMPING_NXL_2026,
     ),
     MarkerProfile(
         id = PROFILE_ID_3,
-        name = "Custom Ramp",
+        name = "Ramp",
         fireMode = MarkerFireMode.CUSTOM_RAMPING,
     ),
     MarkerProfile(
@@ -88,4 +109,29 @@ internal fun layoutProfiles(): List<MarkerProfile> = listOf(
         name = "Full Auto",
         fireMode = MarkerFireMode.FULL_AUTO,
     ),
+)
+
+/** A connected board status with a newer stable release available, for layout tests. */
+internal fun layoutFirmwareStatus(
+    deviceId: String = DEFAULT_DEVICE_ID.toString(),
+): FirmwareStatus = FirmwareStatus(
+    deviceId = deviceId,
+    connected = true,
+    boardVersion = FirmwareVersion(2026, 29, 1, dev = false),
+    target = HardwareTarget(board = "snapshot_v2", qualifiers = "esp32c3"),
+    latest = FirmwareManifest(
+        version = LATEST_FIRMWARE_VERSION,
+        tag = "v$LATEST_FIRMWARE_VERSION",
+        channel = FirmwareChannel.STABLE,
+        compatibleHardware = listOf("snapshot_v2"),
+        assets = FirmwareAssets(
+            image = FirmwareAsset(
+                name = "snapshot_v2-$LATEST_FIRMWARE_VERSION-app.signed.bin",
+                url = "https://snapshotpb.github.io/Firmware/snapshot_v2/$LATEST_FIRMWARE_VERSION/snapshot_v2-$LATEST_FIRMWARE_VERSION-app.signed.bin",
+                size = 900_000L,
+                sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+            ),
+        ),
+    ),
+    reason = null,
 )

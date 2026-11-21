@@ -17,7 +17,6 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
@@ -62,7 +61,7 @@ internal class ScrollTarget(
  *
  * @property screen The short name of the screen and state.
  * @property size The display size of the test window.
- * @property twoPanes True when [fitsTwoPanes] selects two panes at [size].
+ * @property twoPanes The result of [fitsTwoPanes] at [size], for the metrics, not a measurement.
  * @property scrollColumnWidthsDp The distinct sorted widths in dp of nodes with vertical scroll.
  * @property textFieldWidthsDp The distinct sorted widths in dp of nodes with `SetText`.
  * @property clippedTexts The distinct sorted texts clipped by bounds or by a height under one line.
@@ -76,7 +75,8 @@ internal data class LayoutReport(
     val clippedTexts: List<String>,
 )
 
-private const val BOUNDS_TOLERANCE_PX = 1f
+/** The tolerance for pixel bounds checks, in pixels. */
+internal const val BOUNDS_TOLERANCE_PX = 1f
 private const val INITIAL_FRAME_MS = 100L
 private const val SCROLL_SETTLE_MS = 500L
 private const val SCROLL_TO_END_PX = 100_000f
@@ -88,7 +88,8 @@ private val METRICS_LOCK = Any()
  * The harness checks that no node scrolls sideways and that no node goes past the left edge or the
  * right edge of the window. It also records the widths of scroll columns and text fields, and each
  * clipped text, in the returned [LayoutReport]. The harness writes PNG images and `metrics.tsv`
- * only when [LAYOUT_RENDER_DIR_PROPERTY] is set, so CI writes no file.
+ * only when [LAYOUT_RENDER_DIR_PROPERTY] is set, so CI writes no file. A scroll target on a screen
+ * with an endless animation can reach the time limit, because the scroll turns `autoAdvance` on.
  *
  * @param inspect Optional check that runs after each scroll target, or after the first check when
  *   [scrollTargets] is empty, before the image.
@@ -203,45 +204,46 @@ private fun SemanticsNodeInteractionsProvider.scrollToTarget(
     if (directMatches.fetchSemanticsNodes().isNotEmpty()) {
         directMatches[0].performScrollTo()
         if (target.toEnd) {
-            scrollContainerToEnd()
+            scrollTargetAncestorToEnd(screen, size, target)
         }
         return
     }
     // A LazyColumn composes only visible items, so scroll each lazy container to find the target.
     val containers = onAllNodes(hasScrollToNodeAction(), useUnmergedTree = true)
     val containerCount = containers.fetchSemanticsNodes().size
+    var lastError: AssertionError? = null
     for (index in 0 until containerCount) {
         try {
             containers[index].performScrollToNode(target.matcher)
             if (target.toEnd) {
-                containers[index].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-                    scrollBy(0f, SCROLL_TO_END_PX)
-                }
+                scrollTargetAncestorToEnd(screen, size, target)
             }
             return
-        } catch (_: AssertionError) {
-            // This container does not hold the target node; try the next one.
+        } catch (error: AssertionError) {
+            // This container does not hold the target node; keep the cause and try the next one.
+            lastError = error
         }
     }
-    fail("$screen (${size.label}): scroll target \"${target.name}\" not found in any scroll container")
+    throw AssertionError(
+        "$screen (${size.label}): scroll target \"${target.name}\" not found in any scroll container",
+        lastError,
+    )
 }
 
-private fun SemanticsNodeInteractionsProvider.scrollContainerToEnd() {
-    val lazyContainers = onAllNodes(hasScrollToIndexAction(), useUnmergedTree = true)
-    if (lazyContainers.fetchSemanticsNodes().isNotEmpty()) {
-        lazyContainers[0].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-            scrollBy(0f, SCROLL_TO_END_PX)
-        }
-        return
-    }
-    val scrollContainers = onAllNodes(
-        SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy),
+private fun SemanticsNodeInteractionsProvider.scrollTargetAncestorToEnd(
+    screen: String,
+    size: DuoSize,
+    target: ScrollTarget,
+) {
+    val targetNode = onNode(target.matcher, useUnmergedTree = true).fetchSemanticsNode()
+    val ancestor = generateSequence(targetNode.parent) { it.parent }
+        .firstOrNull { it.config.getOrNull(SemanticsActions.ScrollBy) != null }
+        ?: fail("$screen (${size.label}): scroll target \"${target.name}\" has no ancestor with ScrollBy")
+    onNode(
+        SemanticsMatcher("id") { it.id == ancestor.id },
         useUnmergedTree = true,
-    )
-    if (scrollContainers.fetchSemanticsNodes().isNotEmpty()) {
-        scrollContainers[0].performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
-            scrollBy(0f, SCROLL_TO_END_PX)
-        }
+    ).performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+        scrollBy(0f, SCROLL_TO_END_PX)
     }
 }
 
@@ -305,12 +307,11 @@ private fun isTextClipped(
     unclippedBounds: Rect,
     insideVerticalScroll: Boolean,
 ): Boolean {
-    if (!insideVerticalScroll) {
-        val clippedBounds = node.boundsInRoot
-        val clippedInWidth = unclippedBounds.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
-        val clippedInHeight = unclippedBounds.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
-        if (clippedInWidth || clippedInHeight) return true
-    }
+    val clippedBounds = node.boundsInRoot
+    val clippedInWidth = unclippedBounds.width - clippedBounds.width > BOUNDS_TOLERANCE_PX
+    val clippedInHeight = !insideVerticalScroll &&
+        unclippedBounds.height - clippedBounds.height > BOUNDS_TOLERANCE_PX
+    if (clippedInWidth || clippedInHeight) return true
     val getTextLayout = node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action
         ?: return false
     val results = mutableListOf<TextLayoutResult>()

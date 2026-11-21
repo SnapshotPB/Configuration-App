@@ -4,7 +4,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import com.snapshotpb.configuration.common.composable.fitsTwoPanes
+import com.snapshotpb.configuration.common.layout.BOUNDS_TOLERANCE_PX
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.RENDER_DENSITY
 import com.snapshotpb.configuration.common.layout.ScrollTarget
@@ -19,7 +19,6 @@ import com.snapshotpb.core.resources.configure_device_screen_save_button
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -62,7 +61,7 @@ class ProfileLayoutTest {
                 boltMode = mode.boltMode,
             )
             for (size in DuoSize.entries) {
-                val report = checkScreenLayout("profile-${mode.label}", size, scrollTargets) {
+                checkScreenLayout("profile-${mode.label}", size, scrollTargets) {
                     ProfileContent(
                         profile = mode.profile,
                         profileLoad = found,
@@ -75,11 +74,6 @@ class ProfileLayoutTest {
                         onBack = {},
                     )
                 }
-                assertEquals(
-                    fitsTwoPanes(size.width, size.height),
-                    report.twoPanes,
-                    "${mode.label} (${size.label})",
-                )
             }
         }
     }
@@ -98,7 +92,7 @@ class ProfileLayoutTest {
             )
             for (size in DuoSize.entries) {
                 checkScreenLayout(
-                    screen = "profile-${mode.label}",
+                    screen = "profile-${mode.label}-diagram-check",
                     size = size,
                     scrollTargets = scrollTargets,
                     inspect = { inspectedSize ->
@@ -154,6 +148,5 @@ class ProfileLayoutTest {
 
     private companion object {
         const val MAX_DIAGRAM_HORIZONTAL_PADDING_DP = 64f
-        const val BOUNDS_TOLERANCE_PX = 1f
     }
 }

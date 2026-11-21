@@ -1,12 +1,10 @@
 package com.snapshotpb.configuration.common.screen.device
 
 import com.snapshotpb.configuration.bluetooth.BluetoothState
-import com.snapshotpb.configuration.common.composable.fitsTwoPanes
 import com.snapshotpb.configuration.common.layout.DuoSize
 import com.snapshotpb.configuration.common.layout.checkScreenLayout
 import com.snapshotpb.configuration.common.layout.layoutDevice
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.uuid.Uuid
 
 /** Layout checks for [DeviceBrowserContent] at every [DuoSize]. */
@@ -14,18 +12,18 @@ class DeviceBrowserLayoutTest {
 
     private val knownDevices = listOf(
         layoutDevice(),
-        layoutDevice(name = "Backup Marker").copy(id = BACKUP_DEVICE_ID),
+        layoutDevice(name = "Backup").copy(id = BACKUP_DEVICE_ID),
     )
 
     private val scannedDevices = listOf(
-        layoutDevice(name = "Snapshot PB").copy(id = SCANNED_DEVICE_1_ID),
+        layoutDevice(name = "Snapshot").copy(id = SCANNED_DEVICE_1_ID),
         layoutDevice(name = "").copy(id = SCANNED_DEVICE_2_ID),
     )
 
     @Test
     fun devicesReadyFitsEveryDuoSize() {
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("devices-ready", size) {
+            checkScreenLayout("devices-ready", size) {
                 DeviceBrowserContent(
                     knownDevices = knownDevices,
                     bluetoothState = BluetoothState.Ready,
@@ -35,14 +33,13 @@ class DeviceBrowserLayoutTest {
                     actions = DeviceBrowserActions(),
                 )
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
     @Test
     fun devicesScanningFitsEveryDuoSize() {
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("devices-scanning", size) {
+            checkScreenLayout("devices-scanning", size) {
                 DeviceBrowserContent(
                     knownDevices = knownDevices,
                     bluetoothState = BluetoothState.Scanning,
@@ -52,7 +49,6 @@ class DeviceBrowserLayoutTest {
                     actions = DeviceBrowserActions(),
                 )
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 

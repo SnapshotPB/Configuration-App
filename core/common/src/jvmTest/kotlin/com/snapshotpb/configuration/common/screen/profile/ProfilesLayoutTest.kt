@@ -19,7 +19,6 @@ import com.snapshotpb.core.resources.profile_badge_description
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -47,7 +46,7 @@ class ProfilesLayoutTest {
     @Test
     fun profilesConnectedFitsEveryDuoSize() {
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout("profiles-connected", size) {
+            checkScreenLayout("profiles-connected", size) {
                 ProfilesContent(
                     device = connectedDevice,
                     connectionUiState = ConnectionUiState.Connected,
@@ -58,7 +57,6 @@ class ProfilesLayoutTest {
                     actions = ProfilesActions(),
                 )
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
@@ -70,7 +68,7 @@ class ProfilesLayoutTest {
         val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher, toEnd = true))
 
         for (size in DuoSize.entries) {
-            val report = checkScreenLayout(
+            checkScreenLayout(
                 screen = "profiles-pending",
                 size = size,
                 scrollTargets = scrollTargets,
@@ -92,7 +90,6 @@ class ProfilesLayoutTest {
             ) {
                 PendingProfiles()
             }
-            assertEquals(fitsTwoPanes(size.width, size.height), report.twoPanes, size.label)
         }
     }
 
@@ -109,7 +106,7 @@ class ProfilesLayoutTest {
         val scrollTargets = listOf(ScrollTarget("last", lastProfileMatcher, toEnd = true))
 
         checkScreenLayout(
-            screen = "profiles-pending",
+            screen = "profiles-pending-defect",
             size = DuoSize.OUTER_LANDSCAPE_SIDE_BAR,
             scrollTargets = scrollTargets,
             inspect = { inspectedSize ->
