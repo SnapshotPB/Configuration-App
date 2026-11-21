@@ -6,7 +6,7 @@ import ComposeApp
 ///
 /// On iOS 27.1 and later, iPhone Duo puts navigation bar items in a side column. This controller
 /// observes `SideBarBackKt` to show or hide a round back button there when the app is not on the
-/// device list.
+/// device list. The trait change handler updates the bar when the device folds, unfolds or turns.
 ///
 /// On the folded iPhone Duo, a visible navigation bar has zero height and adds extra top safe
 /// area. `viewDidLayoutSubviews` cancels that extra top inset on `content` so the layout stays
@@ -63,9 +63,11 @@ final class SideBarNavigationController: UINavigationController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // The zero-height bar in vertical bar mode adds a top safe area to `content`.
+        // This negative additional inset removes it so Compose gets the same insets as with no navigation controller.
         let topInset: CGFloat
         if !isNavigationBarHidden && navigationBar.frame.height == 0 {
-            topInset = -(navigationBar.frame.maxY - view.safeAreaInsets.top)
+            topInset = -max(0, navigationBar.frame.maxY - view.safeAreaInsets.top)
         } else {
             topInset = 0
         }
