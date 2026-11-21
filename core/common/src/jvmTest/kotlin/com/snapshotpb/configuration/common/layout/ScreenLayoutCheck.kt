@@ -17,8 +17,10 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -31,6 +33,7 @@ import javax.imageio.ImageIO
 import kotlin.math.roundToInt
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /** The pixel scale of the test window, in pixels per dp. */
 internal const val RENDER_DENSITY = 2f
@@ -138,7 +141,7 @@ internal fun checkScreenLayout(
             // performScrollTo needs clock frames, so turn autoAdvance on for that call only.
             mainClock.autoAdvance = true
             try {
-                onNode(target.matcher, useUnmergedTree = true).performScrollTo()
+                scrollToTarget(screen, size, target)
             } finally {
                 mainClock.autoAdvance = false
             }
@@ -178,6 +181,30 @@ internal fun checkScreenLayout(
         appendMetrics(renderDir, report)
     }
     return report
+}
+
+private fun SemanticsNodeInteractionsProvider.scrollToTarget(
+    screen: String,
+    size: DuoSize,
+    target: ScrollTarget,
+) {
+    val directMatches = onAllNodes(target.matcher, useUnmergedTree = true)
+    if (directMatches.fetchSemanticsNodes().isNotEmpty()) {
+        directMatches[0].performScrollTo()
+        return
+    }
+    // A LazyColumn composes only visible items, so scroll each lazy container to find the target.
+    val containers = onAllNodes(hasScrollToNodeAction(), useUnmergedTree = true)
+    val containerCount = containers.fetchSemanticsNodes().size
+    for (index in 0 until containerCount) {
+        try {
+            containers[index].performScrollToNode(target.matcher)
+            return
+        } catch (_: AssertionError) {
+            // This container does not hold the target node; try the next one.
+        }
+    }
+    fail("$screen (${size.label}): scroll target \"${target.name}\" not found in any scroll container")
 }
 
 private fun inspectSemanticsTree(
