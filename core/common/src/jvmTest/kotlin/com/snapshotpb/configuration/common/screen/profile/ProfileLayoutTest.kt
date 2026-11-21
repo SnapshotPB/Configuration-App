@@ -165,6 +165,7 @@ class ProfileLayoutTest {
             profileLoad = found,
             boardProfile = mode.profile,
             boltMode = mode.boltMode,
+            eyeReading = null,
             photoPath = "",
             onProfileChange = {},
             onCancel = {},

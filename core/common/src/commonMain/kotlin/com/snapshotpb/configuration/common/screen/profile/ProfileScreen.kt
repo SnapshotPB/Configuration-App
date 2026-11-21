@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.snapshotpb.configuration.bluetooth.EyeReadingState
 import com.snapshotpb.configuration.common.composable.ActionContainer
 import com.snapshotpb.configuration.common.composable.CharCounter
 import com.snapshotpb.configuration.common.composable.CollapsingPhotoHeaderColumn
@@ -147,6 +148,7 @@ fun ProfileScreen(
         profileLoad = profileLoad,
         boardProfile = boardProfile,
         boltMode = boltMode,
+        eyeReading = null, // Task 4 collects the value.
         photoPath = photoPath,
         onProfileChange = { viewModel.editDraft(it) },
         onCancel = { navigationController.goBack() },
@@ -166,6 +168,9 @@ fun ProfileScreen(
 /**
  * The profile editor for [profile], with no view model. [onSave] receives the profile that the
  * screen shows.
+ *
+ * [eyeReading] is the live eye state of the board. It is `null` when the screen does not watch the
+ * eye or the board is not connected. It is a parameter so the layout tests need no Bluetooth.
  */
 @Composable
 internal fun ProfileContent(
@@ -173,6 +178,7 @@ internal fun ProfileContent(
     profileLoad: ProfileLoad,
     boardProfile: MarkerProfile?,
     boltMode: MarkerBoltMode,
+    eyeReading: EyeReadingState?,
     photoPath: String,
     onProfileChange: (MarkerProfile) -> Unit,
     onCancel: () -> Unit,
@@ -263,6 +269,7 @@ internal fun ProfileContent(
                             currentProfile = currentProfile,
                             boardProfile = boardProfile,
                             boltMode = boltMode,
+                            eyeReading = eyeReading,
                             onProfileChange = onProfileChange,
                         )
 
@@ -324,6 +331,7 @@ internal fun ProfileContent(
                         currentProfile = currentProfile,
                         boardProfile = boardProfile,
                         boltMode = boltMode,
+                        eyeReading = eyeReading,
                         onProfileChange = onProfileChange,
                     )
 
@@ -465,9 +473,11 @@ private fun EyeSection(
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
     boltMode: MarkerBoltMode,
+    eyeReading: EyeReadingState?,
     onProfileChange: (MarkerProfile) -> Unit,
 ) {
     val isEyeModeDiverged = boardProfile?.let { currentProfile.eyeMode != it.eyeMode } ?: false
+    val liveDisplay = eyeLiveDisplay(eyeReading, currentProfile.eyeMode, currentProfile.eyeThreshold)
 
     ConfigurationSection(stringResource(Res.string.profile_section_eye)) {
         EnumField(
@@ -487,6 +497,11 @@ private fun EyeSection(
             boltMode = boltMode,
             onProfileChange = onProfileChange,
             spaceBeforeFirst = true,
+            fieldSupport = { field ->
+                if (field == MarkerProfileField.EYE_THRESHOLD) {
+                    EyeLiveValue(liveDisplay)
+                }
+            },
         )
     }
 }
@@ -551,6 +566,7 @@ private fun GroupFields(
     boltMode: MarkerBoltMode,
     onProfileChange: (MarkerProfile) -> Unit,
     spaceBeforeFirst: Boolean,
+    fieldSupport: @Composable (MarkerProfileField) -> Unit = {},
 ) {
     fieldsOf(group)
         .filter { it.isShownFor(currentProfile, boltMode) }
@@ -564,6 +580,7 @@ private fun GroupFields(
                     currentProfile = currentProfile,
                     boardProfile = boardProfile,
                     onProfileChange = onProfileChange,
+                    supporting = { fieldSupport(field) },
                 )
             }
         }
@@ -585,6 +602,7 @@ private fun ProfileNumberField(
     currentProfile: MarkerProfile,
     boardProfile: MarkerProfile?,
     onProfileChange: (MarkerProfile) -> Unit,
+    supporting: @Composable () -> Unit = {},
 ) {
     val value = field.get(currentProfile)
     val isDiverged = boardProfile?.let { field.get(it) != value } ?: false
@@ -606,6 +624,7 @@ private fun ProfileNumberField(
             keyboardType = if (field.isTenths) KeyboardType.Decimal else KeyboardType.Number,
             unit = markerProfileFieldUnitSymbol(field),
         )
+        supporting()
     }
 }
 
