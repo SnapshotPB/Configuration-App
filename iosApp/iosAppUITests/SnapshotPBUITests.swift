@@ -500,7 +500,9 @@ final class SnapshotPBUITests: XCTestCase {
     /// vertical bar, for example iPhone 18 Pro, no such button shows.
     ///
     /// Run this test on the iPhone Duo simulator for the full check. Run it on any other simulator
-    /// for the no-button check.
+    /// for the no-button check. With `TEST_RUNNER_RUN_FOLD_TESTS=1`, the test also unfolds and folds
+    /// the device on Configure Device. At each `===FOLD_NOW===` line, a person or a host script must
+    /// click the Device Hub buttons. Without the flag, the test does not fold.
     func testSimulator_sideBarBackButton() throws {
         #if !targetEnvironment(simulator)
         throw XCTSkip("Simulator test. It uses the simulated board.")
@@ -551,6 +553,16 @@ final class SnapshotPBUITests: XCTestCase {
         )
         XCTAssertEqual(sideBack.label, "Back", "The side-bar back button has the wrong label.")
         attachScreenshot(app, name: "side-bar-configure")
+
+        // An unfold and a fold keep the button. A host script clicks the Device Hub buttons.
+        if envFlag(ProcessInfo.processInfo.environment, "RUN_FOLD_TESTS") == "1" {
+            let fold = FoldDriver(test: self, app: app)
+            fold.cycle("side-bar") {
+                XCTAssertTrue(configure.exists, "Configure Device went away.")
+                XCTAssertTrue(sideBack.waitForExistence(timeout: 10), "The side-bar back button went away.")
+                XCTAssertTrue(sideBack.isHittable, "The side-bar back button is not hittable.")
+            }
+        }
 
         sideBack.tap()
         assertGone(configure, "Configure Device")
