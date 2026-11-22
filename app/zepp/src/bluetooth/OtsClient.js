@@ -1,4 +1,7 @@
 import * as ble from '@zos/ble';
+import { EyeStatusUuids } from './eyeStatus';
+import { addressMatches, eventCharacteristicUuid, uuidMatches } from './gattMatch';
+import { addNotificationRoute } from './notificationRouter';
 import {
   bluetoothAtBootToDomain,
   boltModeToDomain,
@@ -74,11 +77,10 @@ if (typeof ble.mstOnCharaValueArrived === 'function') {
   });
 }
 
-if (typeof ble.mstOnCharaNotification === 'function') {
-  ble.mstOnCharaNotification((res) => {
-    notificationListeners.slice().forEach(listener => listener(res));
-  });
-}
+addNotificationRoute(
+  [OtsUuids.Oacp, OtsUuids.Olcp, OtsUuids.ObjectData],
+  res => notificationListeners.slice().forEach(listener => listener(res))
+);
 
 function addValueListener(fn) {
   valueListeners.push(fn);
@@ -143,34 +145,6 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function uuidMatches(received, target) {
-  const r = (received || '').toUpperCase();
-  const t = (target || '').toUpperCase();
-  // Reject empty/missing UUIDs — "ANY".indexOf("") === 0 would otherwise match
-  // every characteristic when an event arrives without a UUID field.
-  if (!r || !t) return false;
-  // Substring (either direction) — a 16-bit assigned UUID like "2AC5" sits at
-  // offset 4-7 inside its 128-bit canonical form
-  // (0000XXXX-0000-1000-8000-00805F9B34FB), so endsWith would miss it when the
-  // stack reports canonical UUIDs. The vendor 128-bit UUIDs still match via
-  // exact equality, so substring matching introduces no false positives here.
-  return r === t || r.indexOf(t) !== -1 || t.indexOf(r) !== -1;
-}
-
-function eventAddress(res) {
-  return (res && (res.address || res.dev_id || res.dev || res.deviceSource)) || null;
-}
-
-// Only reject an event on a *definite* address mismatch. Many @zos/ble stacks do
-// not tag characteristic events with an address; with a single connection those
-// still route correctly, so an absent address must not filter the event out.
-function addressMatches(res, address) {
-  if (!address) return true;
-  const ra = eventAddress(res);
-  if (!ra) return true;
-  return String(ra).toUpperCase() === String(address).toUpperCase();
-}
-
 export class OtsClient {
   constructor(address) {
     // BLE connect address (the scan-provided MAC), NOT the board's protobuf UUID.
@@ -218,7 +192,7 @@ export class OtsClient {
 
       const onValue = (res) => {
         if (!addressMatches(res, this.address)) return;
-        const resUuid = (res.characteristicUuid || res.charaUuid || "").toUpperCase();
+        const resUuid = eventCharacteristicUuid(res).toUpperCase();
         const targetUuid = charUuid.toUpperCase();
         if (uuidMatches(resUuid, targetUuid)) {
           cleanup();
@@ -271,7 +245,7 @@ export class OtsClient {
     }));
   }
 
-  _subscribeChar(charUuid, enable, preferIndicate = false) {
+  _subscribeChar(charUuid, enable, preferIndicate = false, serviceUuid = SERVICE_UUID) {
     return this._serialize(() => new Promise((resolve, reject) => {
       // A CCCD write the stack drops calls neither callback. Without a bound, prepare() never
       // settles, the GATT queue stays blocked and close() can never run its unsubscribes.
@@ -289,7 +263,7 @@ export class OtsClient {
       };
       const options = {
         address: this.address,
-        serviceUuid: SERVICE_UUID,
+        serviceUuid: serviceUuid,
         characteristicUuid: charUuid,
         enable: enable,
         success: once(() => resolve()),
@@ -314,6 +288,17 @@ export class OtsClient {
         }
       }
     }));
+  }
+
+  // The eye characteristic lives in its own service. Its CCC write uses the
+  // same GATT queue as the OTS ops because the stack allows one op in flight.
+  setEyeNotifications(enable) {
+    return this._subscribeChar(
+      EyeStatusUuids.Status,
+      enable,
+      false,
+      EyeStatusUuids.Service
+    );
   }
 
   // Best-effort teardown: a failed unsubscribe (fail callback on a flaky link)
@@ -375,7 +360,7 @@ export class OtsClient {
 
       const onNotification = (res) => {
         if (!addressMatches(res, this.address)) return;
-        const resUuid = (res.characteristicUuid || res.charaUuid || "").toUpperCase();
+        const resUuid = eventCharacteristicUuid(res).toUpperCase();
         const targetUuid = charUuid.toUpperCase();
         if (uuidMatches(resUuid, targetUuid)) {
           cleanup();
@@ -500,7 +485,7 @@ export class OtsClient {
 
       const onDataNotification = (res) => {
         if (!addressMatches(res, this.address)) return;
-        const resUuid = (res.characteristicUuid || res.charaUuid || "").toUpperCase();
+        const resUuid = eventCharacteristicUuid(res).toUpperCase();
         const targetUuid = OtsUuids.ObjectData.toUpperCase();
         if (uuidMatches(resUuid, targetUuid)) {
           // A chunk after the object is complete belongs to no transfer; drop it.

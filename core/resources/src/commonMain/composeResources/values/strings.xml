@@ -82,9 +82,19 @@
     <string name="profile_eye_mode_reflective">Reflective</string>
     <string name="profile_eye_mode_break_beam">Break Beam</string>
     <string name="profile_label_eye_threshold">Eye Threshold</string>
-    <string name="profile_label_eye_threshold_details">Breach eye detection threshold as 0–100 percent of full scale; the eye sees a ball when the reading is below it. The app never sends 0 — the firmware would substitute its 50 percent default.</string>
+    <string name="profile_label_eye_threshold_details">Breach eye detection threshold as 0–100 percent of full scale. In Break Beam mode, the eye sees a ball when the reading is at or below it; in Reflective mode, when the reading is above it. The app never sends 0 — the firmware would substitute its 50 percent default.</string>
     <string name="profile_label_eye_debounce">Eye Debounce</string>
     <string name="profile_label_eye_debounce_details">The time in milliseconds (0.1 ms steps) the eye must be within threshold to determine a ball is in the breach.</string>
+    <!-- Live eye value next to the eye threshold: the level label and the description of the level bar for a screen reader. Also holds the result for the edited threshold and the hints when the board gives no value. -->
+    <string name="profile_eye_live_level">Live eye level: %1$s%</string>
+    <string name="profile_eye_level_bar_description">Eye level %1$s%, threshold %2$d%</string>
+    <string name="profile_eye_result_ball">Ball</string>
+    <string name="profile_eye_result_empty">Empty</string>
+    <string name="profile_eye_hint_eye_off">Select a profile with an eye on the board to see the eye value.</string>
+    <string name="profile_eye_hint_override_off">Turn the eyes on at the board to see the eye value.</string>
+    <string name="profile_eye_hint_fault">The board reports an eye fault.</string>
+    <string name="profile_eye_hint_unsupported">Update the firmware to see the live eye value.</string>
+    <string name="profile_eye_hint_not_permitted">Connect to the board again with the browser chooser to see the eye value.</string>
     <string name="profile_label_sear_solenoid_dwell">Sear Solenoid Dwell</string>
     <string name="profile_label_sear_solenoid_dwell_details">The time in milliseconds (0.1 ms steps) the sear solenoid is energized during the firing cycle.</string>
     <string name="profile_label_sear_solenoid_delay">Sear Solenoid Delay</string>

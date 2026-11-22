@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.eye.EyeStatusUuids
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
 import com.snapshotpb.configuration.bluetooth.log.BoardLogState
@@ -34,6 +35,7 @@ import com.snapshotpb.configuration.model.FirmwareUpdateProgress
 import com.snapshotpb.configuration.model.withProfilesInWrittenSlots
 import com.toxicbakery.logging.Arbor
 import dev.bluefalcon.core.BlueFalcon
+import dev.bluefalcon.core.BluetoothCharacteristic
 import dev.bluefalcon.core.BluetoothManagerState
 import dev.bluefalcon.core.BluetoothPeripheral
 import dev.bluefalcon.core.BluetoothPeripheralState
@@ -46,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +74,16 @@ import snapshotpb.v1.DeviceConfig
  * The scan key of the peripheral (see [PlatformBluetoothSeams.deviceState]) is only the key of the
  * session: the maps below use it, and nothing persists it. The public calls accept either id, and
  * [BluetoothStateManager.connectedDevices] and each read result carry the board id.
+ *
+ * EYE STATUS: after the 4-step connect, the engine looks up [EyeStatusUuids.Service] and
+ * [EyeStatusUuids.Status] while it holds [writeMutex] and [connectionLock]. An absent service
+ * records [EyeReadingState.Unsupported] (or [EyeReadingState.NotPermitted] when
+ * [PlatformBluetoothSeams.servicesFollowPermission] is true), and a lookup failure records
+ * [EyeReadingState.Failed]. When the characteristic is present, an [EyeStatusSession] enables
+ * notifications at the first watcher and turns them off 2 s after the last watcher stops. Each CCC
+ * write runs under [writeMutex], and notifications stay off during a firmware upload. Teardown
+ * cancels and joins the session job before it clears the recorded state, so no late notification
+ * records an old [EyeReadingState.Reading].
  */
 class BluetoothConnectionEngine(
     private val blueFalcon: BlueFalcon,
@@ -142,6 +155,18 @@ class BluetoothConnectionEngine(
 
     /** The last [BluetoothLogEvent.UPDATE_SERVICE] detail for each scan key. Guarded by [connectionLock]. */
     private val lastUpdateServiceLogDetail: MutableMap<String, String> = mutableMapOf()
+
+    /** The eye status of each connected scan key (see [startEyeStatus]). Guarded by [connectionLock]. */
+    private val eyeStatusLinks: MutableMap<String, EyeStatusLink> = mutableMapOf()
+
+    /** The eye status of one link: the board id, and the session and its job when the board has the characteristic. */
+    private class EyeStatusLink(val boardId: String, val session: EyeStatusSession?, val job: Job?)
+
+    private sealed interface EyeStatusLookup {
+        class Found(val characteristic: BluetoothCharacteristic) : EyeStatusLookup
+        data object Absent : EyeStatusLookup
+        class Failed(val code: String) : EyeStatusLookup
+    }
 
     /**
      * Serializes board writes. A write runs on [coroutineScope], not on the caller, so a caller that
@@ -314,6 +339,9 @@ class BluetoothConnectionEngine(
                 }
                 restoreIdleState()
                 startUpdateServiceRead(knownKey, livePeripheral)
+                // The lookup runs after the 4-step connect so it adds no time to the connect steps,
+                // and holds writeMutex so characteristic discovery never overlaps an OTS write.
+                startEyeStatus(knownKey, livePeripheral)
                 return
             }
 
@@ -406,7 +434,12 @@ class BluetoothConnectionEngine(
                 )
             }
             restoreIdleState()
-            if (otsReady) startUpdateServiceRead(key, peripheral)
+            if (otsReady) {
+                startUpdateServiceRead(key, peripheral)
+                // The lookup runs after the 4-step connect so it adds no time to the connect steps,
+                // and holds writeMutex so characteristic discovery never overlaps an OTS write.
+                startEyeStatus(key, peripheral)
+            }
         } finally {
             // Every normal path above leaves Connecting, so a lingering Connecting(deviceId) means
             // the attempt was cancelled mid-flight (a new connect, or a Disconnect/Cancel from the
@@ -521,6 +554,7 @@ class BluetoothConnectionEngine(
         otsClients.remove(deviceId)?.runCatching { close() }
             ?.onFailure { error -> log.d { "Closing OTS client failed for $deviceId: ${error.message}" } }
         closeUpdateService(deviceId)
+        closeEyeStatus(deviceId)
         if (disconnectPeripheral) {
             val peripheral = seams.deviceState.value.devices[deviceId]
             if (peripheral != null) {
@@ -723,6 +757,7 @@ class BluetoothConnectionEngine(
         connectionMonitors.remove(deviceId)?.cancel()
         otsClients.remove(deviceId)?.runCatching { close() }
         closeUpdateService(deviceId)
+        closeEyeStatus(deviceId)
         lastReadProfiles.remove(deviceId)
         lastReadDeviceConfig.remove(deviceId)
         markDisconnected(deviceId)
@@ -1354,6 +1389,80 @@ class BluetoothConnectionEngine(
         lastUpdateServiceLogDetail.remove(sessionKey)
     }
 
+    private suspend fun findEyeStatus(peripheral: BluetoothPeripheral): EyeStatusLookup = try {
+        withTimeoutOrNull(EYE_STATUS_SETUP_LIMIT_MILLIS) {
+            val service = seams.serviceWithCharacteristics(peripheral, EyeStatusUuids.Service)
+                ?: return@withTimeoutOrNull EyeStatusLookup.Absent
+            val status = service.characteristics.firstOrNull { it.uuid == EyeStatusUuids.Status }
+                ?: return@withTimeoutOrNull EyeStatusLookup.Failed(EYE_NO_CHARACTERISTIC_CODE)
+            EyeStatusLookup.Found(status)
+        } ?: EyeStatusLookup.Failed(EYE_TIMEOUT_CODE)
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        EyeStatusLookup.Failed(error::class.simpleName ?: UNKNOWN_FAILURE_CODE)
+    }
+
+    /**
+     * Looks up the eye status characteristic of [peripheral] for [sessionKey] and starts an
+     * [EyeStatusSession] when the characteristic is present.
+     *
+     * Must be called while [writeMutex] and [connectionLock] are held. A live re-read of the same
+     * board keeps the active session, its CCC state, and its recorded state. No lookup failure
+     * fails the connection.
+     */
+    private suspend fun startEyeStatus(sessionKey: String, peripheral: BluetoothPeripheral) {
+        val boardId = connectedBoardIds[sessionKey] ?: return
+        if (eyeStatusLinks[sessionKey]?.boardId == boardId) return
+        closeEyeStatus(sessionKey)
+        val logSession = logSessions[sessionKey]
+        when (val lookup = findEyeStatus(peripheral)) {
+            EyeStatusLookup.Absent -> {
+                val (state, detail) = if (seams.servicesFollowPermission) {
+                    EyeReadingState.NotPermitted to EYE_NOT_VISIBLE_DETAIL
+                } else {
+                    EyeReadingState.Unsupported to EYE_ABSENT_DETAIL
+                }
+                bluetoothStateManager.setEyeReading(boardId, state)
+                logEvent(logSession, BluetoothLogEvent.EYE_UNAVAILABLE, detail)
+                eyeStatusLinks[sessionKey] = EyeStatusLink(boardId, session = null, job = null)
+            }
+            is EyeStatusLookup.Failed -> {
+                bluetoothStateManager.setEyeReading(boardId, EyeReadingState.Failed)
+                logEvent(logSession, BluetoothLogEvent.EYE_SUBSCRIBE_FAILED, lookup.code)
+                eyeStatusLinks[sessionKey] = EyeStatusLink(boardId, session = null, job = null)
+            }
+            is EyeStatusLookup.Found -> {
+                val session = EyeStatusSession(
+                    blueFalcon = blueFalcon,
+                    peripheral = peripheral,
+                    characteristic = lookup.characteristic,
+                    boardId = boardId,
+                    bluetoothStateManager = bluetoothStateManager,
+                    writeMutex = writeMutex,
+                    logEvent = { event, detail -> logEvent(logSession, event, detail) },
+                )
+                val job = coroutineScope.launch { session.run() }
+                eyeStatusLinks[sessionKey] = EyeStatusLink(boardId, session = session, job = job)
+            }
+        }
+    }
+
+    /**
+     * Stops the eye status session of [sessionKey] and clears its recorded state.
+     *
+     * Must be called while [connectionLock] is held. The join runs before the clear so the
+     * notification collector has stopped and a late notification cannot record an old
+     * [EyeReadingState.Reading] after the clear. The join cannot deadlock because
+     * [EyeStatusSession] never takes [connectionLock], and a CCC write under [writeMutex] has a
+     * time limit of [EyeStatusSession.CCC_WRITE_LIMIT_MILLIS].
+     */
+    private suspend fun closeEyeStatus(sessionKey: String) {
+        val link = eyeStatusLinks.remove(sessionKey) ?: return
+        link.job?.cancelAndJoin()
+        bluetoothStateManager.clearEyeReading(link.boardId)
+    }
+
     /**
      * Sends [image] to the board [deviceId] over SMP: `image list`, the upload with the buffer size
      * of the board, `image list` for the hash of slot 1, `image test` and `reset`. The call returns
@@ -1363,8 +1472,9 @@ class BluetoothConnectionEngine(
      *
      * The upload holds [writeMutex] from start to end, so no OTS write and no connect read runs at
      * the same time, and no write compares the configuration while the board holds fire control.
-     * The link runs at high connection priority during the upload. A [disconnect] stops the upload
-     * with [FirmwareUpdateFailure.LINK_LOST].
+     * The link runs at high connection priority during the upload. The eye notifications stay off
+     * during the upload and turn on again after it when the board has a watcher. A [disconnect]
+     * stops the upload with [FirmwareUpdateFailure.LINK_LOST].
      */
     fun updateFirmware(deviceId: String, image: FirmwareImage, requestId: Long = 0L) {
         // The first state goes out before the lock: a connect read can hold the lock for some
@@ -1392,6 +1502,7 @@ class BluetoothConnectionEngine(
         val sha256 = decodeSha256(image.manifest.assets.image.sha256)
             ?: return report(failed(FirmwareUpdateFailure.BAD_IMAGE), null)
         try {
+            link.eyeStatus?.pauseForUpload()
             val hash = withHighConnectionPriority(link.peripheral) {
                 session.upload(
                     image = image.bytes,
@@ -1410,6 +1521,8 @@ class BluetoothConnectionEngine(
         } catch (error: Exception) {
             log.e(error) { "Firmware upload to $deviceId failed" }
             report(failed(firmwareFailureOf(error, link.isStillLive(session)), firmwareFailureCode(error)), null)
+        } finally {
+            link.eyeStatus?.resumeAfterUpload()
         }
     }
 
@@ -1481,16 +1594,17 @@ class BluetoothConnectionEngine(
             val session = smpSessions[key]?.takeIf {
                 it.service.status == UpdateServiceStatus.AVAILABLE && updateServiceJobs[key]?.isActive != true
             }
-            FirmwareLink(key, peripheral, session, logSessions[key])
+            FirmwareLink(key, peripheral, session, logSessions[key], eyeStatusLinks[key]?.session)
         }
     }
 
-    /** The link of a firmware step: the scan key, the peripheral, the SMP session, and the log session. */
+    /** The link of a firmware step: the scan key, the peripheral, the SMP session, the log session, and the eye status session. */
     private inner class FirmwareLink(
         val sessionKey: String,
         val peripheral: BluetoothPeripheral,
         val session: BoardFirmwareSession?,
         val logSession: Int?,
+        val eyeStatus: EyeStatusSession?,
     ) {
         /** True when the link is still up and [session] is still the session of the link. */
         suspend fun isStillLive(session: BoardFirmwareSession): Boolean = connectionLock.withLock {
@@ -1513,6 +1627,14 @@ class BluetoothConnectionEngine(
     companion object {
         /** Maximum time to discover NUS characteristics and enable board log notifications. */
         private const val BOARD_LOG_SETUP_LIMIT_MILLIS = 3_000L
+
+        /** Maximum time to discover the eye status service and its characteristic. */
+        private const val EYE_STATUS_SETUP_LIMIT_MILLIS = 3_000L
+
+        private const val EYE_ABSENT_DETAIL = "absent"
+        private const val EYE_NOT_VISIBLE_DETAIL = "not_visible"
+        private const val EYE_NO_CHARACTERISTIC_CODE = "no_characteristic"
+        private const val EYE_TIMEOUT_CODE = "timeout"
 
         /**
          * The time limit of the SMP read after a connect: the subscription and three commands. The

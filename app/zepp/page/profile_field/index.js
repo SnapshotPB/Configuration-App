@@ -1,6 +1,8 @@
-import { createWidget, widget, align, deleteWidget } from '@zos/ui';
+import { createWidget, widget, align, prop, deleteWidget } from '@zos/ui';
 import { back } from '@zos/router';
+import { bleManager } from '../../src/bluetooth/BleManager';
 import { deviceStore } from '../../src/store/DeviceStore';
+import { EYE_LINE_COLOR, eyeLine } from '../../src/utils/eyeLine';
 import {
   formatProfileFieldValue,
   maxBpsForTiming,
@@ -21,6 +23,11 @@ Page({
   onInit() {
     console.log("ProfileField page onInit");
     this.valueWidgets = [];
+    this.eyeWidget = null;
+    this.eyeState = null;
+    this.eyeText = '';
+    this.eyeColor = EYE_LINE_COLOR.hint;
+    this.unwatchEye = null;
     const app = getApp();
     const handoff = app.globalData.profileField;
     const selected = app.globalData.selectedDevice;
@@ -78,6 +85,43 @@ Page({
 
     this.drawValue();
     this.drawButtons();
+
+    if (this.fieldDef.key === 'EYE_THRESHOLD') {
+      this.eyeWidget = createWidget(widget.TEXT, {
+        x: px(60),
+        y: px(160),
+        w: px(360),
+        h: px(26),
+        color: EYE_LINE_COLOR.hint,
+        text_size: px(18),
+        align_h: align.CENTER_H,
+        align_v: align.CENTER_V,
+        text: ''
+      });
+      this.eyeText = '';
+      this.eyeColor = EYE_LINE_COLOR.hint;
+      this.unwatchEye = bleManager.watchEye(this.device.id, (state) => {
+        this.eyeState = state;
+        this.drawEye();
+      });
+    }
+  },
+
+  // Updates the live eye widget in place. Samples arrive at 10 Hz, so do not
+  // recreate the widget. Update the widget only when the text or the color changed.
+  drawEye() {
+    if (!this.eyeWidget) return;
+    const line = eyeLine(this.eyeState, this.profile);
+    const nextText = line ? line.text : '';
+    const nextColor = line ? line.color : EYE_LINE_COLOR.hint;
+    if (nextText !== this.eyeText) {
+      this.eyeText = nextText;
+      this.eyeWidget.setProperty(prop.TEXT, nextText);
+    }
+    if (nextColor !== this.eyeColor) {
+      this.eyeColor = nextColor;
+      this.eyeWidget.setProperty(prop.COLOR, nextColor);
+    }
   },
 
   // The value, the max BPS line and the unsaved line. These are the widgets a step changes, so
@@ -200,10 +244,18 @@ Page({
       this.profile = (stored.knownProfiles || []).find(p => p.id === this.profile.id) || this.profile;
     }
     this.drawValue();
+    if (this.eyeWidget) {
+      this.drawEye();
+    }
   },
 
   onDestroy() {
     console.log("ProfileField page onDestroy");
+    if (this.unwatchEye) {
+      this.unwatchEye();
+      this.unwatchEye = null;
+    }
+    this.eyeWidget = null;
     deviceStore.flush();
     // The field is a handoff from profile_edit, so it must not outlive this page.
     const app = getApp();

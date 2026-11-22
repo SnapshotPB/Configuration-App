@@ -6,7 +6,7 @@
 // the whole point of the harness is to make the app's transport assumptions
 // visible instead of letting them pass silently.
 
-import { normalizeUuid, OTS_UUID } from './VirtualBoard';
+import { EYE_UUID, normalizeUuid, OTS_UUID } from './VirtualBoard';
 import { realClearTimeout } from '../mocks/globals';
 
 const CANONICAL_SUFFIX = '-0000-1000-8000-00805F9B34FB';
@@ -154,7 +154,7 @@ export class VirtualRadio {
         return;
       }
       if (this.faults.connect === 'silent' || this.abortedConnect) return; // never completes
-      this.links.set(address, { profileBuilt: false });
+      this.links.set(address, { profileBuilt: false, profileBroken: false });
       device.board.resetSession();
       this._succeed(options);
     }, delay);
@@ -178,7 +178,8 @@ export class VirtualRadio {
     this._record('mstBuildProfile', { address, services: options.services });
     this._schedule(() => {
       const link = this.links.get(address);
-      if (!link) {
+      const board = this.boardFor(address);
+      if (!link || !board) {
         this._fail(options, `no link to ${address}`);
         return;
       }
@@ -186,7 +187,29 @@ export class VirtualRadio {
         this._fail(options, 'service discovery failed by fault injection');
         return;
       }
+      const missing =
+        typeof board.hasService === 'function' &&
+        (options.services || []).some(s => !board.hasService(s && s.uuid));
+      if (missing) {
+        const mode = this.faults.missingService || 'fail';
+        if (mode === 'fail') {
+          this._fail(options, 'requested GATT service is absent on this board');
+          return;
+        }
+        if (mode === 'break') {
+          link.profileBuilt = true;
+          link.profileBroken = true;
+          this._succeed(options);
+          return;
+        }
+        // mode === 'ignore': succeed and keep the profile usable for present services.
+        link.profileBuilt = true;
+        link.profileBroken = false;
+        this._succeed(options);
+        return;
+      }
       link.profileBuilt = true;
+      link.profileBroken = false;
       this._succeed(options);
     }, this.latency.gatt);
   }
@@ -232,16 +255,29 @@ export class VirtualRadio {
   }
 
   prepareNotification(options, kind) {
-    const { address, characteristicUuid, enable } = options;
+    const { address, serviceUuid, characteristicUuid, enable } = options;
     this._record(kind === 'indicate' ? 'mstPrepareIndicateChar' : 'mstPrepareNotificationChar', {
       address,
+      serviceUuid,
       uuid: characteristicUuid,
       enable
     });
     const board = this._requireLink(options);
     if (!board) return;
+    // faults.silentSubscribe names a characteristic whose subscribe the stack
+    // drops: neither callback fires and the board never sees the subscription.
+    if (
+      this.faults.silentSubscribe &&
+      normalizeUuid(this.faults.silentSubscribe) === normalizeUuid(characteristicUuid)
+    ) {
+      return;
+    }
     this._schedule(() => {
-      board.setSubscription(characteristicUuid, !!enable, kind);
+      const result = board.setSubscription(characteristicUuid, !!enable, kind);
+      if (result && result.error) {
+        this._fail(options, result.error);
+        return;
+      }
       this._succeed(options);
     }, this.latency.gatt);
   }
@@ -258,6 +294,13 @@ export class VirtualRadio {
     }
     if (!link.profileBuilt) {
       this._schedule(() => this._fail(options, `GATT profile not built for ${address}`), this.latency.gatt);
+      return null;
+    }
+    if (link.profileBroken) {
+      this._schedule(
+        () => this._fail(options, `GATT profile for ${address} is broken after a build with an absent service`),
+        this.latency.gatt
+      );
       return null;
     }
     return board;
@@ -300,10 +343,12 @@ export class VirtualRadio {
 
   _event(address, uuid, bytes) {
     const copy = Uint8Array.from(bytes);
+    const short = normalizeUuid(uuid);
+    const serviceUuid = short === EYE_UUID.STATUS ? EYE_UUID.SERVICE : OTS_UUID.SERVICE;
     return {
       address,
       dev_id: address,
-      serviceUuid: this._formatUuid(OTS_UUID.SERVICE),
+      serviceUuid: this._formatUuid(serviceUuid),
       characteristicUuid: this._formatUuid(uuid),
       // Real stacks hand back an ArrayBuffer; OtsClient wraps it in a Uint8Array.
       value: copy.buffer

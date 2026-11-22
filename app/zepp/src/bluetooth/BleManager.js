@@ -1,5 +1,8 @@
 import * as ble from '@zos/ble';
 import { queryPermission, requestPermission } from '@zos/app';
+import { EyeStatusUuids } from './eyeStatus';
+import { EyeStatusWatcher } from './EyeStatusWatcher';
+import { createMockEyeSource } from './mockEyeSource';
 import { isTransportTimeout, OtsClient } from './OtsClient';
 import {
   BoardBluetoothAtBoot,
@@ -15,6 +18,28 @@ export const MOCK_DEVICE_ID = "00000000-0000-0000-0000-000000001234";
 // Native scan bound; the @zos/ble layer stops the scan when this elapses but
 // emits no completion callback, so a companion client-side timer resets state.
 const SCAN_TIMEOUT_MS = 60000;
+
+const OTS_PROFILE_SERVICE = {
+  uuid: "1825",
+  characteristics: [
+    { uuid: "2AC5", descriptors: [{ uuid: "2902" }] }, // OACP
+    { uuid: "2AC6", descriptors: [{ uuid: "2902" }] }, // OLCP
+    { uuid: "2ABE" }, // Object Name
+    { uuid: "2ABF" }, // Object Type
+    { uuid: "2AC0" }, // Object Size
+    { uuid: "2AC3" }, // Object ID
+    { uuid: "2AC4" }, // Object Properties
+    { uuid: "2ABD" }, // Feature
+    { uuid: "00000002-5350-4221-0000-5350425f4f54", descriptors: [{ uuid: "2902" }] } // ObjectData (Notify)
+  ]
+};
+
+const EYE_PROFILE_SERVICE = {
+  uuid: EyeStatusUuids.Service,
+  characteristics: [
+    { uuid: EyeStatusUuids.Status, descriptors: [{ uuid: '2902' }] }
+  ]
+};
 
 export const BluetoothState = {
   Ready: 'Ready',
@@ -98,6 +123,15 @@ class BleManagerImpl {
     // selection, so two writes must never interleave. Each write chains onto
     // this queue and starts only when the write before it has settled.
     this._writeQueue = Promise.resolve();
+    // Addresses of boards that connected only with the OTS-only profile in this
+    // app session. This set stays in memory only. The next app start tries the
+    // eye service again so a firmware update shows.
+    this._otsOnlyAddresses = new Set();
+    // True when the live link uses the profile with the eye service, false after
+    // the OTS-only fallback, or null with no live link.
+    this.eyeServiceSupported = null;
+    this._eyeWatcher = null;
+    this._stopMockEyeSource = null;
   }
 
   isMock(deviceOrId) {
@@ -121,12 +155,64 @@ class BleManagerImpl {
     return idOrAddress === this.connectedBoardId || idOrAddress === this.connectedAddress;
   }
 
+  _closeEyeWatcher() {
+    if (this._stopMockEyeSource) {
+      this._stopMockEyeSource();
+      this._stopMockEyeSource = null;
+    }
+    const watcher = this._eyeWatcher;
+    this._eyeWatcher = null;
+    if (watcher) {
+      watcher.close();
+    }
+  }
+
+  // Chains a board GATT operation onto _writeQueue so no eye CCC write runs
+  // inside a configuration write. Mirrors writeMutex in the KMP engine.
+  _enqueueBoardOp(client, op) {
+    const run = () => {
+      if (this._otsClient !== client || client.closed) {
+        return Promise.reject(new Error("Not connected to device"));
+      }
+      return Promise.resolve().then(op);
+    };
+    const result = this._writeQueue.then(run, run);
+    this._writeQueue = result.then(() => {}, () => {});
+    return result;
+  }
+
+  /**
+   * Watches the live eye status of the connected board.
+   *
+   * Each caller is a watcher. Call the returned unwatch function when the
+   * caller stops (a page calls it in onDestroy). The listener receives null
+   * when the link drops or when the board is not connected.
+   *
+   * @param {string} deviceId
+   * @param {(state: object|null) => void} listener
+   * @returns {() => void}
+   */
+  watchEye(deviceId, listener) {
+    if (!this.isConnected(deviceId) || !this._eyeWatcher) {
+      try {
+        listener(null);
+      } catch (err) {
+        console.log("watchEye listener failed:", err);
+      }
+      return () => {};
+    }
+    return this._eyeWatcher.watch(listener);
+  }
+
   disconnect(onDone) {
     // Invalidate any in-flight connect so its late success drops the link.
     this._connectGen++;
     // Tear down whichever link exists: an established one, or one still being
     // established (cancel mid-handshake).
     const address = this.connectedAddress || this.connectingAddress;
+
+    // Close the eye watcher before the OtsClient closes.
+    this._closeEyeWatcher();
 
     // Close the OtsClient before the link drops, so it sends no more GATT ops.
     // The subscriptions end with the link, so no CCCD unsubscribe is sent: on a
@@ -146,6 +232,7 @@ class BleManagerImpl {
     this.connectedAddress = null;
     this.connectedBoardId = null;
     this.connectingAddress = null;
+    this.eyeServiceSupported = null;
     this.state = BluetoothState.Ready;
     if (address && address !== MOCK_DEVICE_ID && typeof ble.mstDisconnect === 'function') {
       try {
@@ -527,6 +614,20 @@ class BleManagerImpl {
             this.state = BluetoothState.Ready;
             this.connectedAddress = MOCK_DEVICE_ID;
             this.connectedBoardId = MOCK_DEVICE_ID;
+            this.eyeServiceSupported = true;
+            this._closeEyeWatcher();
+            let mockWatcher = null;
+            const mockSource = createMockEyeSource(() => mockWatcher);
+            this._stopMockEyeSource = () => mockSource.stop();
+            mockWatcher = new EyeStatusWatcher({
+              supported: true,
+              setNotifications: (enable) => {
+                if (enable) mockSource.start();
+                else mockSource.stop();
+                return Promise.resolve();
+              }
+            });
+            this._eyeWatcher = mockWatcher;
             onSuccess(mockDevice);
           }, 500);
         }, 500);
@@ -536,6 +637,8 @@ class BleManagerImpl {
 
   _runRealConnect(device, onProgress, onSuccess, onFailure) {
     const gen = ++this._connectGen;
+    // Close any watcher from a prior link before a new connect begins.
+    this._closeEyeWatcher();
     // Defensive: a new connection must not leak a prior client's subscriptions
     // (normal flows disconnect first, which already closes it).
     if (this._otsClient) {
@@ -617,38 +720,49 @@ class BleManagerImpl {
     }
   }
 
-  _buildGattProfile(address, progress, onProgress, onSuccess, onFailure) {
-    const serviceUuid = "1825";
+  // Builds the GATT profile for this connection. Old board firmware does not
+  // expose the eye service. A watch can respond to an absent service in three
+  // ways:
+  // (a) mstBuildProfile calls fail: retry with the OTS-only profile on this link.
+  // (b) mstBuildProfile calls success, but the profile is broken and OTS
+  //     prepare() fails: close the OtsClient and rebuild with OTS only.
+  // (c) mstBuildProfile calls success, and only the eye characteristic is
+  //     absent: the connect succeeds, and the eye subscribe finds it later.
+  // The watch test of plan Step 8.1 will tell which case is real.
+  _buildGattProfile(
+    address,
+    progress,
+    onProgress,
+    onSuccess,
+    onFailure,
+    withEye = !this._otsOnlyAddresses.has(address)
+  ) {
+    const gen = this._connectGen;
+    const services = withEye
+      ? [OTS_PROFILE_SERVICE, EYE_PROFILE_SERVICE]
+      : [OTS_PROFILE_SERVICE];
 
     try {
       ble.mstBuildProfile({
         address: address,
-        services: [
-          {
-            uuid: serviceUuid,
-            characteristics: [
-              { uuid: "2AC5", descriptors: [{ uuid: "2902" }] }, // OACP
-              { uuid: "2AC6", descriptors: [{ uuid: "2902" }] }, // OLCP
-              { uuid: "2ABE" }, // Object Name
-              { uuid: "2ABF" }, // Object Type
-              { uuid: "2AC0" }, // Object Size
-              { uuid: "2AC3" }, // Object ID
-              { uuid: "2AC4" }, // Object Properties
-              { uuid: "2ABD" }, // Feature
-              { uuid: "00000002-5350-4221-0000-5350425f4f54", descriptors: [{ uuid: "2902" }] } // ObjectData (Notify)
-            ]
-          }
-        ],
+        services: services,
         success: () => {
+          if (gen !== this._connectGen) return;
           console.log("GATT Profile built successfully");
           progress.step2 = StepStatus.COMPLETED;
           progress.step3 = StepStatus.IN_PROGRESS;
           onProgress({ ...progress });
 
           // Initialize OTS client and perform read
-          this._readOtsData(address, progress, onProgress, onSuccess, onFailure);
+          this._readOtsData(address, progress, onProgress, onSuccess, onFailure, withEye);
         },
         fail: (err) => {
+          if (gen !== this._connectGen) return;
+          if (withEye) {
+            console.log("GATT profile build failed with the eye service; retry with OTS only:", err);
+            this._buildGattProfile(address, progress, onProgress, onSuccess, onFailure, false);
+            return;
+          }
           console.log("GATT Profile build failed:", err);
           // Link was already established by mstConnect — actually release it
           // (not just forget the id) so the board is free to reconnect.
@@ -660,6 +774,12 @@ class BleManagerImpl {
         }
       });
     } catch (e) {
+      if (gen !== this._connectGen) return;
+      if (withEye) {
+        console.log("GATT profile build threw with the eye service; retry with OTS only:", e);
+        this._buildGattProfile(address, progress, onProgress, onSuccess, onFailure, false);
+        return;
+      }
       console.log("Error in _buildGattProfile:", e);
       // Link was already established by mstConnect — actually release it.
       this.disconnect();
@@ -670,7 +790,7 @@ class BleManagerImpl {
     }
   }
 
-  _readOtsData(address, progress, onProgress, onSuccess, onFailure) {
+  _readOtsData(address, progress, onProgress, onSuccess, onFailure, withEye = true) {
     const gen = this._connectGen;
     const client = new OtsClient(address);
     this._otsClient = client;
@@ -684,6 +804,10 @@ class BleManagerImpl {
         client.readDeviceAndProfiles((deviceData) => {
           if (gen !== this._connectGen) return;
           // Success
+          this.eyeServiceSupported = withEye;
+          if (!withEye) {
+            this._otsOnlyAddresses.add(address);
+          }
           progress.step3 = StepStatus.COMPLETED;
           progress.step4 = StepStatus.COMPLETED;
           onProgress({ ...progress });
@@ -691,6 +815,11 @@ class BleManagerImpl {
           // Record the board UUID resolved from the decoded Device so store-key
           // isConnected() checks (device_config uses device.id) match this link.
           this.connectedBoardId = deviceData.id;
+          this._eyeWatcher = new EyeStatusWatcher({
+            supported: withEye,
+            address: address,
+            setNotifications: enable => this._enqueueBoardOp(client, () => client.setEyeNotifications(enable))
+          });
           onSuccess(deviceData);
         }, (err) => {
           if (gen !== this._connectGen) return;
@@ -717,6 +846,19 @@ class BleManagerImpl {
       })
       .catch((err) => {
         if (gen !== this._connectGen) return;
+        if (withEye) {
+          console.log("OTS prepare failed with the eye profile; retry with OTS only:", err);
+          this._otsClient = null;
+          try {
+            // The subscriptions of this client are not valid for a new profile; send no unsubscribe.
+            const closing = client.close({ linkDropped: true });
+            if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+          } catch (e) {
+            console.log("Error closing OtsClient before fallback:", e);
+          }
+          this._buildGattProfile(address, progress, onProgress, onSuccess, onFailure, false);
+          return;
+        }
         console.log("OTS prepare failed:", err);
         progress.step3 = StepStatus.FAILED;
         onProgress({ ...progress });

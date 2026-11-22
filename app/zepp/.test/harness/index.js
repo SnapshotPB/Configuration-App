@@ -166,6 +166,8 @@ export async function startHarness(options = {}) {
   // harness is a new app launch.
   modules.bleManager.permissionRequestRefused = false;
   modules.bleManager._permissionRequestPending = false;
+  // The OTS-only board set lives for one app session. A new harness is a new app launch.
+  modules.bleManager._otsOnlyAddresses.clear();
 
   // disconnect() hands the outgoing OtsClient a FIRE-AND-FORGET close(). Any
   // callback chain of the old client resolves through the module-level ble.mst*

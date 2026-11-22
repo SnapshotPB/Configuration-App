@@ -622,10 +622,15 @@ fun WearApp(
                 val device = currentDevice ?: return@content
                 val profile = activeProfile ?: return@content
                 val field = editingField ?: return@content
+                // The stepper watches the eye only while it shows EYE_THRESHOLD.
+                val eyeReading = remember(device.id) {
+                    bluetoothStateManager.eyeReading(device.id.toString())
+                }
                 ProfileFieldStepperScreen(
                     profile = profile,
                     field = field,
                     boltMode = device.boltMode ?: MarkerBoltMode.CLOSED,
+                    eyeReading = eyeReading,
                     onCommit = { value ->
                         deviceViewModelDelegate.updateProfileField(device.id.toString(), profile.id, field, value)
                     },

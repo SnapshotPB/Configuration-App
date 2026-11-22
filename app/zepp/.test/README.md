@@ -187,8 +187,8 @@ it impossible. Both are needed: every harness — including one given an explici
 `devices` list — must take a fresh `nextAddress()`.
 
 **Teardown must stop the radio, not just unhook it.** `OtsClient` registers its
-`mstOnCharaValueArrived` / `mstOnCharaNotification` callbacks once at module load
-and they are never cleared, so a radio left running after `teardown()` would keep
+`mstOnCharaValueArrived` callback, and `src/bluetooth/notificationRouter.js` registers
+the one `mstOnCharaNotification` callback, once at module load. They are never cleared, so a radio left running after `teardown()` would keep
 delivering into the NEXT test in the same file — a stale `2AC0` read or `2AC5`
 indication can satisfy an in-flight `_readChar`/`_awaitControlResponse` and make a
 test pass for the wrong reason. `installRadio()` therefore calls `detach()` on the
@@ -317,15 +317,17 @@ App-specific knowledge — page urls, button labels, screen copy — lives only 
 that file is the only thing that should need editing.
 
 `startHarness(options)` takes `state` (board fixture), `boardOptions`
-(`chunkSize`, `padAlignment`, `strictSubscriptions`), `faults`, `knownDevices`,
+(`chunkSize`, `padAlignment`, `strictSubscriptions`, `eyeService`, `eyeStatus`,
+`eyeNotifyIntervalMs`), `faults`, `knownDevices`,
 `devices`, `uuidFormat`, `latency`. The harness exposes `board`, `radio`, `ble`,
 `store`, `ui`, `router`, `app` (the `@zos/app` permission recorder), `stack`, plus `open` / `click` / `clickWhere` / `back` /
 `texts` / `hasText` / `waitFor` / `waitForText` / `connect` / `writeConfiguration` /
 `profileUuid` / `deviceUuid` / `teardown`.
 
 Fault keys: `connect: 'fail' | 'silent'`, `connectDelayMs`, `buildProfile: 'fail'`,
+`missingService: 'fail' | 'break' | 'ignore'`,
 `olcpResult`, `oacpResult`, `silentOlcp`, `silentOacp`, `dropDataChunksAfter`,
-`readError`, `writeError`, `chunkDelayMs`, `abortPendingConnectOnDisconnect`,
+`readError`, `writeError`, `silentWrite`, `silentSubscribe`, `chunkDelayMs`, `abortPendingConnectOnDisconnect`,
 `scan: 'refuse' | 'fail'` (mstStartScan returns false, or calls `fail` with
 `scanError`). The
 fixture you pass is copied, so the same object can be reused across harnesses.
@@ -349,7 +351,8 @@ anything a flow leaves in flight is contained to its file; `e2e/connect-cancel.t
 has its own file for exactly that reason.
 
 The `@zos/ble` mock never clears its registered `mstOnCharaValueArrived` /
-`mstOnCharaNotification` callbacks: `OtsClient` registers them once at module load,
+`mstOnCharaNotification` callbacks: `OtsClient` and the notification router register
+them once at module load,
 and clearing them would silently break every later flow in the same file. Only the
 radio behind them is swapped.
 

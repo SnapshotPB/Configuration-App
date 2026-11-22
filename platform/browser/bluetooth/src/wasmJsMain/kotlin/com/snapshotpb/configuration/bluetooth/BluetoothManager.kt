@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.eye.EyeStatusUuids
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.BoardLogUuids
 import com.snapshotpb.configuration.bluetooth.ots.OtsObject
@@ -33,6 +34,11 @@ private val log = Arbor.tag("BluetoothManager")
  * `EmulatorEngine` does the same: it gives only the services that the model of the board has, so
  * the viewer is not changed.
  *
+ * The eye status service [EyeStatusUuids.Service] is in the list too. A board on an older firmware
+ * has no eye status service. A grant from before this change hides the service until the user
+ * selects the board again in the chooser. Until then, the engine records
+ * [EyeReadingState.NotPermitted].
+ *
  * The board filter UUID 0xFFE2 comes first, as on every other target (#128). `JsEngine` 3.7.14
  * does not filter its chooser with it: it puts the list in `optionalServices` only and asks
  * for all devices. So on the web the user picks the board in the chooser, and the name plays no
@@ -44,6 +50,7 @@ internal val scanFilters: List<ServiceFilter> = SnapshotAdvertisement.scanFilter
     ServiceFilter(OtsUuids.ObjectData),
     ServiceFilter(SmpUuids.Service),
     ServiceFilter(BoardLogUuids.Service),
+    ServiceFilter(EyeStatusUuids.Service),
 )
 
 /**
