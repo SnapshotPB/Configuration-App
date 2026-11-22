@@ -492,6 +492,167 @@ final class SnapshotPBUITests: XCTestCase {
         #endif
     }
 
+    /// The `SIMULATOR_MODEL_IDENTIFIER` of iPhone Duo, which has the iOS 27.1 vertical bar.
+    private let iPhoneDuoModel = "iPhone19,4"
+
+    /// iPhone Duo: the side bar (the vertical bar of iOS 27.1) shows a back button on each screen
+    /// except the device list. A tap on that button goes back one screen. On a simulator with no
+    /// vertical bar, for example iPhone 18 Pro, no such button shows.
+    ///
+    /// Run this test on the iPhone Duo simulator for the full check. Run it on any other simulator
+    /// for the no-button check. With `TEST_RUNNER_RUN_FOLD_TESTS=1`, the test also unfolds and folds
+    /// the device on Configure Device. At each `===FOLD_NOW===` line, a person or a host script must
+    /// click the Device Hub buttons. Without the flag, the test does not fold.
+    func testSimulator_sideBarBackButton() throws {
+        #if !targetEnvironment(simulator)
+        throw XCTSkip("Simulator test. It uses the simulated board.")
+        #else
+        let model = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? ""
+        let hasVerticalBar = (model == iPhoneDuoModel)
+        print("===SIDE BAR=== model=\(model) verticalBar=\(hasVerticalBar)")
+
+        let app = launchApp(fakeBoard: true)
+        let sideBack = app.buttons["sideBarBack"]
+
+        let devices = app.staticTexts["Devices"]
+        XCTAssertTrue(devices.waitForExistence(timeout: 15), "Devices did not show. \(dumpTree(app))")
+        XCTAssertFalse(
+            sideBack.waitForExistence(timeout: 3),
+            "The side-bar back button must not show on Devices. \(dumpTree(app))"
+        )
+
+        startScanning(app)
+        discoverAndTapBoard(app, boardName: nil)
+        XCTAssertTrue(
+            awaitConnectingScreenSucceeds(app, timeoutSec: 30),
+            "The simulated board did not connect. \(connectingProgressDump(app))"
+        )
+        element(app, "btFinishConfiguration").tap()
+        let configure = app.staticTexts["Configure Device"]
+        XCTAssertTrue(
+            configure.waitForExistence(timeout: 15),
+            "Configure Device did not show. \(dumpTree(app))"
+        )
+
+        if !hasVerticalBar {
+            XCTAssertFalse(
+                sideBack.waitForExistence(timeout: 3),
+                "A side-bar back button shows on a device with no vertical bar."
+            )
+            print("===SIDE BAR=== none on this device")
+            return
+        }
+
+        XCTAssertTrue(
+            sideBack.waitForExistence(timeout: 10),
+            "The side-bar back button did not show on Configure Device. \(dumpTree(app))"
+        )
+        XCTAssertTrue(
+            sideBack.isHittable,
+            "The side-bar back button is not hittable on Configure Device. \(dumpTree(app))"
+        )
+        XCTAssertEqual(sideBack.label, "Back", "The side-bar back button has the wrong label.")
+        attachScreenshot(app, name: "side-bar-configure")
+
+        // An unfold and a fold keep the button. A host script clicks the Device Hub buttons.
+        if envFlag(ProcessInfo.processInfo.environment, "RUN_FOLD_TESTS") == "1" {
+            let fold = FoldDriver(test: self, app: app)
+            fold.cycle("side-bar") {
+                XCTAssertTrue(configure.exists, "Configure Device went away.")
+                XCTAssertTrue(sideBack.waitForExistence(timeout: 10), "The side-bar back button went away.")
+                XCTAssertTrue(sideBack.isHittable, "The side-bar back button is not hittable.")
+            }
+        }
+
+        sideBack.tap()
+        assertGone(configure, "Configure Device")
+
+        // The Profiles screen shows the device name as its title, so find it by its connection card.
+        let profiles = app.staticTexts["Board Connection"]
+        if !devices.waitForExistence(timeout: 5) {
+            // Finish Configuration can leave the Profiles screen under Configure Device.
+            XCTAssertTrue(
+                profiles.exists,
+                "Neither Devices nor the Profiles screen showed after the back tap. \(dumpTree(app))"
+            )
+            XCTAssertTrue(
+                sideBack.waitForExistence(timeout: 5),
+                "The side-bar back button did not show on the Profiles screen. \(dumpTree(app))"
+            )
+            sideBack.tap()
+            XCTAssertTrue(
+                devices.waitForExistence(timeout: 10),
+                "Devices did not show after the back tap from Profiles. \(dumpTree(app))"
+            )
+        }
+        XCTAssertTrue(
+            sideBack.waitForNonExistence(timeout: 5),
+            "The side-bar back button stayed on Devices. \(dumpTree(app))"
+        )
+
+        boardCell(app).tap()
+        XCTAssertTrue(
+            profiles.waitForExistence(timeout: 15),
+            "The Profiles screen did not show. \(dumpTree(app))"
+        )
+        XCTAssertTrue(
+            sideBack.waitForExistence(timeout: 10),
+            "The side-bar back button did not show on the Profiles screen. \(dumpTree(app))"
+        )
+        attachScreenshot(app, name: "side-bar-profiles")
+
+        let profileRow = app.staticTexts.matching(NSPredicate(format: "label == %@", "Semi")).firstMatch
+        XCTAssertTrue(
+            profileRow.waitForExistence(timeout: 10),
+            "No Semi profile row showed. \(dumpTree(app))"
+        )
+        profileRow.tap()
+        XCTAssertTrue(
+            profiles.waitForNonExistence(timeout: 10),
+            "The profile screen did not open. \(dumpTree(app))"
+        )
+        XCTAssertTrue(
+            sideBack.waitForExistence(timeout: 10),
+            "The side-bar back button did not show on the Profile screen. \(dumpTree(app))"
+        )
+
+        sideBack.tap()
+        XCTAssertTrue(
+            profiles.waitForExistence(timeout: 10),
+            "The Profiles screen did not show after the back tap from Profile. \(dumpTree(app))"
+        )
+        sideBack.tap()
+        XCTAssertTrue(
+            devices.waitForExistence(timeout: 10),
+            "Devices did not show after the back tap from Profiles. \(dumpTree(app))"
+        )
+        XCTAssertTrue(
+            sideBack.waitForNonExistence(timeout: 5),
+            "The side-bar back button stayed on Devices. \(dumpTree(app))"
+        )
+
+        boardCell(app).tap()
+        XCTAssertTrue(
+            profiles.waitForExistence(timeout: 15),
+            "The Profiles screen did not open for the edge-swipe check. \(dumpTree(app))"
+        )
+        edgeSwipeBack(app)
+        XCTAssertTrue(
+            devices.waitForExistence(timeout: 10),
+            "Devices did not show after the edge swipe on iPhone Duo. \(dumpTree(app))"
+        )
+        print("===SIDE BAR=== ok on Configure Device, Profiles and Profile")
+        #endif
+    }
+
+    /// Attaches a full-screen screenshot of `app` to the test result.
+    private func attachScreenshot(_ app: XCUIApplication, name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
     /// The tag of the update screen, which holds its phase (`firmwareUpdate:<phase>`).
     private func firmwarePhase(_ app: XCUIApplication) -> String {
         let screen = app.descendants(matching: .any)

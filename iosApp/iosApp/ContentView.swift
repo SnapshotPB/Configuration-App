@@ -4,7 +4,8 @@ import ComposeApp
 
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIViewController {
-        MainViewControllerKt.MainViewController()
+        // Wrap the Compose view controller to show the side-bar back button on iPhone Duo.
+        SideBarNavigationController(content: MainViewControllerKt.MainViewController())
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
