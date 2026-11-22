@@ -110,6 +110,8 @@ dependencies {
     // Core Android/Compose dependencies
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
+    // Gives LocalLifecycleOwner and repeatOnLifecycle for the live eye value of the stepper.
+    implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.arbor)
     implementation(libs.arbor.android)
     implementation(libs.blue.falcon)
@@ -122,6 +124,9 @@ dependencies {
     implementation(libs.coil)
 
     // Testing dependencies
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.testJunit)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.test.uiautomator)

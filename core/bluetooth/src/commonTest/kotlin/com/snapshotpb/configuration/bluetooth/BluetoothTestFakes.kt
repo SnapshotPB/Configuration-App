@@ -1,5 +1,6 @@
 package com.snapshotpb.configuration.bluetooth
 
+import com.snapshotpb.configuration.bluetooth.eye.EyeStatusUuids
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLog
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogEvent
 import com.snapshotpb.configuration.bluetooth.log.BluetoothLogSnapshot
@@ -335,4 +336,15 @@ internal class FakeBoardLogService(isNotifying: Boolean = false, withTx: Boolean
     )
 
     suspend fun send(text: String) = tx.emitter.emit(text.encodeToByteArray())
+}
+
+/** The eye status service of the board, for session and engine tests. [send] sends one board notification. */
+internal class FakeEyeStatusService(isNotifying: Boolean = false, withStatus: Boolean = true) {
+    val status = FakeOtsCharacteristic(EyeStatusUuids.Status, isNotifying = isNotifying)
+    val service = FakeBluetoothService(
+        uuid = EyeStatusUuids.Service,
+        characteristics = if (withStatus) listOf(status) else emptyList(),
+    )
+
+    suspend fun send(bytes: ByteArray) = status.emitter.emit(bytes)
 }

@@ -15,6 +15,9 @@
 
 import { TextEncoder as NodeTextEncoder } from 'node:util';
 import { applyObjectWrite, createBoardState, encodeObject, OTS_OBJECTS, padObject } from './boardState';
+import { snapshotpb } from '../../src/protocol/proto';
+
+const { EyeStatus } = snapshotpb.v1;
 
 // Object Transfer Service UUIDs, short form. The vendor ObjectData
 // characteristic carries chunked content over GATT notifications — this
@@ -31,6 +34,12 @@ export const OTS_UUID = {
   OLCP: '2AC6',
   DEVICE_OBJECT_TYPE: '00000001-5350-4221-0000-5350425F4F54',
   OBJECT_DATA: '00000002-5350-4221-0000-5350425F4F54'
+};
+
+// Vendor live eye status service and characteristic UUIDs.
+export const EYE_UUID = {
+  SERVICE: '00000010-5350-4221-0000-5350425F4F54',
+  STATUS: '00000011-5350-4221-0000-5350425F4F54'
 };
 
 // OTS spec §3.11.2 / §3.12.2.
@@ -81,6 +90,9 @@ export class VirtualBoard {
    * @param {number} [config.chunkSize]      ObjectData notification size (default 20, one ATT MTU)
    * @param {number} [config.padAlignment]   flash slot alignment for object padding
    * @param {boolean} [config.strictSubscriptions] drop notifications for unsubscribed characteristics
+   * @param {boolean} [config.eyeService]    expose the live eye status service (default true)
+   * @param {object}  [config.eyeStatus]     initial EyeStatus camelCase fields
+   * @param {number}  [config.eyeNotifyIntervalMs] interval between eye notifications in board-ms (default 100)
    */
   constructor(config = {}) {
     this.state = config.state || createBoardState();
@@ -88,6 +100,15 @@ export class VirtualBoard {
     this.chunkSize = config.chunkSize || 20;
     this.padAlignment = config.padAlignment === undefined ? 32 : config.padAlignment;
     this.strictSubscriptions = config.strictSubscriptions !== false;
+    this.eyeService = config.eyeService !== false;
+    this.eyeStatus = config.eyeStatus
+      ? { ...config.eyeStatus }
+      : { levelRaw: 2047, fullScaleRaw: 4095, state: 1 };
+    this.eyeNotifyIntervalMs = config.eyeNotifyIntervalMs === undefined ? 100 : config.eyeNotifyIntervalMs;
+    this.eyeSending = true;
+    this.eyeNotificationsSent = 0;
+    this._sessionId = 0;
+    this._eyeLoopToken = 0;
 
     // Object list, in the order OLCP FIRST/NEXT walks it. Descriptors come from
     // the protocol table in boardState.js, so a new object needs no change here.
@@ -105,11 +126,47 @@ export class VirtualBoard {
     this.transport = transport;
   }
 
+  hasService(uuid) {
+    const short = normalizeUuid(uuid);
+    if (short === OTS_UUID.SERVICE) return true;
+    if (short === EYE_UUID.SERVICE) return this.eyeService;
+    return false;
+  }
+
   /** Everything a GATT link owns. Called on connect and on disconnect. */
   resetSession() {
+    this._sessionId += 1;
+    this._eyeLoopToken += 1;
     this.selectedIndex = -1;
     this.subscriptions = new Map();
     this.pendingWrite = null;
+  }
+
+  setEyeStatus(status) {
+    this.eyeStatus = { ...status };
+  }
+
+  _encodeEyeStatus() {
+    return EyeStatus.encode(EyeStatus.create(this.eyeStatus)).finish();
+  }
+
+  _scheduleEyeLoop(sessionId, token) {
+    if (!this.transport) return;
+    this.transport.schedule(() => {
+      if (
+        sessionId !== this._sessionId ||
+        token !== this._eyeLoopToken ||
+        !this.subscriptions.has(EYE_UUID.STATUS)
+      ) {
+        return;
+      }
+      if (this.eyeSending) {
+        const bytes = this._encodeEyeStatus();
+        this._deliver(EYE_UUID.STATUS, bytes);
+        this.eyeNotificationsSent += 1;
+      }
+      this._scheduleEyeLoop(sessionId, token);
+    }, this.eyeNotifyIntervalMs);
   }
 
   // --- Object accessors -----------------------------------------------------
@@ -186,6 +243,10 @@ export class VirtualBoard {
         writeU32(value, 0, descriptor.writable ? (1 << 1) | (1 << 2) : 1 << 1);
         return { value };
       }
+      case EYE_UUID.STATUS: {
+        if (!this.eyeService) return { error: `characteristic ${short} is not present on this board` };
+        return { value: this._encodeEyeStatus() };
+      }
       default:
         return { error: `characteristic ${short} is not readable` };
     }
@@ -212,10 +273,20 @@ export class VirtualBoard {
 
   setSubscription(uuid, enable, kind) {
     const short = normalizeUuid(uuid);
+    if (short === EYE_UUID.STATUS && !this.eyeService) {
+      return { error: `characteristic ${short} is not present on this board` };
+    }
     if (enable) {
       this.subscriptions.set(short, kind);
+      if (short === EYE_UUID.STATUS) {
+        this._eyeLoopToken += 1;
+        this._scheduleEyeLoop(this._sessionId, this._eyeLoopToken);
+      }
     } else {
       this.subscriptions.delete(short);
+      if (short === EYE_UUID.STATUS) {
+        this._eyeLoopToken += 1;
+      }
     }
     return { ok: true };
   }

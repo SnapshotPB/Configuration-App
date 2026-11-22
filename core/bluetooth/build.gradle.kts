@@ -32,5 +32,13 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+        // The EyeStatus golden test reads the JSON test data from the Configuration-Protocol
+        // submodule.
+        jvmTest {
+            resources.srcDir(layout.projectDirectory.dir("../protocol/builder/Configuration-Protocol/testdata"))
+            dependencies {
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
     }
 }
